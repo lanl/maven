@@ -1,5 +1,5 @@
 # MAVEN User Guide
-Maven is a local host interface designed to automate the collection of metadata for DIANA datasets using URSA. 
+MAVEN is a local host interface designed to automate the collection of metadata for DIANA datasets using URSA. 
 It streamlines the process of gathering necessary dataset information before moving data and metadata to a specified HPC campaign directory via DSI.
 
 ## Quick Start
@@ -19,13 +19,13 @@ It is recommended users create a virtual environment to run MAVEN with Python 3.
 **Option A: Miniconda3**
 ```
 . ~/miniconda3/bin/activate
-conda create -n diana_env python=3.12
-conda activate diana_env                # start here if virtual environment exists
+conda create -n maven_env python=3.12
+conda activate maven_env                # start here if virtual environment exists
 ```
 **Option B: Python venv**
 ```
-python3 -m venv diana_env
-source diana_env/bin/activate           # start here if virtual environment exists
+python3 -m venv maven_env
+source maven_env/bin/activate           # start here if virtual environment exists
 pip install --upgrade pip
 ```
 **Option C: uv**
@@ -35,7 +35,12 @@ source .venv/bin/activate
 ```
 
 ### Installation
-Install the project and its dependencies using pip: `pip install .`
+Install MAVEN and its dependencies:
+```
+git clone https://github.com/lanl/maven.git
+cd maven
+pip install .
+```
 
 ### Setup
 When first launching the app, you will be prompted to complete 3 fields:
