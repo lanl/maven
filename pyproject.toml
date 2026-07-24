@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name="MAVEN"
+name="maven"
 license= "BSD-3-Clause"
 description="DIANA Metadata Acquisition and Validation ENgine"
 readme = "README.rst"
