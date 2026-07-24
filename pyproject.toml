@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="diana-maven"
+license= "BSD-3-Clause"
+description="DIANA Metadata Acquisition and Validation ENgine"
+readme = "README.rst"
+authors=[
+	{name = 'Christopher W Johnson', 	email = 'cwj@lanl.gov'},
+	{name = 'Vedant Iyer', 		        email = 'iyer@lanl.gov'},
+	]
+classifiers=["Programming Language :: Python"]
+dynamic = ["dependencies","version"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+version = {attr = "diana._version.__version__"}
+
+[tool.setuptools]
+include-package-data = true
+
+[project.scripts]
+diana = "diana.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["diana*"]
+exclude = ["ursa_workspace"]
+
+[tool.setuptools.package-data]
+diana = ["files/*", "files_template/*"]
