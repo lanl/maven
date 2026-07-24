@@ -86,7 +86,7 @@ import uuid
 from dsi.dsi import DSI
 from dsi.sync import Sync
 
-from diana.ursa_autofill import (
+from maven.ursa_autofill import (
     AGENT_META_COLUMNS,
     build_followup_questions,
     load_agent_meta,
@@ -96,7 +96,7 @@ from diana.ursa_autofill import (
     summarize_autofill,
 )
 
-from diana.tier1_agent import run_tier1_catalog
+from maven.tier1_agent import run_tier1_catalog
 
 curr_dir = Path(__file__).parent
 # files_dir = curr_dir / "files"
@@ -1210,7 +1210,7 @@ def update_short_project_title_dialog(qid: int, short_proj_name: str, hpc_campai
 
 @st.dialog("Update Diana Maven Directory", width="medium")
 def update_diana_dir_dialog():
-    st.write("Enter a directory where Diana Maven should store all metadata databases.")
+    st.write("Enter a directory where Maven should store all metadata databases.")
 
     curr_dir = get_diana_dbs_dir()
     dir_input = st.text_input("Diana Maven Directory", value=curr_dir, key="update_diana_dir")
@@ -1311,7 +1311,7 @@ def confirm_context_files_dialog(context_files): # add :str or :list
 # -----------------------------
 # App start
 # -----------------------------
-st.set_page_config(page_title="DIANA Maven",
+st.set_page_config(page_title="Maven",
                    page_icon="📝", layout="wide")
 
 st.markdown("""
@@ -1373,7 +1373,7 @@ if "confirm_submit_context_files" not in st.session_state:
     st.session_state.confirm_submit_context_files = False
 
 if get_diana_dbs_dir() is None:
-    st.title("Welcome to the DIANA Maven App")
+    st.title("Welcome to the Maven App")
     st.write("Enter a directory to store metadata databases and AI API variables.")
 
     dir_input = st.text_input("Diana Maven Directory", placeholder="/path/to/diana/projects")
@@ -1407,7 +1407,7 @@ loaded_keys = load_env_keys()
 if not loaded_keys:
     aim_left, aim_mid, aim_right = st.columns([0.5, 3.6, 0.5], width='stretch')
     with aim_mid:
-        st.title("Welcome to the DIANA Maven App")
+        st.title("Welcome to the Maven App")
         if not st.session_state.select_model_screen:
             st.subheader("Enter AI API Key and Base URL")
             
@@ -1498,7 +1498,7 @@ if st.session_state.screen == "datasheet":
 
         first_l, first_m, first_r = st.columns([0.75, 5, 0.75])
         with first_m:
-            st.title("DIANA Maven Home")
+            st.title("Maven Home")
             second_l, second_r = st.columns(2)
             with second_l:
                 if st.button("Edit Diana Maven Directory", key="edit_diana_dir_btn", width="stretch"):

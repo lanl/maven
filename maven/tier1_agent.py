@@ -1,4 +1,4 @@
-from diana.ursa_utils import run_ursa_agent
+from maven.ursa_utils import run_ursa_agent
 import pandas as pd
 from typing import Tuple
 

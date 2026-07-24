@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name="diana-maven"
+name="MAVEN"
 license= "BSD-3-Clause"
 description="DIANA Metadata Acquisition and Validation ENgine"
 readme = "README.rst"
@@ -16,18 +16,18 @@ dynamic = ["dependencies","version"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
-version = {attr = "diana._version.__version__"}
+version = {attr = "maven._version.__version__"}
 
 [tool.setuptools]
 include-package-data = true
 
 [project.scripts]
-diana = "diana.cli:main"
+maven = "maven.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["diana*"]
+include = ["maven*"]
 exclude = ["ursa_workspace"]
 
 [tool.setuptools.package-data]
-diana = ["files/*", "files_template/*"]
+maven = ["files/*", "files_template/*"]

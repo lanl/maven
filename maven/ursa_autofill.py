@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 from typing import Any
 
-from diana.ursa_utils import run_ursa_agent
+from maven.ursa_utils import run_ursa_agent
 
 
 AGENT_META_COLUMNS = ["agent_meta", "user_clarifications"]

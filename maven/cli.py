@@ -60,7 +60,7 @@ def main():
             print(line, flush=True)
         proc.wait()
     except KeyboardInterrupt:
-        print("\n Closing Diana Maven App.\n")
+        print("\n Closing the Maven App.\n")
         proc.terminate()
         try:
             proc.wait(timeout=3)

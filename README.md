@@ -1,10 +1,10 @@
 # MAVEN User Guide
-Diana Maven is a local host interface designed to automate the collection of metadata for DIANA datasets using URSA. 
+Maven is a local host interface designed to automate the collection of metadata for DIANA datasets using URSA. 
 It streamlines the process of gathering necessary dataset information before moving data and metadata to a specified HPC campaign directory via DSI.
 
 ## Quick Start
 
-If already installed, simply run: `diana` in your terminal.
+If already installed, simply run: `maven` in your terminal.
 Then, open the provided localhost URL in your preferred browser.
 
 
