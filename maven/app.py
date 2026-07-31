@@ -94,15 +94,25 @@ from maven.ursa_autofill import (
     summarize_autofill,
 )
 
-from maven.tier1_agent import run_tier1_catalog
+from maven.tier1_GenesisCard_agent import run_tier1_catalog
+from ursa.agents.chat_agent import ChatAgent
+try:
+    from ursa.util.http import inject_truststore_into_ssl
+    inject_truststore_into_ssl()
+except ImportError:
+    raise ImportError("Ensure you have ursa-ai>=0.15.8 downloaded from pypi")
+from langchain.chat_models import init_chat_model
 
 curr_dir = Path(__file__).parent
-# files_dir = curr_dir / "files"
-# MD_FILE = files_dir / "genesis_datacard_v1.yaml"
-
 files_dir = curr_dir / "files_template"
-MD_FILE = files_dir / "genesis_datacard_src_schema_class_based_Jul_13.yaml"
+# Class based schema with all fields
+CARD_CLASS_BASED = files_dir / "genesis_datacard_src_schema_class_based_Jul_13.yaml"
 
+# GENESIS specific cards
+GENESIS_MISSION_DATA_CARD = files_dir / "genesis_datacard_merged_shared_latest_Jul_13.yaml"
+GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "data_card_field_reference_guide_Jul_13.md"
+
+# Genesis datasheet 
 datasheet_file = files_dir / "datasheet_sections.yaml"
 SECTIONS = yaml.safe_load(datasheet_file.read_text(encoding="utf-8"))
 
@@ -132,6 +142,8 @@ REMOTE_MOVE_SCRIPT = remote_script.read_text(encoding="utf-8")
 
 is_remote = any(os.environ.get(x) for x in ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"])
 
+TEMP = 0.2
+
 def get_maven_dir() -> Path | None:
     if not CONFIG_FILE.exists():
         return None
@@ -146,6 +158,21 @@ def get_maven_dir() -> Path | None:
         return None
 
     return path
+
+
+def configure_chat_agent() -> ChatAgent:
+    # Configure model
+    llm = init_chat_model(model=os.getenv("AI_MODEL"),
+                          base_url=os.getenv("AI_API_URL"),
+                          api_key=os.getenv("AI_API_KEY"),
+                          temperature=TEMP
+                          )
+    # Setup workspace and thread for conversation persistence
+    workspace = Path(get_maven_dir()) / "ursa_workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    # Create ChatAgent with conversation state
+    chat_agent = ChatAgent(llm=llm, workspace=workspace, autosave_metrics=False)
+    return chat_agent
 
 
 def save_maven_dir(path_str: str) -> bool:
@@ -277,6 +304,14 @@ def get_tier1_db_path(project_id: int, only_name: bool = False) -> str:
     maven_dir = get_maven_dir()
     return str(maven_dir / df.iloc[0, 0])
 
+# def get_tier1_card_path(project_id: int, only_name: bool = False) -> str:
+#     store = get_db(get_master_db_name())
+#     df = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {project_id}", True)
+#     store.close()
+#     if only_name:
+#         return df.iloc[0, 0]
+#     diana_dir = get_diana_dbs_dir()
+#     return str(diana_dir / df.iloc[0, 0] + ".yaml")
 
 def get_tier2_db_path(project_id: int, only_name: bool = False) -> str:
     store = get_db(get_master_db_name())
@@ -361,13 +396,13 @@ def delete_project(qid: int) -> None:
         store.close()
 
 
-def get_tier1_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
-    if not MD_FILE.is_file():
+def get_tier1_class_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
+    if not CARD_CLASS_BASED.is_file():
         st.error("Tier 1 metadata fields file does not exist")
         st.stop()
 
     all_classes = {}
-    sv = SchemaView(MD_FILE)
+    sv = SchemaView(CARD_CLASS_BASED)
     for class_name, cls in sv.all_classes().items():
         if cls.abstract or class_name.lower() == "anyvalue":
             continue
@@ -386,6 +421,18 @@ def get_tier1_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
     slots_dict = {slot_name: slot.description for slot_name, slot in sv.all_slots().items()}
 
     return slots_dict, all_classes
+
+
+def get_tier1_cards() -> dict[str, dict[str, str]]:
+    tier1_cards = {}
+    with open(GENESIS_MISSION_DATA_CARD, 'r') as f:
+        tier1_cards["data_card_all"] = f.read()
+
+    with open(GENESIS_MISSION_DATA_CARD_REFERENCE, 'r') as f:
+        tier1_cards["card_reference"] = f.read()
+
+    tier1_cards["data_card_fields"] = yaml.safe_load(GENESIS_MISSION_DATA_CARD.read_text(encoding="utf-8"))
+    return tier1_cards
 
 
 def extract_text_from_pdf(file) -> str:
@@ -1053,9 +1100,9 @@ def route_after_autofill(row: Dict[str, Any]) -> int:
     return target
 
 
-def run_initial_autofill_for_project(qid: int) -> Dict[str, Any]:
+def run_initial_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int) -> Dict[str, Any]:
     row = get_datasheet(qid)
-    payload = run_initial_autofill(str(get_maven_dir()), row, SECTIONS)
+    payload = run_initial_autofill(CHAT_AGENT, str(get_maven_dir()), row, SECTIONS)
     updates, _ = merge_autofill_result(
         row,
         payload,
@@ -1495,7 +1542,7 @@ if st.session_state.update_ai_info_screen:
 
 
 create_master_db()
-
+CHAT_AGENT = configure_chat_agent()
 
 if st.session_state.screen == "datasheet":
     # -----------------------------
@@ -1746,8 +1793,8 @@ if st.session_state.screen == "datasheet":
                         st.session_state.confirm_submit_context_files = True
 
                 new_id = commit_section0_and_create_row(st.session_state.draft_answers)
-                with st.spinner("Running URSA-assisted autofill. May take a few minutes..."):
-                    row_after_autofill = run_initial_autofill_for_project(new_id)
+                with st.spinner("Running URSA-assisted autofill.\nMay take a few minutes..."):
+                    row_after_autofill = run_initial_autofill_for_project(CHAT_AGENT, new_id)
                 st.session_state.active_qid = new_id
                 meta = load_agent_meta(row_after_autofill)
                 st.session_state.section_idx = (
@@ -1773,7 +1820,7 @@ if st.session_state.screen == "datasheet":
                 qid = int(st.session_state.active_qid)
                 questions = load_agent_meta(row).get("followup_questions", [])
                 clarifications = collect_followup_answers(qid, questions)
-                with st.spinner("Applying clarifications. May take a few minutes..."):
+                with st.spinner("Applying clarifications.\nMay take a few minutes..."):
                     row_after_followup = run_followup_autofill_for_project(qid, clarifications)
                 st.session_state.section_idx = route_after_autofill(
                     row_after_followup)
@@ -1819,9 +1866,10 @@ if st.session_state.screen == "datasheet":
                     generate_datasheet_pdf(datasheet_df, str(get_maven_dir() / full_name))
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
-                        tier1_fields_dict, all_classes_dict = get_tier1_fields()
-                        with st.spinner("Populating findability metadata. May take a few minutes..."):
-                            all_tier1_dicts = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict)
+                        tier1_fields_dict, all_classes_dict = get_tier1_class_fields()
+                        tier1_cards = get_tier1_cards()
+                        with st.spinner("Populating findability metadata.\nMay take a few minutes..."):
+                            all_tier1_dicts, all_tier1_card = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict, tier1_cards)
 
                         tier1_db_path = get_tier1_db_path(qid)
                         store = get_db(tier1_db_path)
@@ -1829,6 +1877,10 @@ if st.session_state.screen == "datasheet":
                         for tier1_table_name, tier1_dict in all_tier1_dicts.items():
                             store.read(tier1_dict, "Collection", tier1_table_name)
                         store.close()
+
+                        yaml_card_out = get_maven_dir() / "TEST_datacard.yaml"
+                        with open(yaml_card_out, 'w') as f:
+                            yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
 
                     st.session_state.screen = "tier1"
                     st.session_state.section_idx = 0
@@ -1850,7 +1902,8 @@ elif st.session_state.screen == "tier1":
     st.title("Findability Metadata")
     st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
-    tier1_fields_dict, all_classes_dict = get_tier1_fields()
+    tier1_fields_dict, all_classes_dict = get_tier1_class_fields()
+    tier1_cards = get_tier1_cards()
 
     if not get_tier1_table(qid, check_exists=True):
         datasheet_df = get_datasheet(qid, df_return=True)
@@ -1864,7 +1917,7 @@ elif st.session_state.screen == "tier1":
             st.rerun()
         else: # run t1 agent
             with st.spinner("Populating findability metadata. May take a few minutes..."):
-                all_tier1_dicts = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict)
+                all_tier1_dicts, all_tier1_card  = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict, tier1_cards)
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -1892,7 +1945,7 @@ elif st.session_state.screen == "tier1":
         new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
         datasheet_df = get_datasheet(qid, True)
         with st.spinner("Updating tier 1 metadata catalog with new fields..."):
-            new_tier1_dicts = run_tier1_catalog(str(get_maven_dir()), datasheet_df, new_tier1_fields_dict, diff_tables_dict)
+            new_tier1_dicts, all_tier1_card = run_tier1_catalog(str(get_maven_dir()), datasheet_df, new_tier1_fields_dict, diff_tables_dict, tier1_cards)
 
         for tbl_name, new_tbl_data in new_tier1_dicts.items():
             if tbl_name in curr_tables.keys():

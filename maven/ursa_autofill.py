@@ -2,7 +2,7 @@ import json
 import re
 from copy import deepcopy
 from typing import Any
-
+from ursa.agents.chat_agent import ChatAgent
 from maven.ursa_utils import run_ursa_agent
 
 
@@ -1481,6 +1481,7 @@ def _build_ursa_prompt(
 
 def _run_ursa_autofill(
     *,
+    chat_agent: ChatAgent,
     maven_dir: str,
     row: dict[str, Any],
     sections: list[dict[str, Any]],
@@ -1493,7 +1494,7 @@ def _run_ursa_autofill(
     # Build extraction prompt with original context + any clarifications
     user_prompt = _build_ursa_prompt(row, sections, clarifications)
 
-    payload = run_ursa_agent(maven_dir, user_prompt)
+    payload = run_ursa_agent(chat_agent, maven_dir, user_prompt)
 
     # Ensure required structure
     payload.setdefault("fields", {})
@@ -1641,23 +1642,33 @@ def summarize_autofill(
 
 
 def run_initial_autofill(
+    chat_agent: ChatAgent,
     maven_dir: str,
     intake_row: dict[str, Any],
     sections: list[dict[str, Any]],
 ) -> dict[str, Any]:
     try:
-        return _run_ursa_autofill(
-            maven_dir=maven_dir,
+        payload = _run_ursa_autofill(
+            chat_agent=chat_agent,
+            diana_dir=maven_dir,
             row=intake_row,
             sections=sections,
         )
+        print(payload)
+        print("\n"*5)
+        return payload
+
     except Exception as exc:
+        print('Initial Autofill :: LLM not connecting. Running app using heuristic autofill')
+        print(f"Error Type: {type(exc).__name__}")
+        print(f"Full Details: {repr(exc)}")
         payload = heuristic_autofill(intake_row, sections)
         payload["notes"].append(f"URSA fallback used: {exc}")
         return payload
 
 
 def run_followup_autofill(
+    chat_agent: ChatAgent,
     maven_dir: str,
     updated_row: dict[str, Any],
     clarifications: dict[str, str],
@@ -1665,12 +1676,14 @@ def run_followup_autofill(
 ) -> dict[str, Any]:
     try:
         return _run_ursa_autofill(
-            maven_dir=maven_dir,
+            chat_agent=chat_agent,
+            diana_dir=maven_dir,
             row=updated_row,
             sections=sections,
             clarifications=clarifications,
         )
     except Exception as exc:
+        print('Followup Autofill :: LLM not connecting. Running app using heuristic autofill')
         payload = heuristic_autofill(
             updated_row,
             sections,

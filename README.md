@@ -19,7 +19,7 @@ It is recommended users create a virtual environment to run MAVEN with Python 3.
 **Option A: Miniconda3**
 ```
 . ~/miniconda3/bin/activate
-conda create -n maven_env python=3.12
+conda create -n maven_env python=3.13
 conda activate maven_env                # start here if virtual environment exists
 ```
 **Option B: Python venv**
@@ -34,13 +34,18 @@ uv venv
 source .venv/bin/activate
 ```
 
-### Installation
+### Installation and Launching
 Install MAVEN and its dependencies:
 ```
 git clone https://github.com/lanl/maven.git
 cd maven
 pip install .
+
+
+After successful install, simply run: `maven` in your terminal.
+Then, open the provided localhost URL in your preferred browser. 
 ```
+
 
 ### Setup
 When first launching the app, you will be required to complete 3 fields:

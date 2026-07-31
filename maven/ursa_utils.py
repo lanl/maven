@@ -5,13 +5,13 @@ import os
 from pathlib import Path
 
 from ursa.agents.chat_agent import ChatAgent
-try:
-    from ursa.util.http import inject_truststore_into_ssl
-except ImportError:
-    raise ImportError("Ensure you have ursa-ai>=0.15.8 downloaded from pypi")
-from langchain.chat_models import init_chat_model
+# try:
+#     from ursa.util.http import inject_truststore_into_ssl
+# except ImportError:
+#     raise ImportError("Ensure you have ursa-ai>=0.15.8 downloaded from pypi")
+# from langchain.chat_models import init_chat_model
 
-TEMP = 0.2
+# TEMP = 0.2
 
 
 def _extract_json_object(text: str) -> dict[str, Any] | None:
@@ -29,29 +29,31 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
-def run_ursa_agent(maven_dir: str, user_prompt: str) -> dict[str, Any] | None:
+def run_ursa_agent(chat_agent: ChatAgent, maven_dir: str, user_prompt: str) -> dict[str, Any] | None:
 
-    # Setup workspace and thread for conversation persistence
-    workspace = Path(maven_dir) / "ursa_workspace"
-    workspace.mkdir(parents=True, exist_ok=True)
+    # # Setup workspace and thread for conversation persistence
+    # workspace = Path(diana_dir) / "ursa_workspace"
+    # workspace.mkdir(parents=True, exist_ok=True)
 
-    # Configure model
-    inject_truststore_into_ssl()
-    llm = init_chat_model(
-        model=os.getenv("AI_MODEL"),
-        base_url=os.getenv("AI_API_URL"),
-        api_key=os.getenv("AI_API_KEY"),
-        temperature=TEMP
-    )
+    # # Configure model
+    # inject_truststore_into_ssl()
+    # llm = init_chat_model(
+    #     model=os.getenv("AI_MODEL"),
+    #     base_url=os.getenv("AI_API_URL"),
+    #     api_key=os.getenv("AI_API_KEY"),
+    #     temperature=TEMP
+    # )
 
-    # Create ChatAgent with conversation state
-    chat_agent = ChatAgent(llm=llm, workspace=workspace, autosave_metrics=False)
+    # # Create ChatAgent with conversation state
+    # chat_agent = ChatAgent(llm=llm, workspace=workspace, autosave_metrics=False)
 
     # Execute extraction with conversation maintained
     inv_chat = chat_agent.invoke(user_prompt)
+    print(inv_chat)
     response = chat_agent.format_result(inv_chat)
-
+    print(response)
     # Parse JSON response
-    payload = _extract_json_object(response)
-
+    payload = _extract_json_object(inv_chat)
+    print(payload)
+    print("\n"*5)
     return payload
