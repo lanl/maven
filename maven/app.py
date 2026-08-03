@@ -81,7 +81,6 @@ import tempfile
 from openai import OpenAI
 import httpx
 from linkml_runtime import SchemaView
-import uuid
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
@@ -122,8 +121,6 @@ PROJECTS_TABLE = "projects"
 DATASHEET_TABLE = "datasheet"
 
 TIER_2_TABLE = "data_and_hpc_info"
-
-UUID_NAMESPACE = uuid.NAMESPACE_OID
 
 CONFIG_DIR = Path.home() / ".diana_maven_config"
 CONFIG_FILE = CONFIG_DIR / "files_location.txt"
@@ -2272,12 +2269,11 @@ elif st.session_state.screen == "tier2":
                         curr_folders = {PurePosixPath(path).name: owner for line in result.stdout.strip().splitlines() if line.strip()
                                         for owner, path in [line.split(" ", 1)]}
 
-                    # all folder names are uuid's so convert short_proj_name to uuid and check if that is in the project
-                    uuid_short_proj_name = str(uuid.uuid5(UUID_NAMESPACE, short_proj_name))
-                    if uuid_short_proj_name in curr_folders:
+                    # check if short_proj_name is in campaign folder
+                    if short_proj_name in curr_folders:
                         # if current username matches the username of person owning data on remote, notifiy them it will overwrite
                         #TODO?: maybe allow the user to not overwrite with a stop button
-                        retrieved_username = curr_folders[uuid_short_proj_name]
+                        retrieved_username = curr_folders[short_proj_name]
                         if username == retrieved_username:
                             st.warning("A project with the same name exists on campaign, but it is owned by this user. This move will overwrite that data")
                         else:
@@ -2294,9 +2290,7 @@ elif st.session_state.screen == "tier2":
             t2_db_name = get_tier2_db_path(qid, True)
             t1_db_name = get_tier1_db_path(qid, True)
             proj_name = t2_db_name.removesuffix("_tier2.db")
-            # make the duplicate t2 db name just the UUID
-            proj_uuid = str(uuid.uuid5(UUID_NAMESPACE, proj_name))
-            temp_t2_db_name = proj_uuid + ".db"
+            temp_t2_db_name = proj_name + ".db"
             shutil.copy2(t2_db_name, temp_t2_db_name)
 
             # add col in tier 1 md table that is absolute path to tier 2 db on campaign. Use the temp name (actually being moved to campaign)
@@ -2320,8 +2314,8 @@ elif st.session_state.screen == "tier2":
 
             skip_index = st.session_state.unchanged_data
 
-            # make duplicate t1 db name the UUID_tier1.db
-            temp_t1_db_name = proj_uuid + "_tier1.db"
+            # make duplicate t1 db name the short_proj_name_tier1.db
+            temp_t1_db_name = proj_name + "_tier1.db"
             shutil.copy2(t1_db_name, temp_t1_db_name)
 
             if local_data.lower() == "n/a":
@@ -2384,7 +2378,7 @@ elif st.session_state.screen == "tier2":
                 if not st.session_state.staging_to_campaign_moved:
                     # run remote script to move from scratch to campaign
                     script = REMOTE_MOVE_SCRIPT
-                    full_staging_path = os.path.join(hpc_staging, proj_uuid)
+                    full_staging_path = os.path.join(hpc_staging, proj_name)
                     script = script.replace('00000', repr(full_staging_path)) # staging folder
                     script = script.replace('11111', repr(temp_t1_db_name)) # t1 db name
                     script = script.replace('22222', repr(temp_t2_db_name)) # t2 db name
@@ -2432,7 +2426,7 @@ elif st.session_state.screen == "tier2":
                     st.session_state.staging_to_campaign_moved = True
 
             # set user group and data permissions after move
-            full_campaign_path = os.path.join(hpc_campaign, proj_uuid)
+            full_campaign_path = os.path.join(hpc_campaign, proj_name)
             if local_data.lower() == "n/a":
                 with st.spinner("Updating user group and data permissions on Campaign"):
                     cmd = ["chgrp", "-R", user_group, full_campaign_path]
@@ -2476,9 +2470,7 @@ elif st.session_state.screen == "tier2":
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
 
-            st.success(f"Successfully moved data with DSI to HPC campaign: {os.path.join(hpc_campaign, proj_uuid)}/")
-            st.warning("NOTE: To obfuscate the dataset name, the folder with the datasheet, datacard " +
-            f"and data is a persistent ID: {proj_uuid}. Save this ID for future reference.")
+            st.success(f"Successfully moved data with DSI to HPC campaign: {os.path.join(hpc_campaign, proj_name)}/")
 
 # -----------------------------
 # Sidebar
