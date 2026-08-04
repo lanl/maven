@@ -1110,20 +1110,18 @@ def ai_model_message(url: str):
                     models are approved for unclassified data levels, including: 
         OPEN, CUI, LA-CP, PHI, PII, RSI, TPI, UCNI, U-NNPI, DOE 810, ECI, EAR, ITAR.
         These include the following models:
-            - <span style="font-weight:800;">Anthropic Claude 4.5 Sonnet v1</span> (AWS GovCloud Bedrock)
-            - <span style="font-weight:800;">ChatGPT OSS - 120B</span> (LANL IT Hosted)
-            - <span style="font-weight:800;">Nvidia Nemotron 3 - 120B</span> (LANL IT Hosted)
+            - <span style="font-weight:800;">Claude 4.5 Sonnet</span> (AWS GovCloud Bedrock)
+            - <span style="font-weight:800;">Claude Opus 4.8</span> (AWS GovCloud Bedrock)
+            - <span style="font-weight:800;">ChatGPT 5.4 - Gov</span> (AWS GovCloud Bedrock)
+            - <span style="font-weight:800;">Gemma 4 31B</span> (LANL IT)
+            - <span style="font-weight:800;">Nemotron 3 Super 120B</span> (LANL IT)
+            - <span style="font-weight:800;">ChatGPT OSS 120B</span> (LANL IT)
             - <span style="font-weight:800;">Nova Pro v1</span> (AWS GovCloud Bedrock)
-            - <span style="font-weight:800;">Llama v3 - 70B Instruct</span> (AWS GovCloud Bedrock)
-            - <span style="font-weight:800;">Llama v3 - 8B Instruct</span> (AWS GovCloud Bedrock)
-            - <span style="font-weight:800;">Llama v3.2 - 3B</span> (LANL IT Hosted)
-            - <span style="font-weight:800;">Mistral v0.3 - 7B Instruct</span> (LANL IT Hosted)
-            - <span style="font-weight:800;">Phi v4 - 14B</span> (LANL IT Hosted)
         - <span style="font-weight:800;">Azure Commercial Foundry</span> models are approved for OPEN, CUI, LA-CP, PHI, PII, TPI but 
                     <span style="font-weight:800;">:red[ARE NOT approved for export controlled or nuclear information]</span>. 
                     The following models have restrictions:
-            - <span style="font-weight:800;">ChatGPT 5.</span>: :red[NO ECI, NO ITAR, NO EAR, NO UCNI, NO UNNPI, NO RSI, NO DOE 810]
-            - <span style="font-weight:800;">ChatGPT 5.4</span>: :red[NO ECI, NO ITAR, NO EAR, NO UCNI, NO UNNPI, NO RSI, NO DOE 810]
+            - <span style="font-weight:800;">ChatGPT 5.5</span>: :red[NO ECI, NO ITAR, NO EAR, NO UCNI, NO UNNPI, NO RSI, NO DOE 810]
+            - <span style="font-weight:800;">ChatGPT 5.4 - Comm</span>: :red[NO ECI, NO ITAR, NO EAR, NO UCNI, NO UNNPI, NO RSI, NO DOE 810]
         """, unsafe_allow_html=True)
         st.write(" ")
     elif "circe-keys" in url:
