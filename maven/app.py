@@ -41,7 +41,6 @@
 ###############################################################################
 
 
-DIANA Datasheet, Tier 1 Metadata, Tier 2 Metadata, DSI Move
 User provides required inputs and an LLM parses the responses to populate the required fields for:
 1) Datasheet
 2) Findability Metadata
@@ -115,25 +114,25 @@ ALL_SECTION_IDXS = [s["section_idx"] for s in SECTIONS]
 ALL_QUESTIONS = [q for s in SECTIONS for q in s["questions"]]
 
 
-MASTER_DB_PATH = "diana_maven.db"
+MASTER_DB_PATH = "maven.db"
 PROJECTS_TABLE = "projects"
 
 DATASHEET_TABLE = "datasheet"
 
 TIER_2_TABLE = "data_and_hpc_info"
 
-CONFIG_DIR = Path.home() / ".diana_maven_config"
+CONFIG_DIR = Path.home() / ".maven_config"
 CONFIG_FILE = CONFIG_DIR / "files_location.txt"
 API_KEYS_FILE = CONFIG_DIR / "ai_api_keys.txt"
 
-DIANA_DB_FOLDER = "diana_maven_files"
+MAVEN_FOLDER = "maven_files"
 
 remote_script = curr_dir / "remote_move.py"
 REMOTE_MOVE_SCRIPT = remote_script.read_text(encoding="utf-8")
 
 is_remote = any(os.environ.get(x) for x in ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"])
 
-def get_diana_dbs_dir() -> Path | None:
+def get_maven_dir() -> Path | None:
     if not CONFIG_FILE.exists():
         return None
 
@@ -149,7 +148,7 @@ def get_diana_dbs_dir() -> Path | None:
     return path
 
 
-def save_diana_dbs_dir(path_str: str) -> bool:
+def save_maven_dir(path_str: str) -> bool:
     path = Path(path_str).expanduser()
 
     if not path.is_dir():
@@ -164,12 +163,12 @@ def save_diana_dbs_dir(path_str: str) -> bool:
         st.error("You do not have read/write/access permission for that directory.")
         return False
 
-    if path.name != DIANA_DB_FOLDER:
-        path = path / DIANA_DB_FOLDER
+    if path.name != MAVEN_FOLDER:
+        path = path / MAVEN_FOLDER
     path.mkdir(parents=True, exist_ok=True)
 
     # TODO: test when an error like this arises, or if at all
-    old_dir = get_diana_dbs_dir()
+    old_dir = get_maven_dir()
     if old_dir is not None and old_dir.resolve() != path.resolve():
         for item in old_dir.iterdir():
             target = path / item.name
@@ -219,21 +218,21 @@ def make_tier1_db_name(short_title: str, only_name: bool = False) -> str:
     cleaned = short_title.strip().lower().replace(" ", "_").replace("/", "_")
     if only_name:
         return f"{cleaned}_tier1.db"
-    diana_dir = get_diana_dbs_dir()
-    return str(diana_dir / f"{cleaned}_tier1.db")
+    maven_dir = get_maven_dir()
+    return str(maven_dir / f"{cleaned}_tier1.db")
 
 
 def make_tier2_db_name(short_title: str, only_name: bool = False) -> str:
     cleaned = short_title.strip().lower().replace(" ", "_").replace("/", "_")
     if only_name:
         return f"{cleaned}_tier2.db"
-    diana_dir = get_diana_dbs_dir()
-    return str(diana_dir / f"{cleaned}_tier2.db")
+    maven_dir = get_maven_dir()
+    return str(maven_dir / f"{cleaned}_tier2.db")
 
 
 def get_master_db_name() -> str:
-    diana_dir = get_diana_dbs_dir()
-    return str(diana_dir / MASTER_DB_PATH)
+    maven_dir = get_maven_dir()
+    return str(maven_dir / MASTER_DB_PATH)
 
 
 def create_master_db():
@@ -275,8 +274,8 @@ def get_tier1_db_path(project_id: int, only_name: bool = False) -> str:
     store.close()
     if only_name:
         return df.iloc[0, 0]
-    diana_dir = get_diana_dbs_dir()
-    return str(diana_dir / df.iloc[0, 0])
+    maven_dir = get_maven_dir()
+    return str(maven_dir / df.iloc[0, 0])
 
 
 def get_tier2_db_path(project_id: int, only_name: bool = False) -> str:
@@ -285,8 +284,8 @@ def get_tier2_db_path(project_id: int, only_name: bool = False) -> str:
     store.close()
     if only_name:
         return df.iloc[0, 0]
-    diana_dir = get_diana_dbs_dir()
-    return str(diana_dir / df.iloc[0, 0])
+    maven_dir = get_maven_dir()
+    return str(maven_dir / df.iloc[0, 0])
 
 
 def get_datasheet(qid: int, df_return=False) -> pd.DataFrame | Dict[str, Any]:
@@ -786,7 +785,7 @@ def apply_section_updates(section_idx: int, qid_token: str) -> Dict[str, Any]:
                     store.close()
 
                     new_tier1_path = make_tier1_db_name(val)
-                    tier1_db_path = str(get_diana_dbs_dir() / curr_tier1_name)
+                    tier1_db_path = str(get_maven_dir() / curr_tier1_name)
                     shutil.copy2(tier1_db_path, new_tier1_path)
                     os.remove(tier1_db_path)
 
@@ -1056,7 +1055,7 @@ def route_after_autofill(row: Dict[str, Any]) -> int:
 
 def run_initial_autofill_for_project(qid: int) -> Dict[str, Any]:
     row = get_datasheet(qid)
-    payload = run_initial_autofill(str(get_diana_dbs_dir()), row, SECTIONS)
+    payload = run_initial_autofill(str(get_maven_dir()), row, SECTIONS)
     updates, _ = merge_autofill_result(
         row,
         payload,
@@ -1078,7 +1077,7 @@ def run_followup_autofill_for_project(qid: int, clarifications: Dict[str, str]) 
         except json.JSONDecodeError:
             existing = {}
     existing.update(clarifications)
-    payload = run_followup_autofill(str(get_diana_dbs_dir()), row, clarifications, SECTIONS)
+    payload = run_followup_autofill(str(get_maven_dir()), row, clarifications, SECTIONS)
     updates, _ = merge_autofill_result(
         row,
         payload,
@@ -1205,16 +1204,16 @@ def update_short_project_title_dialog(qid: int, short_proj_name: str, hpc_campai
         st.rerun()
 
 
-@st.dialog("Update Diana Maven Directory", width="medium")
-def update_diana_dir_dialog():
+@st.dialog("Update Maven Directory", width="medium")
+def update_maven_dir_dialog():
     st.write("Enter a directory where Maven should store all metadata databases.")
 
-    curr_dir = get_diana_dbs_dir()
-    dir_input = st.text_input("Diana Maven Directory", value=curr_dir, key="update_diana_dir")
+    curr_dir = get_maven_dir()
+    dir_input = st.text_input("Maven Directory", value=curr_dir, key="update_maven_dir")
 
     if st.button("Save", type="primary", width="stretch"):
-        if save_diana_dbs_dir(dir_input):
-            st.success("Diana Maven Directory saved.")
+        if save_maven_dir(dir_input):
+            st.success("Maven Directory saved.")
             st.rerun()
 
 
@@ -1224,18 +1223,18 @@ def update_api_info_dialog():
 
     st.write("AI API Key")
     api_key_input = st.text_input("AI API Key", value=os.environ.get("AI_API_KEY"), type="password",
-                                label_visibility="collapsed", key="update_diana_api_key")
+                                label_visibility="collapsed", key="update_maven_api_key")
 
     st.write("AI Base URL")
     api_url_input = st.text_input("AI Base URL", value=os.environ.get("AI_API_URL"), label_visibility="collapsed",
-                                key="update_diana_api_base_url")
+                                key="update_maven_api_base_url")
 
     if st.button("Select New Model ➡", type="primary", width="stretch"):
         if not api_key_input.strip() or not api_url_input.strip():
                 st.error("Please enter an AI API Key and Base URL")
                 st.stop()
 
-        if get_diana_dbs_dir():
+        if get_maven_dir():
             st.session_state.api_variables = [api_key_input.strip(), api_url_input.strip()]
             st.session_state.update_ai_info_screen = False
             st.session_state.select_model_screen = True
@@ -1273,7 +1272,7 @@ def update_ai_model_dialog():
             st.error("Please select an AI Model.")
             st.stop()
         
-        if get_diana_dbs_dir():
+        if get_maven_dir():
             API_KEYS_FILE.write_text(
                 f"AI_API_KEY={key}\n"
                 f"AI_API_URL={url}\n"
@@ -1369,19 +1368,23 @@ if "update_ai_info_screen" not in st.session_state:
 if "confirm_submit_context_files" not in st.session_state:
     st.session_state.confirm_submit_context_files = False
 
-if get_diana_dbs_dir() is None:
+if get_maven_dir() is None:
     st.title("Welcome to the Maven App")
-    st.write("Enter a directory to store metadata databases and AI API variables.")
+    st.write("Enter a space to create a directory store metadata databases and AI API variables.")
 
-    dir_input = st.text_input("Diana Maven Directory", placeholder="/path/to/diana/projects")
+    st.write("Maven Directory")
+    st.caption("Location where a directory will be created that stores all metadata files")
+    dir_input = st.text_input("Maven Directory", placeholder="/path/to/maven/projects", label_visibility="collapsed")
     api_keys_exist = load_env_keys()
     if not api_keys_exist:
         st.write("AI API Key")
+        st.caption("Secret token to access an LLM provider's API")
         api_key_input = st.text_input("AI API Key", placeholder="25-digit API key", label_visibility="collapsed",
-                                      key="diana_api_key_new_app", type="password")
+                                      key="maven_api_key_new_app", type="password")
         st.write("AI Base URL")
+        st.caption("Endpoint URL to access an LLM provider's API")
         api_url_input = st.text_input("AI Base URL", placeholder="https://api-key.com/", label_visibility="collapsed",
-                                      key="diana_api_url_new_app")
+                                      key="maven_api_url_new_app")
 
     if st.button("Save", type="primary", width="stretch"):
         if not api_keys_exist:
@@ -1389,7 +1392,7 @@ if get_diana_dbs_dir() is None:
                 st.error("Please enter an API key and its base URL")
                 st.stop()
 
-        if save_diana_dbs_dir(dir_input):
+        if save_maven_dir(dir_input):
             if not api_keys_exist:
                 st.session_state.api_variables = [api_key_input.strip(), api_url_input.strip()]
                 st.session_state.select_model_screen = True
@@ -1409,27 +1412,39 @@ if not loaded_keys:
             st.subheader("Enter AI API Key and Base URL")
             
             if not st.session_state.api_variables:
+                st.write("AI API Key")
+                st.caption("Secret token to access an LLM provider's API")
                 if os.environ.get("AI_API_KEY"):
                     api_key_input = st.text_input("AI API Key", value=os.environ.get("AI_API_KEY"), type="password",
-                                                  key="diana_api_key_existing_app")
+                                                  key="maven_api_key_existing_app", label_visibility="collapsed")
                 else:
                     api_key_input = st.text_input("AI API Key", placeholder="25-digit API key", type="password",
-                                                  key="diana_api_key_existing_app")
+                                                  key="maven_api_key_existing_app", label_visibility="collapsed")
+                st.write("AI Base URL")
+                st.caption("Endpoint (URL) to access an LLM provider's API")
                 if os.environ.get("AI_API_URL"):
-                    api_url_input = st.text_input("AI Base URL", value=os.environ.get("AI_API_URL"), key="diana_api_url_existing_app")
+                    api_url_input = st.text_input("AI Base URL", value=os.environ.get("AI_API_URL"), 
+                                                  key="maven_api_url_existing_app", label_visibility="collapsed")
                 else:
-                    api_url_input = st.text_input("AI Base URL", placeholder="https://api-key.com/", key="diana_api_url_existing_app")
+                    api_url_input = st.text_input("AI Base URL", placeholder="https://api-key.com/", 
+                                                  key="maven_api_url_existing_app", label_visibility="collapsed")
             else:
                 key, url = st.session_state.api_variables
-                api_key_input = st.text_input("AI API Key", value=key, key="diana_api_key_existing_app", type="password")
-                api_url_input = st.text_input("AI Base URL", value=url, key="diana_api_url_existing_app")
+                st.write("AI API Key")
+                st.caption("Secret token to access an LLM provider's API")
+                api_key_input = st.text_input("AI API Key", value=key, key="maven_api_key_existing_app", 
+                                              type="password", label_visibility="collapsed")
+                st.write("AI Base URL")
+                st.caption("Endpoint (URL) to access an LLM provider's API")
+                api_url_input = st.text_input("AI Base URL", value=url, key="maven_api_url_existing_app", 
+                                              label_visibility="collapsed")
 
             if st.button("Save", type="primary", width="stretch"):
                 if not api_key_input.strip() or not api_url_input.strip():
                     st.error("Please enter an API key and its base URL")
                     st.stop()
 
-                if get_diana_dbs_dir():
+                if get_maven_dir():
                     st.session_state.api_variables = [api_key_input.strip(), api_url_input.strip()]
                     st.session_state.select_model_screen = True
                     st.success("API variables saved.")
@@ -1462,7 +1477,7 @@ if not loaded_keys:
                     st.error("Please select an AI Model.")
                     st.stop()
                 
-                if get_diana_dbs_dir():
+                if get_maven_dir():
                     API_KEYS_FILE.write_text(
                         f"AI_API_KEY={key}\n"
                         f"AI_API_URL={url}\n"
@@ -1498,12 +1513,12 @@ if st.session_state.screen == "datasheet":
             st.title("Maven Home")
             second_l, second_r = st.columns(2)
             with second_l:
-                if st.button("Edit Diana Maven Directory", key="edit_diana_dir_btn", width="stretch"):
+                if st.button("Edit Maven Directory", key="edit_maven_dir_btn", width="stretch"):
                     st.session_state.select_model_screen = False
                     st.session_state.update_ai_info_screen = False
-                    update_diana_dir_dialog()
+                    update_maven_dir_dialog()
             with second_r:
-                if st.button("Edit AI API Info", key="edit_diana_ai_api_info_btn", width="stretch"):
+                if st.button("Edit AI API Info", key="edit_ai_api_info_btn", width="stretch"):
                     st.session_state.select_model_screen = False
                     st.session_state.update_ai_info_screen = False
                     update_api_info_dialog()
@@ -1803,12 +1818,12 @@ if st.session_state.screen == "datasheet":
                 # go to tier 1 screen
                 else:
                     full_name = datasheet_df["project_name"].iloc[0].strip() + " DATASHEET.pdf"
-                    generate_datasheet_pdf(datasheet_df, str(get_diana_dbs_dir() / full_name))
+                    generate_datasheet_pdf(datasheet_df, str(get_maven_dir() / full_name))
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
                         tier1_fields_dict, all_classes_dict = get_tier1_fields()
                         with st.spinner("Populating findability metadata. May take a few minutes..."):
-                            all_tier1_dicts = run_tier1_catalog(str(get_diana_dbs_dir()), datasheet_df, tier1_fields_dict, all_classes_dict)
+                            all_tier1_dicts = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict)
 
                         tier1_db_path = get_tier1_db_path(qid)
                         store = get_db(tier1_db_path)
@@ -1851,7 +1866,7 @@ elif st.session_state.screen == "tier1":
             st.rerun()
         else: # run t1 agent
             with st.spinner("Populating findability metadata. May take a few minutes..."):
-                all_tier1_dicts = run_tier1_catalog(str(get_diana_dbs_dir()), datasheet_df, tier1_fields_dict, all_classes_dict)
+                all_tier1_dicts = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict)
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -1879,7 +1894,7 @@ elif st.session_state.screen == "tier1":
         new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
         datasheet_df = get_datasheet(qid, True)
         with st.spinner("Updating tier 1 metadata catalog with new fields..."):
-            new_tier1_dicts = run_tier1_catalog(str(get_diana_dbs_dir()), datasheet_df, new_tier1_fields_dict, diff_tables_dict)
+            new_tier1_dicts = run_tier1_catalog(str(get_maven_dir()), datasheet_df, new_tier1_fields_dict, diff_tables_dict)
 
         for tbl_name, new_tbl_data in new_tier1_dicts.items():
             if tbl_name in curr_tables.keys():
@@ -1952,7 +1967,7 @@ elif st.session_state.screen == "tier1":
                                             True).iloc[0,0].removesuffix("_tier1.db")
 
                     datacard_name = short_proj_name + "_genesis_datacard.pdf"
-                    generate_tier1_pdf(qid, str(get_diana_dbs_dir() / datacard_name))
+                    generate_tier1_pdf(qid, str(get_maven_dir() / datacard_name))
 
                     st.session_state.screen = "tier2"
                     st.session_state.section_idx = 0
@@ -2050,7 +2065,7 @@ elif st.session_state.screen == "tier2":
                                 value=locations_tbl["data_permissions"].iloc[0] if not locations_tbl.empty else "",
                                 label_visibility="collapsed")
 
-        st.write(f"Users can optionally submit the generated datasheet within `{get_diana_dbs_dir()}` for a ROSY review")
+        st.write(f"Users can optionally submit the generated datasheet within `{get_maven_dir()}` for a ROSY review")
         l4, r4 = st.columns(2)
         with l4:
             st.write("ROSY ID (Optional)")
@@ -2281,8 +2296,8 @@ elif st.session_state.screen == "tier2":
                             update_short_project_title_dialog(qid, short_proj_name, hpc_campaign)
                             st.stop()
 
-            # change current current working dir to the diana_dir so all dbs can be loaded normally
-            os.chdir(str(get_diana_dbs_dir()))
+            # change current current working dir to the maven_dir so all dbs can be loaded normally
+            os.chdir(str(get_maven_dir()))
 
             # NOTE: for now running index on all data, but eventually will use filecrawled table in t2.db as the index
 
@@ -2459,7 +2474,7 @@ elif st.session_state.screen == "tier2":
             os.remove(temp_t2_db_name)
             os.remove(temp_t1_db_name)
 
-            # after successful move, set 'has_moved' col for this project in diana.db to be path to local data
+            # after successful move, set 'has_moved' col for this project in maven.db to be path to local data
             master_store = get_db(get_master_db_name())
             master_df = master_store.find(f"project_id = {qid}", True, True)
             master_df["has_moved"] = local_data if local_data.lower() != "n/a" else hpc_staging
