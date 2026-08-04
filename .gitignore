@@ -84,7 +84,10 @@ diana_maven.egg-info/
 maven.egg-info/
 *.egg-info/
 .DS_Store
+*/.DS_Store
 _tmp*
 ursa_workspace/
 diana_maven_files/
+maven_files/
 .diana_maven_config/
+.maven_config/

@@ -1481,7 +1481,7 @@ def _build_ursa_prompt(
 
 def _run_ursa_autofill(
     *,
-    diana_dir: str,
+    maven_dir: str,
     row: dict[str, Any],
     sections: list[dict[str, Any]],
     clarifications: dict[str, str] | None = None,
@@ -1493,7 +1493,7 @@ def _run_ursa_autofill(
     # Build extraction prompt with original context + any clarifications
     user_prompt = _build_ursa_prompt(row, sections, clarifications)
 
-    payload = run_ursa_agent(diana_dir, user_prompt)
+    payload = run_ursa_agent(maven_dir, user_prompt)
 
     # Ensure required structure
     payload.setdefault("fields", {})
@@ -1641,13 +1641,13 @@ def summarize_autofill(
 
 
 def run_initial_autofill(
-    diana_dir: str,
+    maven_dir: str,
     intake_row: dict[str, Any],
     sections: list[dict[str, Any]],
 ) -> dict[str, Any]:
     try:
         return _run_ursa_autofill(
-            diana_dir=diana_dir,
+            maven_dir=maven_dir,
             row=intake_row,
             sections=sections,
         )
@@ -1658,14 +1658,14 @@ def run_initial_autofill(
 
 
 def run_followup_autofill(
-    diana_dir: str,
+    maven_dir: str,
     updated_row: dict[str, Any],
     clarifications: dict[str, str],
     sections: list[dict[str, Any]],
 ) -> dict[str, Any]:
     try:
         return _run_ursa_autofill(
-            diana_dir=diana_dir,
+            maven_dir=maven_dir,
             row=updated_row,
             sections=sections,
             clarifications=clarifications,

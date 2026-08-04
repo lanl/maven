@@ -29,10 +29,10 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
-def run_ursa_agent(diana_dir: str, user_prompt: str) -> dict[str, Any] | None:
+def run_ursa_agent(maven_dir: str, user_prompt: str) -> dict[str, Any] | None:
 
     # Setup workspace and thread for conversation persistence
-    workspace = Path(diana_dir) / "ursa_workspace"
+    workspace = Path(maven_dir) / "ursa_workspace"
     workspace.mkdir(parents=True, exist_ok=True)
 
     # Configure model

@@ -79,7 +79,7 @@ def create_tier1_prompt(metadata_info: dict[str, str], datasheet_text: str, all_
     return prompt
 
 
-def run_tier1_catalog(diana_dir: str, 
+def run_tier1_catalog(maven_dir: str, 
                       datasheet: pd.DataFrame, 
                       metadata_fields_dict: dict[str, str], 
                       all_classes_dict: dict[str, dict[str, str]]) -> dict[str, dict[str, str]]:
@@ -87,6 +87,6 @@ def run_tier1_catalog(diana_dir: str,
     datasheet_string = datasheet.to_string(index=False)
     tier1_prompt = create_tier1_prompt(metadata_fields_dict, datasheet_string, all_classes_dict)
 
-    payload = run_ursa_agent(diana_dir, tier1_prompt)
+    payload = run_ursa_agent(maven_dir, tier1_prompt)
     # print(payload)
     return payload

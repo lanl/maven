@@ -43,13 +43,13 @@ pip install .
 ```
 
 ### Setup
-When first launching the app, you will be prompted to complete 3 fields:
-1) **Diana Maven Directory**: Where your metadata databases will be locally saved.
+When first launching the app, you will be required to complete 3 fields:
+1) **Maven Directory**: Where your metadata databases will be locally saved.
 2) **AI API Key**: Secret API key to connect to an AI model with [URSA](https://github.com/lanl/ursa)
-3) **AI Base URL**: Endpoint to connect to an AI model
+3) **AI Base URL**: Endpoint to connect to that AI model
 
 
-For further instructions on setting up an AI API Key, please contact a MAVEN team member.
+For further instructions on setting up an AI API Key for LANL users, please contact a MAVEN team member.
 
 ### HPC & DSI Setup
 To move data to an HPC campaign space using [DSI](https://github.com/lanl/dsi), contact a MAVEN team member for setup details.
