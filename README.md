@@ -4,22 +4,22 @@ It streamlines the process of gathering necessary dataset information before mov
 
 ## Quick Start
 
-If already installed, simply run: `maven` in your terminal.\
+If already installed, simply run `maven` in your terminal.
 Then, open the provided localhost URL in your preferred browser.
 
 
 ## Installation and Setup
 
 ### Prerequisites
-- Python 3.13
+- Python 3.12+
 
 ### Virtual Environment
-It is recommended users create a virtual environment to run MAVEN with Python 3.13. 
+It is recommended that users create a virtual environment to run MAVEN with Python 3.12. 
 
 **Option A: Miniconda3**
 ```
 . ~/miniconda3/bin/activate
-conda create -n maven_env python=3.13
+conda create -n maven_env python=3.12
 conda activate maven_env                # start here if virtual environment exists
 ```
 **Option B: Python venv**
@@ -40,11 +40,10 @@ Install MAVEN and its dependencies:
 git clone https://github.com/lanl/maven.git
 cd maven
 pip install .
-
-
-After successful install, simply run: `maven` in your terminal.
-Then, open the provided localhost URL in your preferred browser. 
 ```
+
+After successful install, simply run `maven` in your terminal.
+Then, open the provided localhost URL in your preferred browser. 
 
 
 ### Setup
