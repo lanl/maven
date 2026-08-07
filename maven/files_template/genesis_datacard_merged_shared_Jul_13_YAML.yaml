@@ -679,9 +679,9 @@ accessibility:                              # [accessibility_required]
                                               # this dataset in. The managing repository or catalog system will
                                               # resolve and populate repository-assigned fields at ingest
                                               # (see REPOSITORY-MANAGED block). Repositories may be institutional,
-                                              # project-owned, community, or national (e.g., Zenodo,
+                                              # project-owned, community, or national (e.g., OSTI, Zenodo,
                                               # institutional data repository, project data store).
-      - name: __NAME__                        # [accessibility_if_applicable] e.g., "Zenodo" | "Globus" | "internal"
+      - name: __NAME__                        # [accessibility_if_applicable] e.g.,  "Zenodo" | "Globus" | "internal"
         access_level: __LEVEL__               # [accessibility_if_applicable] Intended access level: Open | Restricted | Controlled
                                               # The same dataset may have different access levels per repository.
                                               # Open: anyone can discovery and access without special permissions.

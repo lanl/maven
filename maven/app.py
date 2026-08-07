@@ -42,13 +42,11 @@
 
 
 User provides required inputs and an LLM parses the responses to populate the required fields for:
-1) Datasheet
+1) MAVEN Datasheet
 2) Findability Metadata
 3) AI-Ready Data
 4) DSI Move
 
-REVIEW ALL TODO and NOTE
-Tier 2 metadata crawler
 
 Authors:
 Christopher W Johnson (cwj@lanl.gov)
@@ -106,10 +104,12 @@ from langchain.chat_models import init_chat_model
 curr_dir = Path(__file__).parent
 files_dir = curr_dir / "files_template"
 # Class based schema with all fields
-CARD_CLASS_BASED = files_dir / "genesis_datacard_src_schema_class_based_Jul_13.yaml"
+# CARD_CLASS_BASED = files_dir / "genesis_datacard_src_schema_class_based_Jul_13.yaml"
 
 # GENESIS specific cards
-GENESIS_MISSION_DATA_CARD = files_dir / "genesis_datacard_merged_shared_latest_Jul_13.yaml"
+GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_datacard_breakdown.yaml"
+GENESIS_MISSION_DATA_CARD_YAML = files_dir / "genesis_datacard_merged_shared_Jul_13_YAML.yaml"
+GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_datacard_merged_shared_Jul_13_MD.md"
 GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "data_card_field_reference_guide_Jul_13.md"
 
 # Genesis datasheet 
@@ -304,14 +304,16 @@ def get_tier1_db_path(project_id: int, only_name: bool = False) -> str:
     maven_dir = get_maven_dir()
     return str(maven_dir / df.iloc[0, 0])
 
-# def get_tier1_card_path(project_id: int, only_name: bool = False) -> str:
-#     store = get_db(get_master_db_name())
-#     df = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {project_id}", True)
-#     store.close()
-#     if only_name:
-#         return df.iloc[0, 0]
-#     diana_dir = get_diana_dbs_dir()
-#     return str(diana_dir / df.iloc[0, 0] + ".yaml")
+
+def get_tier1_YAML_MD_path(project_id: int, only_name: bool = False) -> str:
+    store = get_db(get_master_db_name())
+    df = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {project_id}", True)
+    store.close()
+    if only_name:
+        return df.iloc[0, 0]
+    maven_dir = get_maven_dir()
+    return str(maven_dir / df.iloc[0, 0]).replace(".db", ".yaml")
+
 
 def get_tier2_db_path(project_id: int, only_name: bool = False) -> str:
     store = get_db(get_master_db_name())
@@ -396,43 +398,51 @@ def delete_project(qid: int) -> None:
         store.close()
 
 
-def get_tier1_class_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
-    if not CARD_CLASS_BASED.is_file():
-        st.error("Tier 1 metadata fields file does not exist")
-        st.stop()
+# def get_tier1_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
+#     if not CARD_CLASS_BASED.is_file():
+#         st.error("Tier 1 metadata fields file does not exist")
+#         st.stop()
 
-    all_classes = {}
-    sv = SchemaView(CARD_CLASS_BASED)
-    for class_name, cls in sv.all_classes().items():
-        if cls.abstract or class_name.lower() == "anyvalue":
-            continue
+#     all_classes = {}
+#     sv = SchemaView(CARD_CLASS_BASED)
+#     for class_name, cls in sv.all_classes().items():
+#         if cls.abstract or class_name.lower() == "anyvalue":
+#             continue
 
-        columns = {}
-        required_columns = []
-        for slot in sv.class_induced_slots(class_name):
-            if slot.name.lower() == "anyvalue":
-                continue
-            columns[slot.name] = {'description': slot.description, 'required': True if slot.required else False}
-            if slot.required:
-                required_columns.append(slot.name)
-        class_dict = {"description": cls.description, "columns": columns, "required_columns": required_columns}
-        all_classes[class_name] = class_dict
+#         columns = {}
+#         required_columns = []
+#         for slot in sv.class_induced_slots(class_name):
+#             if slot.name.lower() == "anyvalue":
+#                 continue
+#             columns[slot.name] = {'description': slot.description, 'required': True if slot.required else False}
+#             if slot.required:
+#                 required_columns.append(slot.name)
+#         class_dict = {"description": cls.description, "columns": columns, "required_columns": required_columns}
+#         all_classes[class_name] = class_dict
 
-    slots_dict = {slot_name: slot.description for slot_name, slot in sv.all_slots().items()}
+#     slots_dict = {slot_name: slot.description for slot_name, slot in sv.all_slots().items()}
 
-    return slots_dict, all_classes
+#     return slots_dict, all_classes
 
 
-def get_tier1_cards() -> dict[str, dict[str, str]]:
+def get_tier1_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
     tier1_cards = {}
-    with open(GENESIS_MISSION_DATA_CARD, 'r') as f:
-        tier1_cards["data_card_all"] = f.read()
 
+    all_classes_dict = yaml.safe_load(GENESIS_MISSION_DATA_CARD_BREAKDOWN.read_text(encoding="utf-8"))
+    slots_dict = {slot_name: slot["description"] for slot_name, slot in all_classes_dict.items()}
+
+    # YAML dict
+    tier1_cards["data_card_yaml"] = yaml.safe_load(GENESIS_MISSION_DATA_CARD_YAML.read_text(encoding="utf-8"))
+
+    # MD str
+    with open(GENESIS_MISSION_DATA_CARD_MD, "r") as f:
+        tier1_cards["markdown_template"] = f.read()
+
+    # Reference guide str
     with open(GENESIS_MISSION_DATA_CARD_REFERENCE, 'r') as f:
         tier1_cards["card_reference"] = f.read()
 
-    tier1_cards["data_card_fields"] = yaml.safe_load(GENESIS_MISSION_DATA_CARD.read_text(encoding="utf-8"))
-    return tier1_cards
+    return slots_dict, tier1_cards, all_classes_dict
 
 
 def extract_text_from_pdf(file) -> str:
@@ -566,6 +576,23 @@ def has_text(val: Any) -> bool:
 
 def is_required(q: Dict[str, Any]) -> bool:
     return q.get("required", True)
+
+
+
+def to_snake_case(text: str) -> str:
+    # Separate acronyms from normal words:
+    # "HTTPServer" -> "HTTP_Server"
+    text = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", text)
+
+    # Separate lowercase letters or numbers from capitals:
+    # "sensorData" -> "sensor_Data"
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", text)
+
+    # Replace whitespace, hyphens, punctuation, etc. with one underscore
+    text = re.sub(r"[^A-Za-z0-9]+", "_", text)
+
+    # Remove leading/trailing underscores and normalize case
+    return text.strip("_").lower()
 
 
 def section_complete(section_idx: int, row: Dict[str, Any]) -> Tuple[bool, List[str]]:
@@ -1102,7 +1129,7 @@ def route_after_autofill(row: Dict[str, Any]) -> int:
 
 def run_initial_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int) -> Dict[str, Any]:
     row = get_datasheet(qid)
-    payload = run_initial_autofill(CHAT_AGENT, str(get_maven_dir()), row, SECTIONS)
+    payload = run_initial_autofill(CHAT_AGENT, row, SECTIONS)
     updates, _ = merge_autofill_result(
         row,
         payload,
@@ -1113,7 +1140,7 @@ def run_initial_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int) -> Dict[st
     return get_datasheet(qid)
 
 
-def run_followup_autofill_for_project(qid: int, clarifications: Dict[str, str]) -> Dict[str, Any]:
+def run_followup_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int, clarifications: Dict[str, str]) -> Dict[str, Any]:
     row = get_datasheet(qid)
 
     existing = {}
@@ -1124,7 +1151,7 @@ def run_followup_autofill_for_project(qid: int, clarifications: Dict[str, str]) 
         except json.JSONDecodeError:
             existing = {}
     existing.update(clarifications)
-    payload = run_followup_autofill(str(get_maven_dir()), row, clarifications, SECTIONS)
+    payload = run_followup_autofill(CHAT_AGENT, row, clarifications, SECTIONS)
     updates, _ = merge_autofill_result(
         row,
         payload,
@@ -1810,10 +1837,7 @@ if st.session_state.screen == "datasheet":
             elif section_idx == REVIEW_SECTION_IDX:
                 meta = load_agent_meta(row)
                 followups = meta.get("followup_questions", [])
-                st.session_state.section_idx = (
-                    FOLLOWUP_SECTION_IDX if followups else route_after_autofill(
-                        row)
-                )
+                st.session_state.section_idx = (FOLLOWUP_SECTION_IDX if followups else route_after_autofill(row))
                 st.session_state._scroll_to_top = True
                 st.rerun()
             elif section_idx == FOLLOWUP_SECTION_IDX:
@@ -1821,9 +1845,8 @@ if st.session_state.screen == "datasheet":
                 questions = load_agent_meta(row).get("followup_questions", [])
                 clarifications = collect_followup_answers(qid, questions)
                 with st.spinner("Applying clarifications.\nMay take a few minutes..."):
-                    row_after_followup = run_followup_autofill_for_project(qid, clarifications)
-                st.session_state.section_idx = route_after_autofill(
-                    row_after_followup)
+                    row_after_followup = run_followup_autofill_for_project(CHAT_AGENT, qid, clarifications)
+                st.session_state.section_idx = route_after_autofill(row_after_followup)
                 st.session_state._scroll_to_top = True
                 st.rerun()
             else:
@@ -1862,14 +1885,13 @@ if st.session_state.screen == "datasheet":
 
                 # go to tier 1 screen
                 else:
-                    full_name = datasheet_df["project_name"].iloc[0].strip() + " DATASHEET.pdf"
+                    full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + "_datasheet.pdf"
                     generate_datasheet_pdf(datasheet_df, str(get_maven_dir() / full_name))
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
-                        tier1_fields_dict, all_classes_dict = get_tier1_class_fields()
-                        tier1_cards = get_tier1_cards()
+                        tier1_fields_dict, tier1_cards, all_classes_dict = get_tier1_fields()
                         with st.spinner("Populating findability metadata.\nMay take a few minutes..."):
-                            all_tier1_dicts, all_tier1_card = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict, tier1_cards)
+                            all_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, all_classes_dict, tier1_cards)
 
                         tier1_db_path = get_tier1_db_path(qid)
                         store = get_db(tier1_db_path)
@@ -1878,9 +1900,6 @@ if st.session_state.screen == "datasheet":
                             store.read(tier1_dict, "Collection", tier1_table_name)
                         store.close()
 
-                        yaml_card_out = get_maven_dir() / "TEST_datacard.yaml"
-                        with open(yaml_card_out, 'w') as f:
-                            yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
 
                     st.session_state.screen = "tier1"
                     st.session_state.section_idx = 0
@@ -1902,8 +1921,7 @@ elif st.session_state.screen == "tier1":
     st.title("Findability Metadata")
     st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
-    tier1_fields_dict, all_classes_dict = get_tier1_class_fields()
-    tier1_cards = get_tier1_cards()
+    tier1_fields_dict, tier1_cards, all_classes_dict = get_tier1_fields()
 
     if not get_tier1_table(qid, check_exists=True):
         datasheet_df = get_datasheet(qid, df_return=True)
@@ -1916,8 +1934,9 @@ elif st.session_state.screen == "tier1":
             st.session_state.staging_to_campaign_moved = False
             st.rerun()
         else: # run t1 agent
+            # yaml_card_out = get_tier1_YAML_MD_path(qid)
             with st.spinner("Populating findability metadata. May take a few minutes..."):
-                all_tier1_dicts, all_tier1_card  = run_tier1_catalog(str(get_maven_dir()), datasheet_df, tier1_fields_dict, all_classes_dict, tier1_cards)
+                all_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, all_classes_dict, tier1_cards)
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -1944,8 +1963,10 @@ elif st.session_state.screen == "tier1":
     if diff_tables_dict:
         new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
         datasheet_df = get_datasheet(qid, True)
+        # yaml_card_out = str(get_diana_dbs_dir()) + "/" + to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
+        yaml_card_out = get_tier1_YAML_MD_path(qid)
         with st.spinner("Updating tier 1 metadata catalog with new fields..."):
-            new_tier1_dicts, all_tier1_card = run_tier1_catalog(str(get_maven_dir()), datasheet_df, new_tier1_fields_dict, diff_tables_dict, tier1_cards)
+            new_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, diff_tables_dict, tier1_cards)
 
         for tbl_name, new_tbl_data in new_tier1_dicts.items():
             if tbl_name in curr_tables.keys():
@@ -1959,6 +1980,9 @@ elif st.session_state.screen == "tier1":
                 curr_tables[tbl_name] = store2.get_table(tbl_name, True, True)
                 store2.close()
 
+            # yaml_card_out = get_diana_dbs_dir() / to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
+            # with open(yaml_card_out, 'w') as f:
+            #     yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
 
     with st.form(f"tier1_metadata_form_{qid}"):
         updated_values = {}

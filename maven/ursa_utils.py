@@ -3,15 +3,9 @@ import json
 import re
 import os
 from pathlib import Path
+import yaml
 
 from ursa.agents.chat_agent import ChatAgent
-# try:
-#     from ursa.util.http import inject_truststore_into_ssl
-# except ImportError:
-#     raise ImportError("Ensure you have ursa-ai>=0.15.8 downloaded from pypi")
-# from langchain.chat_models import init_chat_model
-
-# TEMP = 0.2
 
 
 def _extract_json_object(text: str) -> dict[str, Any] | None:
@@ -29,31 +23,39 @@ def _extract_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
-def run_ursa_agent(chat_agent: ChatAgent, maven_dir: str, user_prompt: str) -> dict[str, Any] | None:
-
-    # # Setup workspace and thread for conversation persistence
-    # workspace = Path(diana_dir) / "ursa_workspace"
-    # workspace.mkdir(parents=True, exist_ok=True)
-
-    # # Configure model
-    # inject_truststore_into_ssl()
-    # llm = init_chat_model(
-    #     model=os.getenv("AI_MODEL"),
-    #     base_url=os.getenv("AI_API_URL"),
-    #     api_key=os.getenv("AI_API_KEY"),
-    #     temperature=TEMP
-    # )
-
-    # # Create ChatAgent with conversation state
-    # chat_agent = ChatAgent(llm=llm, workspace=workspace, autosave_metrics=False)
-
+def run_ursa_agent(chat_agent: ChatAgent, user_prompt: str, extract_json: bool = True) -> dict[str, Any] | str:
+    """
+    Run ChatAgent with conversation state.
+    """
     # Execute extraction with conversation maintained
     inv_chat = chat_agent.invoke(user_prompt)
-    print(inv_chat)
     response = chat_agent.format_result(inv_chat)
-    print(response)
-    # Parse JSON response
-    payload = _extract_json_object(inv_chat)
-    print(payload)
-    print("\n"*5)
-    return payload
+
+    if extract_json:
+        # Parse JSON response
+        return _extract_json_object(response)
+    else:
+        return response
+
+
+def assemble_genesis_datacard(
+    agent_output: dict[str, Any],
+    populated_markdown: str,
+    output_path: str
+) -> None:
+    """
+    Assemble complete genesis data card with YAML front matter + populated markdown body.
+
+    Args:
+        agent_output: Dict with extracted metadata from agent
+        tier1_cards: Dict from get_tier1_cards() containing yaml_template and markdown_template
+        output_path: Where to write the complete data card
+    """
+
+    with open(output_path, 'w') as f:
+        # Write YAML front matter
+        f.write('---\n')
+        yaml.safe_dump(agent_output, f, default_flow_style=False, sort_keys=False)
+        f.write('---\n\n')
+        # Write populated markdown body
+        f.write(populated_markdown)

@@ -1482,7 +1482,6 @@ def _build_ursa_prompt(
 def _run_ursa_autofill(
     *,
     chat_agent: ChatAgent,
-    maven_dir: str,
     row: dict[str, Any],
     sections: list[dict[str, Any]],
     clarifications: dict[str, str] | None = None,
@@ -1493,8 +1492,7 @@ def _run_ursa_autofill(
     """
     # Build extraction prompt with original context + any clarifications
     user_prompt = _build_ursa_prompt(row, sections, clarifications)
-
-    payload = run_ursa_agent(chat_agent, maven_dir, user_prompt)
+    payload = run_ursa_agent(chat_agent, user_prompt)
 
     # Ensure required structure
     payload.setdefault("fields", {})
@@ -1530,9 +1528,7 @@ def merge_autofill_result(
         answer = str(field.get("answer", "") or "").strip()
         status = str(field.get("status", "unknown") or "unknown")
         current_value = str(row.get(qid, "") or "").strip()
-        previous_answer = str(
-            previous_fields.get(qid, {}).get("answer", "") or ""
-        ).strip()
+        previous_answer = str(previous_fields.get(qid, {}).get("answer", "") or "").strip()
         should_write = False
 
         if status == "filled" and answer:
@@ -1643,20 +1639,15 @@ def summarize_autofill(
 
 def run_initial_autofill(
     chat_agent: ChatAgent,
-    maven_dir: str,
     intake_row: dict[str, Any],
     sections: list[dict[str, Any]],
 ) -> dict[str, Any]:
     try:
-        payload = _run_ursa_autofill(
+        return _run_ursa_autofill(
             chat_agent=chat_agent,
-            diana_dir=maven_dir,
             row=intake_row,
             sections=sections,
         )
-        print(payload)
-        print("\n"*5)
-        return payload
 
     except Exception as exc:
         print('Initial Autofill :: LLM not connecting. Running app using heuristic autofill')
@@ -1669,7 +1660,6 @@ def run_initial_autofill(
 
 def run_followup_autofill(
     chat_agent: ChatAgent,
-    maven_dir: str,
     updated_row: dict[str, Any],
     clarifications: dict[str, str],
     sections: list[dict[str, Any]],
@@ -1677,13 +1667,14 @@ def run_followup_autofill(
     try:
         return _run_ursa_autofill(
             chat_agent=chat_agent,
-            diana_dir=maven_dir,
             row=updated_row,
             sections=sections,
             clarifications=clarifications,
         )
     except Exception as exc:
         print('Followup Autofill :: LLM not connecting. Running app using heuristic autofill')
+        print(f"Error Type: {type(exc).__name__}")
+        print(f"Full Details: {repr(exc)}")
         payload = heuristic_autofill(
             updated_row,
             sections,
