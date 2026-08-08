@@ -576,7 +576,13 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
                 elements.append(Paragraph(f"<b>{question_label}</b>", question_style))
                 elements.append(Paragraph(answer_text, styles["BodyText"]))
             else:
-                elements.append(Paragraph(f"<b>{question_label}</b>: {answer_text}", question_style))
+                if qid == "classification" and pd.notna(row["ROSY_ID"]) and pd.notna(row["ROSY_Z_NUMBER"]):
+                    elements.append(Paragraph(f"<b>{question_label}</b>: {answer_text}", question_style))
+                    elements.append(Spacer(1, 12))
+                    elements.append(Paragraph(f"<b>ROSY ID</b>: {html.escape(str(row["ROSY_ID"]))}", question_style))
+                    elements.append(Paragraph(f"<b>Z# for ROSY ID</b>: {html.escape(str(row["ROSY_Z_NUMBER"]))}", question_style))
+                else:
+                    elements.append(Paragraph(f"<b>{question_label}</b>: {answer_text}", question_style))
 
             elements.append(Spacer(1, 12))
 
@@ -1698,7 +1704,13 @@ if st.session_state.screen == "datasheet":
                                 delete_project(qid)
                                 st.session_state.active_qid = None
                                 st.session_state.section_idx = 0
-                            st.session_state.screen = "datasheet"
+
+                            if os.path.exists(get_tier2_db_path(qid)): # if t2 db exists, go to that screen
+                                st.session_state.screen = "tier2"
+                            elif get_tier1_table(qid, check_exists=True): # if t1 tables (not datacard) exist, go to that screen
+                                st.session_state.screen = "tier1"
+                            else: # else default to datasheet screens
+                                st.session_state.screen = "datasheet"
                             st.session_state.local_to_staging_moved = False
                             st.session_state.staging_to_campaign_moved = False
                             st.session_state.select_model_screen = False
@@ -2291,7 +2303,8 @@ elif st.session_state.screen == "tier2":
             st.write("User Group (Optional)")
             st.caption("User group to share campaign data folder with. Ex: my_user_group")
             updated_tier2_dict["user_group"] = st.text_input("Enter", key=f"user_group_{qid}",
-                                value=locations_tbl["user_group"].iloc[0] if not locations_tbl.empty else "",
+                                value=locations_tbl["user_group"].iloc[0] if not locations_tbl.empty 
+                                and not pd.isna(locations_tbl["user_group"].iloc[0]) else "",
                                 label_visibility="collapsed")
         with r3:
             st.write("Data Access Permissions (Optional)")
@@ -2348,7 +2361,7 @@ elif st.session_state.screen == "tier2":
         with r5:
             st.write("Z# (Optional)")
             st.caption("Enter the Z-Number of the person who submitted to ROSY")
-            rosy_z_num_input = st.number_input("Enter", key=f"rosy_z_num_{qid}",
+            rosy_z_num_input = st.number_input("Enter", key=f"rosy_z_num_{qid}", min_value=100000, step=1, max_value=999999,
                                 value=int(temp_df["ROSY_Z_NUMBER"]) if not pd.isna(temp_df["ROSY_Z_NUMBER"]) else None,
                                 label_visibility="collapsed")
 
@@ -2410,7 +2423,7 @@ elif st.session_state.screen == "tier2":
             # check if t2 table already has data and if it's same as current inputs
             if not locations_tbl.empty:
                 existing_loc_dict = locations_tbl.iloc[0].to_dict()
-                if all(existing_loc_dict[k].strip() == updated_tier2_dict[k].strip() for k in updated_tier2_dict.keys()):
+                if all(str(existing_loc_dict[k]).strip() == str(updated_tier2_dict[k]).strip() for k in updated_tier2_dict.keys()):
                     st.session_state.render_t2_extraction = True
                     st.session_state.tier2_loc_dict = existing_loc_dict
                     st.rerun()
