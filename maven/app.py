@@ -2728,9 +2728,9 @@ elif st.session_state.screen == "tier2":
                         st.code(str(scratch_move_error))
                     st.stop()
 
-                
+                # register project in diana endpoint
                 Path(f"{proj_name}_endpoint.txt").write_text(fed_line, encoding="utf-8")
-
+                Path(f"{proj_name}_endpoint.txt").chmod(0o644)
                 if copy_tool == "conduit":
                     result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
                     copy_command = str(result.stdout).split()
@@ -2826,8 +2826,8 @@ elif st.session_state.screen == "tier2":
                 endpoint_script = endpoint_script.replace('22222', repr(proj_name))
                 endpoint_script = endpoint_script.replace('33333', repr(diana_endpoint))
 
-                with st.spinner("Registering project in DIANA Catalog Endpoint — check the terminal for 1 password prompt..."):
-                    print(" \n \nRegistering project in DIANA Catalog Endpoint - 1 password prompt expected:")
+                with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
+                    print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
                     cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
                     remote_endpoint_run = subprocess.run(cmd, input=endpoint_script, text=True, capture_output=True, check=False)
 

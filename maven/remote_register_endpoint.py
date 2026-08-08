@@ -13,6 +13,7 @@ os.chdir(staging_folder)
 
 # create txt file
 Path(f"{proj_name}_endpoint.txt").write_text(endpoint_line, encoding="utf-8")
+Path(f"{proj_name}_endpoint.txt").chmod(0o644)
 
 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
 if "conduit/conduit-x86_64 (L)" in str(result.stderr):
