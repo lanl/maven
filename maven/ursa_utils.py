@@ -1,8 +1,6 @@
 from typing import Any
 import json
 import re
-import os
-from pathlib import Path
 import yaml
 
 from ursa.agents.chat_agent import ChatAgent
@@ -38,24 +36,24 @@ def run_ursa_agent(chat_agent: ChatAgent, user_prompt: str, extract_json: bool =
         return response
 
 
-def assemble_genesis_datacard(
-    agent_output: dict[str, Any],
-    populated_markdown: str,
-    output_path: str
-) -> None:
-    """
-    Assemble complete genesis data card with YAML front matter + populated markdown body.
+# def assemble_genesis_datacard(
+#     agent_output: dict[str, Any],
+#     populated_markdown: str,
+#     output_path: str
+# ) -> None:
+#     """
+#     Assemble complete genesis data card with YAML front matter + populated markdown body.
 
-    Args:
-        agent_output: Dict with extracted metadata from agent
-        tier1_cards: Dict from get_tier1_cards() containing yaml_template and markdown_template
-        output_path: Where to write the complete data card
-    """
+#     Args:
+#         agent_output: Dict with extracted metadata from agent
+#         tier1_cards: Dict from get_tier1_cards() containing yaml_template and markdown_template
+#         output_path: Where to write the complete data card
+#     """
 
-    with open(output_path, 'w') as f:
-        # Write YAML front matter
-        f.write('---\n')
-        yaml.safe_dump(agent_output, f, default_flow_style=False, sort_keys=False)
-        f.write('---\n\n')
-        # Write populated markdown body
-        f.write(populated_markdown)
+#     with open(output_path, 'w') as f:
+#         # Write YAML front matter
+#         f.write('---\n')
+#         yaml.safe_dump(agent_output, f, default_flow_style=False, sort_keys=False)
+#         f.write('---\n\n')
+#         # Write populated markdown body
+#         f.write(populated_markdown)

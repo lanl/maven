@@ -77,7 +77,7 @@ import re
 import tempfile
 from openai import OpenAI
 import httpx
-from linkml_runtime import SchemaView
+# from linkml_runtime import SchemaView
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
@@ -103,14 +103,12 @@ from langchain.chat_models import init_chat_model
 
 curr_dir = Path(__file__).parent
 files_dir = curr_dir / "files_template"
-# Class based schema with all fields
-# CARD_CLASS_BASED = files_dir / "genesis_datacard_src_schema_class_based_Jul_13.yaml"
 
-# GENESIS specific cards
-GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_datacard_breakdown.yaml"
-GENESIS_MISSION_DATA_CARD_YAML = files_dir / "genesis_datacard_merged_shared_Jul_13_YAML.yaml"
-GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_datacard_merged_shared_Jul_13_MD.md"
-GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "data_card_field_reference_guide_Jul_13.md"
+# GENESIS v1.2 datacard files
+GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
+GENESIS_MISSION_DATA_CARD_YAML = files_dir / "genesis_dc_v1.2_YAML.yaml"
+GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_dc_v1.2_MD.md"
+GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "genesis_dc_v1.2_reference_guide.md"
 
 # Genesis datasheet 
 datasheet_file = files_dir / "datasheet_sections.yaml"
@@ -194,7 +192,6 @@ def save_maven_dir(path_str: str) -> bool:
         path = path / MAVEN_FOLDER
     path.mkdir(parents=True, exist_ok=True)
 
-    # TODO: test when an error like this arises, or if at all
     old_dir = get_maven_dir()
     if old_dir is not None and old_dir.resolve() != path.resolve():
         for item in old_dir.iterdir():
@@ -425,13 +422,15 @@ def delete_project(qid: int) -> None:
 #     return slots_dict, all_classes
 
 
-def get_tier1_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
+def get_tier1_fields():
     tier1_cards = {}
 
-    all_classes_dict = yaml.safe_load(GENESIS_MISSION_DATA_CARD_BREAKDOWN.read_text(encoding="utf-8"))
-    slots_dict = {slot_name: slot["description"] for slot_name, slot in all_classes_dict.items()}
+    datacard_dict = yaml.safe_load(GENESIS_MISSION_DATA_CARD_BREAKDOWN.read_text(encoding="utf-8"))
 
-    # YAML dict
+    # creates a dict of all flattened fields whose value is if it is required or not (true/false)
+    flattened_fields = flattened_tier1_fields(datacard_dict)
+
+    # YAML dict - TODO: Can maybe skip this since not using this in tier1_GenesisCard_agent.py
     tier1_cards["data_card_yaml"] = yaml.safe_load(GENESIS_MISSION_DATA_CARD_YAML.read_text(encoding="utf-8"))
 
     # MD str
@@ -442,7 +441,43 @@ def get_tier1_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
     with open(GENESIS_MISSION_DATA_CARD_REFERENCE, 'r') as f:
         tier1_cards["card_reference"] = f.read()
 
-    return slots_dict, tier1_cards, all_classes_dict
+    return flattened_fields, tier1_cards, datacard_dict
+
+
+def flattened_tier1_fields(yaml_dict: dict):
+    def get_children(field):
+        value = field.get("value")
+
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, list):
+            children = {}
+            for item in value:
+                if isinstance(item, dict):
+                    children.update(item)
+            return children
+
+        return {}
+
+    def walk(field, path, result):
+        children = get_children(field)
+
+        # This is an actual field.
+        if not children:
+            result[path] = field.get("required", False)
+            return
+        
+        for key, child in children.items():
+            child_path = f"{path}.{key}"
+            if isinstance(child, dict):
+                walk(child, child_path, result)
+            else:
+                result[child_path] = False
+
+    result = {}
+    for key, field_data in yaml_dict.items():
+        walk(field_data, key, result)
+    return result
 
 
 def extract_text_from_pdf(file) -> str:
@@ -543,31 +578,41 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
     doc.build(elements)
 
 
-def generate_tier1_pdf(qid: int, output_pdf: str):
-    doc = SimpleDocTemplate(output_pdf, pagesize=letter)
-    styles = getSampleStyleSheet()
-    elements = []
+def generate_tier1_datacard(qid: int, output_file: str):
+    # TODO: maybe use agent to format yaml values as per template -- but yaml is standardized so might be fine
 
     tier1_tbls = get_tier1_table(qid)
+    flattened_fields_dict = tier1_tbls["datacard_yaml"].iloc[0].to_dict()
+    
+    yaml_portion = {}
+    for flattened_key, value in flattened_fields_dict.items():
+        keys = flattened_key.split(".")
+        current = yaml_portion
 
-    for tbl_name, tbl_df in tier1_tbls.items():
-        kv = tbl_df.iloc[0].to_dict()
+        for key in keys[:-1]:
+            current = current.setdefault(key, {})
 
-        elements.append(Paragraph(tbl_name, styles["Heading1"]))
-        elements.append(Spacer(1, 12))
+        current[keys[-1]] = value
 
-        for k, v in kv.items():
-            if pd.isna(v):
-                v = ""
-            question_label = html.escape(str(k))
-            question_style = ParagraphStyle("QuestionStyle", parent=styles["BodyText"], fontSize=12, leading=15)
-            answer_text = html.escape(str(v))
+    output_path = Path(output_file).with_suffix(".md")
 
-            elements.append(Paragraph(f"<b>{question_label}</b>", question_style))
-            elements.append(Paragraph(answer_text, styles["BodyText"]))
-            elements.append(Spacer(1, 12))
-        elements.append(Spacer(1, 18))
-    doc.build(elements)
+    yaml_content = yaml.safe_dump(
+        yaml_portion,
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+    ).rstrip()
+
+    # TODO: use agent to format markdown as per template
+    markdown_string = str(tier1_tbls["datacard_markdown"].iloc[0, 0]).strip()
+    file_content = (
+        "---\n"
+        f"{yaml_content}\n"
+        "---\n\n"
+        f"{markdown_string}\n"
+    )
+
+    output_path.write_text(file_content, encoding="utf-8")
 
 
 def has_text(val: Any) -> bool:
@@ -576,7 +621,6 @@ def has_text(val: Any) -> bool:
 
 def is_required(q: Dict[str, Any]) -> bool:
     return q.get("required", True)
-
 
 
 def to_snake_case(text: str) -> str:
@@ -1127,9 +1171,9 @@ def route_after_autofill(row: Dict[str, Any]) -> int:
     return target
 
 
-def run_initial_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int) -> Dict[str, Any]:
+def run_initial_autofill_for_project(chat_agent: ChatAgent, qid: int) -> Dict[str, Any]:
     row = get_datasheet(qid)
-    payload = run_initial_autofill(CHAT_AGENT, row, SECTIONS)
+    payload = run_initial_autofill(chat_agent, row, SECTIONS)
     updates, _ = merge_autofill_result(
         row,
         payload,
@@ -1140,7 +1184,7 @@ def run_initial_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int) -> Dict[st
     return get_datasheet(qid)
 
 
-def run_followup_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int, clarifications: Dict[str, str]) -> Dict[str, Any]:
+def run_followup_autofill_for_project(chat_agent: ChatAgent, qid: int, clarifications: Dict[str, str]) -> Dict[str, Any]:
     row = get_datasheet(qid)
 
     existing = {}
@@ -1151,7 +1195,7 @@ def run_followup_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int, clarifica
         except json.JSONDecodeError:
             existing = {}
     existing.update(clarifications)
-    payload = run_followup_autofill(CHAT_AGENT, row, clarifications, SECTIONS)
+    payload = run_followup_autofill(chat_agent, row, clarifications, SECTIONS)
     updates, _ = merge_autofill_result(
         row,
         payload,
@@ -1162,6 +1206,21 @@ def run_followup_autofill_for_project(CHAT_AGENT: ChatAgent, qid: int, clarifica
         existing, indent=2, sort_keys=True)
     update_datasheet(qid, updates)
     return get_datasheet(qid)
+
+
+def rebuild_yaml_structure(flattened_keys_dict):
+    result = {}
+
+    for flattened_key, value in flattened_keys_dict.items():
+        parts = flattened_key.split(".")
+        current = result
+
+        for part in parts[:-1]:
+            current = current.setdefault(part, {})
+
+        current[parts[-1]] = value
+
+    return result
 
 
 def ai_model_message(url: str):
@@ -1820,7 +1879,7 @@ if st.session_state.screen == "datasheet":
                         st.session_state.confirm_submit_context_files = True
 
                 new_id = commit_section0_and_create_row(st.session_state.draft_answers)
-                with st.spinner("Running URSA-assisted autofill.\nMay take a few minutes..."):
+                with st.spinner("Running URSA-assisted autofill. May take a few minutes..."):
                     row_after_autofill = run_initial_autofill_for_project(CHAT_AGENT, new_id)
                 st.session_state.active_qid = new_id
                 meta = load_agent_meta(row_after_autofill)
@@ -1844,7 +1903,7 @@ if st.session_state.screen == "datasheet":
                 qid = int(st.session_state.active_qid)
                 questions = load_agent_meta(row).get("followup_questions", [])
                 clarifications = collect_followup_answers(qid, questions)
-                with st.spinner("Applying clarifications.\nMay take a few minutes..."):
+                with st.spinner("Applying clarifications. May take a few minutes..."):
                     row_after_followup = run_followup_autofill_for_project(CHAT_AGENT, qid, clarifications)
                 st.session_state.section_idx = route_after_autofill(row_after_followup)
                 st.session_state._scroll_to_top = True
@@ -1865,8 +1924,7 @@ if st.session_state.screen == "datasheet":
                     else:
                         question_lookup = {q["id"]: q["label"]
                                            for q in SECTION_BY_IDX[0]["questions"]}
-                        missing_labels = [
-                            question_lookup.get(m, m) for m in missing]
+                        missing_labels = [question_lookup.get(m, m) for m in missing]
                         for ml in missing_labels:
                             st.write(f"- {ml}")
                     st.stop()
@@ -1889,9 +1947,9 @@ if st.session_state.screen == "datasheet":
                     generate_datasheet_pdf(datasheet_df, str(get_maven_dir() / full_name))
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
-                        tier1_fields_dict, tier1_cards, all_classes_dict = get_tier1_fields()
+                        flattened_fields, tier1_cards, datacard_dict = get_tier1_fields()
                         with st.spinner("Populating findability metadata.\nMay take a few minutes..."):
-                            all_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, all_classes_dict, tier1_cards)
+                            all_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
 
                         tier1_db_path = get_tier1_db_path(qid)
                         store = get_db(tier1_db_path)
@@ -1899,7 +1957,6 @@ if st.session_state.screen == "datasheet":
                         for tier1_table_name, tier1_dict in all_tier1_dicts.items():
                             store.read(tier1_dict, "Collection", tier1_table_name)
                         store.close()
-
 
                     st.session_state.screen = "tier1"
                     st.session_state.section_idx = 0
@@ -1921,9 +1978,11 @@ elif st.session_state.screen == "tier1":
     st.title("Findability Metadata")
     st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
-    tier1_fields_dict, tier1_cards, all_classes_dict = get_tier1_fields()
+    flattened_fields, tier1_cards, datacard_dict = get_tier1_fields()
 
-    if not get_tier1_table(qid, check_exists=True):
+    curr_tables = get_tier1_table(qid, update=True)
+    
+    if not curr_tables:
         datasheet_df = get_datasheet(qid, df_return=True)
         if datasheet_df.empty: # no datasheet data so go home
             delete_project(qid)
@@ -1934,9 +1993,8 @@ elif st.session_state.screen == "tier1":
             st.session_state.staging_to_campaign_moved = False
             st.rerun()
         else: # run t1 agent
-            # yaml_card_out = get_tier1_YAML_MD_path(qid)
             with st.spinner("Populating findability metadata. May take a few minutes..."):
-                all_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, all_classes_dict, tier1_cards)
+                all_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -1945,67 +2003,143 @@ elif st.session_state.screen == "tier1":
             store.close()
             st.rerun()
 
-    curr_tables = get_tier1_table(qid, update=True)
-    diff_tables_dict = {}
-    new_cols = []
-    for dc_tbl, tbl_data in all_classes_dict.items():
-        if dc_tbl not in curr_tables.keys():
-            diff_tables_dict[dc_tbl] = tbl_data
-            new_cols.extend(tbl_data["columns"])
-        else:
-            curr_tbl_cols = curr_tables[dc_tbl].columns.to_list()
-            diff = list(set(tbl_data["columns"]) - set(curr_tbl_cols))
-            if diff:
-                diff_tables_dict[dc_tbl] = {"columns": diff, "required_columns": [x for x in tbl_data["required_columns"] if x in diff]}
-                new_cols.extend(diff)
+    # TODO - uncomment portion that updates datacard db with new template once datacard template is stable
+    # template_dict = get_breakdown_fields(datacard_dict)
+    # diff_tables_dict = {}
+    # new_cols = []
+    # for dc_tbl, tbl_cols in template_dict.items():
+    #     if dc_tbl not in curr_tables.keys():
+    #         diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
+    #         new_cols.extend(tbl_cols)
+    #     else:
+    #         curr_tbl_cols = curr_tables[dc_tbl].columns.to_list()
+    #         diff = list(set(tbl_cols) - set(curr_tbl_cols))
+    #         if diff:
+    #             diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
+    #             new_cols.extend(diff)
 
-    # if there are tier 1 md columns not in db, add them to the db and run agent to fill them
-    if diff_tables_dict:
-        new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
-        datasheet_df = get_datasheet(qid, True)
-        # yaml_card_out = str(get_diana_dbs_dir()) + "/" + to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
-        yaml_card_out = get_tier1_YAML_MD_path(qid)
-        with st.spinner("Updating tier 1 metadata catalog with new fields..."):
-            new_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, diff_tables_dict, tier1_cards)
+    # # if there are tier 1 md columns not in db, add them to the db and run agent to fill them
+    # if diff_tables_dict:
+    #     # new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
+    #     datasheet_df = get_datasheet(qid, True)
+    #     # yaml_card_out = str(get_diana_dbs_dir()) + "/" + to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
+    #     # yaml_card_out = get_tier1_YAML_MD_path(qid)
+    #     with st.spinner("Updating tier 1 metadata catalog with new fields..."):
+    #         new_tier1_dicts = run_tier1_catalog(CHAT_AGENT, datasheet_df, diff_tables_dict, tier1_cards)
 
-        for tbl_name, new_tbl_data in new_tier1_dicts.items():
-            if tbl_name in curr_tables.keys():
-                for new_col, new_val in new_tbl_data.items():
-                    curr_tables[tbl_name][new_col] = new_val
-                update_tier1_table(qid, curr_tables[tbl_name])
-            else:
-                tier1_db = get_tier1_db_path(qid)
-                store2 = get_db(tier1_db)
-                store2.read(new_tbl_data, "Collection", tbl_name)
-                curr_tables[tbl_name] = store2.get_table(tbl_name, True, True)
-                store2.close()
+    #     for tbl_name, new_tbl_data in new_tier1_dicts.items():
+    #         if tbl_name in curr_tables.keys():
+    #             for new_col, new_val in new_tbl_data.items():
+    #                 curr_tables[tbl_name][new_col] = new_val
+    #             update_tier1_table(qid, curr_tables[tbl_name])
+    #         else:
+    #             tier1_db = get_tier1_db_path(qid)
+    #             store2 = get_db(tier1_db)
+    #             store2.read(new_tbl_data, "Collection", tbl_name)
+    #             curr_tables[tbl_name] = store2.get_table(tbl_name, True, True)
+    #             store2.close()
 
-            # yaml_card_out = get_diana_dbs_dir() / to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
-            # with open(yaml_card_out, 'w') as f:
-            #     yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
+    #         # yaml_card_out = get_diana_dbs_dir() / to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
+    #         # with open(yaml_card_out, 'w') as f:
+    #         #     yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
 
     with st.form(f"tier1_metadata_form_{qid}"):
         updated_values = {}
-        for tbl_name, tbl_df in curr_tables.items():
-            st.write(f"### {tbl_name}")
+        if "datacard_yaml" in curr_tables.keys():
+            tbl_name = "datacard_yaml"
+            tbl_df = curr_tables[tbl_name]
             updated_values[tbl_name] = {}
 
-            dsi_col_dict = {}
-            for col in tbl_df.columns:
-                try:
-                    curr_val = tbl_df[col].iloc[0]
-                except:
-                    curr_val = ''
+            tbl_data = tbl_df.iloc[0].to_dict()
 
-                # dont show the dsi metadata column on the form
-                if col.startswith("dsi_"):
-                    updated_values[tbl_name][col] = curr_val
-                    continue
+            # dont show the dsi metadata column on the form
+            dsi_key = next(iter(tbl_data))
+            updated_values[tbl_name][dsi_key] = tbl_data.pop(dsi_key)
 
-                st.write(f"{col} *" if col in all_classes_dict[tbl_name]["required_columns"] else f"{col} (optional)")
-                st.caption(tier1_fields_dict[col].replace("\n", "\n\n"))
-                updated_values[tbl_name][col] = st.text_input(label=col, value="" if pd.isna(curr_val) else str(curr_val), 
-                                                    label_visibility="collapsed", key=f"{tbl_name}_{col}_{qid}")
+            actual_yaml_struct = rebuild_yaml_structure(tbl_data)
+
+            def render_yaml_portion(data, path=(), depth=0):
+
+                for key, value in data.items():
+                    current_path = (*path, key)
+                    widget_key = ".".join(current_path)
+
+                    # Create a blank column to indent the entire row.
+                    if depth == 0:
+                        content = st.container()
+                    else:
+                        _, content = st.columns([depth, 12])
+
+                    if isinstance(value, dict):
+                        with content:
+                            if depth == 0:
+                                st.write(f"### {key}")
+                                st.caption(datacard_dict[key]["description"])
+                            st.write(f"**{key}**")
+
+                        render_yaml_portion(
+                            value,
+                            path=current_path,
+                            depth=depth + 1,
+                        )
+                    else:
+                        with content:
+                            if depth > 0: # display "support_" keys differently
+                                supports_key = "supports_" + current_path[0]
+                                field_req = ""
+                                if tbl_data[supports_key].lower() == "yes" and flattened_fields[widget_key]:
+                                    field_req = " *"
+                                st.write(key + field_req)
+
+                                # TODO: decide whether to include description for each field too
+                                # field_template_value = datacard_dict
+                                # for part in current_path[-1]:
+                                #     field_template_value = field_template_value[part]["value"]
+                                # field_template_value = field_template_value[key]
+                                # st.caption(field_template_value["description"])
+                                updated_values[tbl_name][widget_key] = st.text_input(
+                                    label=key,
+                                    value="" if pd.isna(value) else str(value),
+                                    key="field:" + widget_key,
+                                    label_visibility="collapsed"
+                                )
+                            else:
+                                st.write(f"### {key} *")
+                                st.caption(datacard_dict[key]["description"])
+
+                                options = ["Yes", "No"]
+                                default_index = options.index(str(value).capitalize()) if str(value) in options else None
+                                updated_values[tbl_name][widget_key] = st.radio(
+                                    "radio label",
+                                    options,
+                                    index=default_index,
+                                    key="field:" + widget_key,
+                                    label_visibility="collapsed", 
+                                    )
+            render_yaml_portion(actual_yaml_struct)
+        
+        if "datacard_markdown" in curr_tables.keys():
+            tbl_name = "datacard_markdown"
+            tbl_df = curr_tables[tbl_name]
+            updated_values[tbl_name] = {}
+            
+            tbl_data = tbl_df.iloc[0].to_dict()
+
+            # dont show the dsi metadata column on the form
+            dsi_key = next(iter(tbl_data))
+            updated_values[tbl_name][dsi_key] = tbl_data.pop(dsi_key)
+
+            markdown_col_key = next(iter(tbl_data))
+
+            st.write("### Markdown portion")
+            st.caption("Carefully review model-generated text in this text block")
+            updated_values[tbl_name][markdown_col_key] = st.text_area(
+                "enter",
+                height = 750,
+                value=tbl_data[markdown_col_key],
+                key="datacard_markdown_portion",
+                label_visibility="collapsed"
+            )
 
         save_col, next_col = st.columns(2)
         with save_col:
@@ -2016,11 +2150,30 @@ elif st.session_state.screen == "tier1":
 
         if submitted or next_clicked:
             total_error = ""
-            for tbl_name, input_fields in updated_values.items():
-                missing_fields = [col for col, value in input_fields.items() 
-                                  if col in all_classes_dict[tbl_name]["required_columns"] and not str(value).strip()]
+            if "datacard_yaml" in updated_values.keys():
+                missing_support = []
+                missing_fields = {}
+                for col, val in updated_values["datacard_yaml"].items():
+                    top_key = col.split(".", 1)[0]
+                    if f"supports_{top_key}" in flattened_fields.keys():
+                        req_field_missing = (updated_values["datacard_yaml"][f"supports_{top_key}"].lower() == "yes" and 
+                                          flattened_fields[col] and not str(val).strip()
+                                        )
+                        if req_field_missing:
+                            missing_fields.get(top_key, []) + [col.replace(".", " -> ")]
+                    elif not str(val).strip(): # check if missing support fields
+                        missing_support.append(col)
+
+                if missing_support:
+                    total_error += "\n- ".join(missing_support) + "\n\n"
                 if missing_fields:
-                    total_error += f"**{tbl_name}**:\n- " + "\n- ".join(missing_fields) + "\n\n"
+                    for top_key, field_list in missing_fields.items():
+                        total_error += f"**{top_key}**:\n- " + "\n- ".join(field_list) + "\n\n"
+            if "datacard_markdown" in updated_values.keys():
+                markdown_col_key = next(iter(tbl_data))
+                markdown_field_value = next(iter(updated_values["datacard_markdown"].values()), None)
+                if markdown_field_value is None or not str(markdown_field_value).strip():
+                    total_error += "\n\n" + "- Markdown text area"
 
             if total_error != "":
                 st.error(f"Please complete all these required metadata fields before continuing:\n\n{total_error}")
@@ -2041,8 +2194,8 @@ elif st.session_state.screen == "tier1":
                     short_proj_name = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {qid}", 
                                             True).iloc[0,0].removesuffix("_tier1.db")
 
-                    datacard_name = short_proj_name + "_genesis_datacard.pdf"
-                    generate_tier1_pdf(qid, str(get_maven_dir() / datacard_name))
+                    datacard_name = short_proj_name + "_genesis_datacard_v1.2.md"
+                    generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
 
                     st.session_state.screen = "tier2"
                     st.session_state.section_idx = 0
@@ -2395,12 +2548,12 @@ elif st.session_state.screen == "tier2":
             if local_data.lower() == "n/a":
                 # hpc_staging is where the datasheet should be stored
                 new_datasheet_loc = os.path.join(hpc_staging, full_name)
-                new_tier1_pdf_loc = os.path.join(hpc_staging, proj_name + "_genesis_datacard.pdf")
+                new_tier1_dc_loc = os.path.join(hpc_staging, proj_name + "_genesis_datacard_v1.2.md")
             else:
                 new_datasheet_loc = os.path.join(local_data, full_name)
-                new_tier1_pdf_loc = os.path.join(local_data, proj_name + "_genesis_datacard.pdf")
+                new_tier1_dc_loc = os.path.join(local_data, proj_name + "_genesis_datacard_v1.2.md")
             generate_datasheet_pdf(datasheet_df, new_datasheet_loc)
-            generate_tier1_pdf(qid, new_tier1_pdf_loc)
+            generate_tier1_datacard(qid, new_tier1_dc_loc)
 
             skip_index = st.session_state.unchanged_data
 
@@ -2409,7 +2562,6 @@ elif st.session_state.screen == "tier2":
             shutil.copy2(t1_db_name, temp_t1_db_name)
 
             if local_data.lower() == "n/a":
-                # TODO: see if we can check conduit without full path
                 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
                 if "conduit/conduit-x86_64 (L)" in str(result.stderr):
                     copy_tool = "conduit"

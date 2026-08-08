@@ -63,7 +63,11 @@ supports_ai_usability:
 
 discoverability:
   required: true
-  description: ""
+  description: "Required for all datasets regardless of publication state other intended capabilities. 
+    Populate the fields marked [discoverability_required] to support basic discovery and identification 
+    of this dataset, and to provide essential context for understanding the dataset's sensitivity and use. 
+    Population discoverability_if_applicable fields is optional but recommended to further enhance 
+    discoverability and support responsible use."
   value:
     datacard:
       required: true
