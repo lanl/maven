@@ -73,11 +73,13 @@ import subprocess
 import shlex
 from pathlib import PurePosixPath
 import getpass
+import socket
 import re
 import tempfile
 from openai import OpenAI
 import httpx
 # from linkml_runtime import SchemaView
+from datetime import UTC, datetime
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
@@ -126,6 +128,7 @@ MASTER_DB_PATH = "maven.db"
 PROJECTS_TABLE = "projects"
 
 DATASHEET_TABLE = "datasheet"
+FILE_POINTERS_TABLE = "metadata_file_paths"
 
 TIER_2_TABLE = "data_and_hpc_info"
 
@@ -137,6 +140,9 @@ MAVEN_FOLDER = "maven_files"
 
 remote_script = curr_dir / "remote_move.py"
 REMOTE_MOVE_SCRIPT = remote_script.read_text(encoding="utf-8")
+
+remote_endpoint_script = curr_dir / "remote_register_endpoint.py"
+REMOTE_REGISTER_ENDPOINT_SCRIPT = remote_endpoint_script.read_text(encoding="utf-8")
 
 is_remote = any(os.environ.get(x) for x in ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"])
 
@@ -234,7 +240,8 @@ def all_question_columns() -> List[str]:
                 cols.append(q["id"])
     cols.extend(AGENT_META_COLUMNS)
     cols.append("context_files_text")
-    cols.append("t2_db_path")
+    cols.append("ROSY_ID")
+    cols.append("ROSY_Z_NUMBER")
     return cols
 
 
@@ -279,8 +286,8 @@ def create_tier1_db(db_path: str):
 def create_tier2_db(db_path: str):
     store = get_db(db_path)
     tier2_dict = {"local_data_path": "", "username": "", "hpc_system": "",
-                  "hpc_staging_space": "", "hpc_campaign_space": "",
-                  "user_group": "", "data_permissions": ""}
+                  "hpc_staging_space": "", "hpc_campaign_space": "", "user_group": "", 
+                  "access_permissions": "", "diana_endpoint": "", "contact_email": ""}
     store.read(tier2_dict, "Collection", table_name=TIER_2_TABLE)
     store.close()
 
@@ -351,7 +358,7 @@ def get_tier1_table(project_id: int, update=False, check_exists=False) -> Dict[s
     store = get_db(tier1_db)
 
     curr_tables = store.list(True)
-    curr_tables = [t for t in curr_tables if t not in [DATASHEET_TABLE, "filesystem", "federated"]]
+    curr_tables = [t for t in curr_tables if t not in [DATASHEET_TABLE, FILE_POINTERS_TABLE, "filesystem", "federated"]]
     if check_exists:
         store.close()
         if not curr_tables:
@@ -2246,13 +2253,13 @@ elif st.session_state.screen == "tier2":
             l1, r1 = st.columns(2)
             with l1:
                 st.write("Username")
-                st.caption("Username to access the HPC. Ex: ssh **username**@hpc_system:/path/")
+                st.caption("Username to access the HPC System. Ex: ssh **username**@hpc_system:/path/")
                 updated_tier2_dict["username"] = st.text_input("Enter", key=f"hpc_username_{qid}",
                                     value=locations_tbl["username"].iloc[0] if not locations_tbl.empty else "",
                                     label_visibility="collapsed")
             with r1:
                 st.write("HPC System")
-                st.caption("Name of HPC to access. Use the transfer node, not the head node. Ex: ssh username@**hpc_system**:/path/")
+                st.caption("HPC system to access. **Specify the transfer node, not head node**. Ex: ssh username@**hpc_system**:/path/")
                 updated_tier2_dict["hpc_system"] = st.text_input("Enter", key=f"hpc_system_{qid}",
                                     value=locations_tbl["hpc_system"].iloc[0] if not locations_tbl.empty else "",
                                     label_visibility="collapsed")
@@ -2281,45 +2288,86 @@ elif st.session_state.screen == "tier2":
 
         l3, r3 = st.columns(2)
         with l3:
-            st.write("User Group")
-            st.caption("User group to share data with on campaign folder. Ex: my_user_group")
+            st.write("User Group (Optional)")
+            st.caption("User group to share campaign data folder with. Ex: my_user_group")
             updated_tier2_dict["user_group"] = st.text_input("Enter", key=f"user_group_{qid}",
                                 value=locations_tbl["user_group"].iloc[0] if not locations_tbl.empty else "",
                                 label_visibility="collapsed")
         with r3:
-            st.write("Data Permissions")
-            st.caption("Data permissions code to set on the campaign folder. Ex: 750 or 770")
-            updated_tier2_dict["data_permissions"] = st.text_input("Enter", key=f"data_permissions_{qid}",
-                                value=locations_tbl["data_permissions"].iloc[0] if not locations_tbl.empty else "",
-                                label_visibility="collapsed")
+            st.write("Data Access Permissions (Optional)")
+            st.caption("Set acccess permissions for all files in the campaign data folder")
 
-        st.write(f"Users can optionally submit the generated datasheet within `{get_maven_dir()}` for a ROSY review")
+            PERMISSION_OPTIONS = {
+                "750": "Owner full access; group read/execute; others no access",
+                "700": "Owner full access; everyone else no access",
+                "755": "Owner full access; everyone else read/execute",
+                "770": "Owner and group full access; others no access",
+                "775": "Owner/group full access; others read/execute",
+                "644": "Owner read/write; everyone else read-only",
+                "640": "Owner read/write; group read-only; others no access",
+                "600": "Owner read/write; everyone else no access",
+                "664": "Owner/group read/write; others read-only",
+                "660": "Owner and group read/write; others no access",
+                "444": "Everyone read-only",
+                "400": "Owner read-only; everyone else no access",
+                "666": "Everyone read/write — generally unsafe",
+                "777": "Everyone full access — generally unsafe",
+            }
+            saved_permission = locations_tbl["access_permissions"].iloc[0] if not locations_tbl.empty else None
+            updated_tier2_dict["access_permissions"] = st.selectbox(
+                "Enter", key=f"access_permissions_{qid}",
+                options=PERMISSION_OPTIONS,
+                index=list(PERMISSION_OPTIONS).index(saved_permission) if saved_permission is not None else None,
+                format_func=lambda mode: (f"{mode}: {PERMISSION_OPTIONS[mode]}"),
+                label_visibility="collapsed"
+            )
+
         l4, r4 = st.columns(2)
         with l4:
-            st.write("ROSY ID (Optional)")
-            st.caption("Enter a valid ROSY ID (Not currently implemented)")
-            st.text_input("Enter", key=f"rosy_id_{qid}", label_visibility="collapsed") 
-            # value=locations_tbl["local_data_path"].iloc[0] if not locations_tbl.empty else "",
+            st.write("DIANA Catalog Endpoint")
+            st.caption("Absolute path to HPC directory where this project will be registered in the DIANA catalog")
+            updated_tier2_dict["diana_endpoint"] = st.text_input("Enter", key=f"diana_endpoint_{qid}",
+                                value=locations_tbl["diana_endpoint"].iloc[0] if not locations_tbl.empty else "",
+                                label_visibility="collapsed")
         with r4:
+            st.write("Contact Email Address")
+            st.caption("Contact email for questions about this project in the DIANA catalog.")
+            updated_tier2_dict["contact_email"] = st.text_input("Enter", key=f"contact_email_{qid}",
+                                value=locations_tbl["contact_email"].iloc[0] if not locations_tbl.empty else "",
+                                label_visibility="collapsed")
+
+        st.write(f"Optionally submit the generated datasheet in `{get_maven_dir()}` for a ROSY review and register it here.")
+        l5, r5 = st.columns(2)
+        temp_df = get_datasheet(qid)
+        with l5:
+            st.write("ROSY ID (Optional)")
+            st.caption("Enter a valid ROSY ID")
+            rosy_id_input = st.text_input("Enter", key=f"rosy_id_{qid}", 
+                                value=temp_df["ROSY_ID"] if not pd.isna(temp_df["ROSY_ID"]) else "",
+                                label_visibility="collapsed") 
+        with r5:
             st.write("Z# (Optional)")
-            st.caption("Enter the Z# of the person who submitted to ROSY (Not currently implemented)")
-            st.text_input("Enter", key=f"z_num_rosy_id_{qid}", label_visibility="collapsed") 
-            # value=locations_tbl["local_data_path"].iloc[0] if not locations_tbl.empty else "",
+            st.caption("Enter the Z-Number of the person who submitted to ROSY")
+            rosy_z_num_input = st.number_input("Enter", key=f"rosy_z_num_{qid}",
+                                value=int(temp_df["ROSY_Z_NUMBER"]) if not pd.isna(temp_df["ROSY_Z_NUMBER"]) else None,
+                                label_visibility="collapsed")
+
 
         if st.button("Save & Extract Metadata ➡", key=f"save_tier2_{qid}", width="stretch", type="primary"):
-            missing_fields = [col for col, value in updated_tier2_dict.items() if not str(value).strip()]
+            missing_fields = [col for col, value in updated_tier2_dict.items() 
+                              if not str(value).strip() and col not in ["user_group", "access_permissions"]]
             if missing_fields:
-                naming_dict = {
+                required_names_dict = {
                     "local_data_path": "Local Data Location",
                     "username": "Username",
                     "hpc_system": "HPC System",
                     "hpc_staging_space": "HPC Staging Location",
                     "hpc_campaign_space": "HPC Campaign Location",
-                    "user_group": "User Group",
-                    "data_permissions": "Data Permissions"
+                    "diana_endpoint": "DIANA Catalog Endpoint",
+                    "contact_email": "Contact Email Address"
                 }
                 st.error("Please fill all fields before continuing:\n- " +
-                         "\n- ".join(naming_dict.get(m, m) for m in missing_fields))
+                         "\n- ".join(required_names_dict.get(m, m) for m in missing_fields))
                 st.stop()
 
             local_data_input = updated_tier2_dict["local_data_path"].strip()
@@ -2337,16 +2385,32 @@ elif st.session_state.screen == "tier2":
                 st.stop()
             hpc_campaign_path = Path(hpc_campaign_input)
 
+            diana_endpoint_input = updated_tier2_dict["diana_endpoint"].strip()
+            if "campaign" not in diana_endpoint_input.lower():
+                st.error("DIANA Endpoint must be in the 'campaign' cluster.")
+                st.stop()
+            diana_endpoint_path = Path(diana_endpoint_input)
+
             username_input = updated_tier2_dict["username"].strip()
             hpc_system_input = updated_tier2_dict["hpc_system"].strip()
 
-            user_group_input = updated_tier2_dict["user_group"].strip()
-            data_permissions_input = updated_tier2_dict["data_permissions"].strip()
+            user_group_input = str(updated_tier2_dict["user_group"]).strip()
+
+            t1_store = get_db(get_tier1_db_path(qid))
+            # only add rosy id and z num to datasheet table if both complete
+            valid_rosy_id = rosy_id_input is not None and rosy_id_input.strip()
+            if valid_rosy_id and rosy_z_num_input is not None:
+                # TODO Add code to verify ROSY ID + Z# is valid
+                t1_store.query(f"UPDATE {DATASHEET_TABLE} SET ROSY_ID = ?, ROSY_Z_NUMBER = ?", params=(rosy_id_input, rosy_z_num_input))
+            elif (valid_rosy_id and rosy_z_num_input is None) or (not valid_rosy_id and rosy_z_num_input is not None):
+                st.error("If registering ROSY review, enter both ID and associated Z#. Cannot only save one and not the other.")
+                st.stop()
+            t1_store.close()
 
             # check if t2 table already has data and if it's same as current inputs
             if not locations_tbl.empty:
                 existing_loc_dict = locations_tbl.iloc[0].to_dict()
-                if all(existing_loc_dict.get(k, "").strip() == updated_tier2_dict.get(k, "").strip() for k in updated_tier2_dict.keys()):
+                if all(existing_loc_dict[k].strip() == updated_tier2_dict[k].strip() for k in updated_tier2_dict.keys()):
                     st.session_state.render_t2_extraction = True
                     st.session_state.tier2_loc_dict = existing_loc_dict
                     st.rerun()
@@ -2371,21 +2435,42 @@ elif st.session_state.screen == "tier2":
                 except (PermissionError, OSError):
                     st.error("HPC Campaign Location must be a directory you can access")
                     st.stop()
+
+                if not (diana_endpoint_path.is_absolute() and diana_endpoint_path.is_dir()):
+                    st.error("DIANA Endpoint must be an absolute path to a directory you can access")
+                    st.stop()
+                try:
+                    next(diana_endpoint_path.iterdir(), None)
+                except (PermissionError, OSError):
+                    st.error("DIANA Endpoint must be a directory you can access")
+                    st.stop()
                 # set username
                 updated_tier2_dict["username"] = getpass.getuser()
+                updated_tier2_dict["hpc_system"] = socket.getfqdn()
+
+                import grp
+                try:
+                    grp.getgrnam(user_group_input)
+                except KeyError:
+                    st.error("User Group does not exist on this HPC")
+                    st.stop()
             else:
                 if not (local_path.is_absolute() and local_path.is_dir() and os.access(local_path, os.R_OK | os.W_OK | os.X_OK)):
                     st.error("Local Data Location must be an absolute path to data you can access")
                     st.stop()
                 if not hpc_staging_path.is_absolute():
-                    st.error("HPC Staging Location must be an absolute path to a directory on the HPC")
+                    st.error("HPC Staging Location must be an absolute path to a directory on HPC")
                     st.stop()
                 if not hpc_campaign_path.is_absolute():
-                    st.error("HPC Campaign Location must be an absolute path to a directory on the HPC")
+                    st.error("HPC Campaign Location must be an absolute path to a directory on HPC")
+                    st.stop()
+                if not diana_endpoint_path.is_absolute():
+                    st.error("DIANA Endpoint must be an absolute path to a directory on HPC")
                     st.stop()
 
-                print(" \nPassword prompt 1/3: validating HPC access")
-                with st.spinner("Validating HPC field inputs — check the terminal for 1/3 password prompts..."):
+                num_prompts = 5 if user_group_input else 4
+                print(f" \nPassword prompt 1/{num_prompts}: validating HPC access")
+                with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
                     cmd = ["ssh", f"{username_input}@{hpc_system_input}", "echo", "test"]
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
@@ -2394,8 +2479,8 @@ elif st.session_state.screen == "tier2":
                     st.code(result.stderr)
                     st.stop()
 
-                print(" \nPassword prompt 2/3: validating HPC staging location")
-                with st.spinner("Validating HPC field inputs — check the terminal for 2/3 password prompts..."):
+                print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging location")
+                with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
                     cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
@@ -2404,8 +2489,8 @@ elif st.session_state.screen == "tier2":
                     st.code(result.stderr)
                     st.stop()
 
-                print(" \nPassword prompt 3/3: validating HPC campaign location")
-                with st.spinner("Validating HPC field inputs — check the terminal for 3/3 password prompts..."):
+                print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign location")
+                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
                     cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
@@ -2413,6 +2498,27 @@ elif st.session_state.screen == "tier2":
                     st.error("HPC Campaign Location does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
+
+                print(f" \nPassword prompt 4/{num_prompts}: validating DIANA endpoint")
+                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                    cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
+                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                if result.returncode != 0:
+                    print("View error on app")
+                    st.error("DIANA Endpoint does not exist or is not accessible for this user")
+                    st.code(result.stderr)
+                    st.stop()
+
+                if user_group_input:
+                    print(f" \nPassword prompt 5/{num_prompts}: validating user group is valid")
+                    with st.spinner("Validating user group input — check the terminal for 4/{num_prompts} password prompts..."):
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    if result.returncode != 0:
+                        print("View error on app")
+                        st.error("User Group does not exist on this HPC")
+                        st.code(result.stderr)
+                        st.stop()
                 print(" \nGo back to app")
 
             col_names = locations_tbl.columns.tolist()
@@ -2445,7 +2551,9 @@ elif st.session_state.screen == "tier2":
         hpc_staging = locations_dict["hpc_staging_space"]
         hpc_campaign = locations_dict["hpc_campaign_space"]
         user_group = locations_dict["user_group"]
-        data_permissions = locations_dict["data_permissions"]
+        access_permissions_code = locations_dict["access_permissions"]
+        diana_endpoint = locations_dict["diana_endpoint"]
+        contact_email = locations_dict["contact_email"]
 
         back_col, other = st.columns([1, 4], width="stretch")
         with back_col:
@@ -2537,11 +2645,9 @@ elif st.session_state.screen == "tier2":
             shutil.copy2(t2_db_name, temp_t2_db_name)
 
             # add col in tier 1 md table that is absolute path to tier 2 db on campaign. Use the temp name (actually being moved to campaign)
-            t2_db_campaign_path = os.path.join(hpc_campaign, temp_t2_db_name)
+            t2_db_campaign_path = os.path.join(hpc_campaign, proj_name, temp_t2_db_name)
             t1_store = get_db(t1_db_name)
-            t1_store.query(f"UPDATE {DATASHEET_TABLE} SET t2_db_path = ?", params=(t2_db_campaign_path,))
             datasheet_df = t1_store.get_table(DATASHEET_TABLE, True)
-            t1_store.close()
 
             # create datasheet pdf in local data loc (or hpc staging if already starting from there)
             full_name = datasheet_df["project_name"].iloc[0].strip() + " DATASHEET.pdf"
@@ -2549,17 +2655,30 @@ elif st.session_state.screen == "tier2":
                 # hpc_staging is where the datasheet should be stored
                 new_datasheet_loc = os.path.join(hpc_staging, full_name)
                 new_tier1_dc_loc = os.path.join(hpc_staging, proj_name + "_genesis_datacard_v1.2.md")
+                data_folder_name = Path(hpc_staging).name
             else:
                 new_datasheet_loc = os.path.join(local_data, full_name)
                 new_tier1_dc_loc = os.path.join(local_data, proj_name + "_genesis_datacard_v1.2.md")
+                data_folder_name = Path(local_data).name
             generate_datasheet_pdf(datasheet_df, new_datasheet_loc)
             generate_tier1_datacard(qid, new_tier1_dc_loc)
 
+            datasheet_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_name)
+            datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, proj_name + "_genesis_datacard_v1.2.md")
+            if FILE_POINTERS_TABLE in t1_store.list(True):
+                t1_store.query(f"UPDATE {FILE_POINTERS_TABLE} SET datsheet_file = ?, datacard_file = ?, tier2_db_path = ?;", 
+                               params=(datasheet_campaign_path, datacard_campaign_path, t2_db_campaign_path))
+            else:
+                file_pointers_dict = {"datsheet_file": datasheet_campaign_path, 
+                                      "datacard_file": datacard_campaign_path, 
+                                      "tier2_db_path": t2_db_campaign_path}
+                t1_store.read(file_pointers_dict, "Collection", FILE_POINTERS_TABLE)
+            t1_store.close()
+
             skip_index = st.session_state.unchanged_data
 
-            # make duplicate t1 db name the short_proj_name_tier1.db
-            temp_t1_db_name = proj_name + "_tier1.db"
-            shutil.copy2(t1_db_name, temp_t1_db_name)
+            # diana federation endpoint entry for this project
+            fed_line = f"HPC,{hpc_name},{os.path.join(hpc_campaign, t1_db_name)},data,{username},{contact_email},{datetime.now(UTC).time()}"
 
             if local_data.lower() == "n/a":
                 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
@@ -2582,7 +2701,7 @@ elif st.session_state.screen == "tier2":
                 with st.spinner(f"Moving data to HPC campaign with `{copy_tool}`"):
                     try:
                         # TODO: Turn verbose off after done testing
-                        s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[temp_t1_db_name])
+                        s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
                         s.index(hpc_staging, hpc_campaign)
                         s.copy(copy_tool)
                     except Exception as e:
@@ -2596,6 +2715,26 @@ elif st.session_state.screen == "tier2":
                         st.code(str(scratch_move_error))
                     st.stop()
 
+                
+                Path(f"{proj_name}_endpoint.txt").write_text(fed_line, encoding="utf-8")
+
+                if copy_tool == "conduit":
+                    result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
+                    copy_command = str(result.stdout).split()
+                    for idx, s in enumerate(copy_command):
+                        if "/" in s:
+                            copy_command = copy_command[idx:idx+3]
+                            break
+                    copy_command.extend(["cp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")])
+                else:
+                    copy_command = ["pfcp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")]
+                process = subprocess.Popen(copy_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='latin-1')
+                stdout, stderr = process.communicate()
+                if process.returncode != 0:
+                    st.error("Registering this project in the DIANA catalog failed")
+                    st.code(stderr)
+                    st.stop()
+
             else:
                 if not st.session_state.local_to_staging_moved:
                     local_move_error = None
@@ -2603,7 +2742,7 @@ elif st.session_state.screen == "tier2":
                         print(" \n \nMoving local data to HPC staging space - 3 password prompts expected:\n ")
                         try:
                             # TODO: Turn verbose off after done testing
-                            s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[temp_t1_db_name])
+                            s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
                             s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
                             s.copy("rsync")
                         except Exception as e:
@@ -2622,14 +2761,14 @@ elif st.session_state.screen == "tier2":
                     script = REMOTE_MOVE_SCRIPT
                     full_staging_path = os.path.join(hpc_staging, proj_name)
                     script = script.replace('00000', repr(full_staging_path)) # staging folder
-                    script = script.replace('11111', repr(temp_t1_db_name)) # t1 db name
+                    script = script.replace('11111', repr(t1_db_name)) # t1 db name
                     script = script.replace('22222', repr(temp_t2_db_name)) # t2 db name
                     script = script.replace('33333', repr(str(Path(local_data).name))) # just name of data folder
                     script = script.replace('44444', repr(hpc_campaign)) # campaign folder
                     script = script.replace('55555', repr(TIER_2_TABLE)) # t2 locations table name
 
-                    with st.spinner("Moving data on HPC staging space to HPC campaign — check the terminal for 1 password prompt..."):
-                        print(" \n \nMoving data on HPC staging space to HPC campaign - 1 password prompt expected:")
+                    with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
+                        print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
                         cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
                         remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
                     print(" \nGo back to app")
@@ -2667,39 +2806,63 @@ elif st.session_state.screen == "tier2":
                     
                     st.session_state.staging_to_campaign_moved = True
 
-            # set user group and data permissions after move
+                endpoint_script = REMOTE_REGISTER_ENDPOINT_SCRIPT
+                full_staging_path = os.path.join(hpc_staging, proj_name)
+                endpoint_script = endpoint_script.replace('00000', repr(full_staging_path)) # staging folder
+                endpoint_script = endpoint_script.replace('11111', repr(fed_line))
+                endpoint_script = endpoint_script.replace('22222', repr(proj_name))
+                endpoint_script = endpoint_script.replace('33333', repr(diana_endpoint))
+
+                with st.spinner("Registering project in DIANA Catalog Endpoint — check the terminal for 1 password prompt..."):
+                    print(" \n \nRegistering project in DIANA Catalog Endpoint - 1 password prompt expected:")
+                    cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
+                    remote_endpoint_run = subprocess.run(cmd, input=endpoint_script, text=True, capture_output=True, check=False)
+
+                if remote_endpoint_run.returncode != 0:
+                    st.error("Error registering project in DIANA Catalog:")
+                    if remote_endpoint_run.stderr:
+                        output = remote_endpoint_run.stdout
+                        if "Only testing on this HPC for now" in remote_endpoint_run.stdout:
+                            st.code("Cannot register this project on this HPC system. Ensure you are on a transfer node, not head node.")
+                        elif "Endpoint error" in remote_endpoint_run.stdout:
+                            st.code(remote_endpoint_run.stdout.split("Endpoint error", 1)[1])
+                    st.stop()                
+
+            # set user group and access permissions after move
             full_campaign_path = os.path.join(hpc_campaign, proj_name)
             if local_data.lower() == "n/a":
-                with st.spinner("Updating user group and data permissions on Campaign"):
-                    cmd = ["chgrp", "-R", user_group, full_campaign_path]
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                if result.returncode != 0:
-                    st.error("Error setting user group for data on Campaign")
-                    st.code(result.stderr)
-                    st.stop()
+                if user_group:
+                    with st.spinner("Updating user group on Campaign"):
+                        cmd = ["chgrp", "-R", user_group, full_campaign_path]
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    if result.returncode != 0:
+                        st.error("Error setting user group for data on Campaign")
+                        st.code(result.stderr)
+                        st.stop()
 
-                with st.spinner("Updating data access permissions on Campaign"):
-                    cmd = ["chmod", "-R", data_permissions, full_campaign_path]
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                if result.returncode != 0:
-                    st.error("Error setting access permissions for data on Campaign")
-                    st.code(result.stderr)
-                    st.stop()
+                if access_permissions_code:
+                    with st.spinner("Updating data access permissions on Campaign"):
+                        cmd = ["chmod", "-R", access_permissions_code, full_campaign_path]
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    if result.returncode != 0:
+                        st.error("Error setting access permissions for data on Campaign")
+                        st.code(result.stderr)
+                        st.stop()
             else:
-                print(" \nPassword prompt 1/1: updating user group and data permissions on HPC campaign")
-                with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
-                    cmd = ["ssh", f"{username}@{hpc_name}",
-                           f"chgrp -R {user_group} {full_campaign_path} && chmod -R {data_permissions} {full_campaign_path}"]
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                print(" \nGo back to app")
-                if result.returncode != 0:
-                    st.error("Error updating user group and data permissions on HPC campaign")
-                    st.code(result.stderr)
-                    st.stop()
+                if user_group and access_permissions_code:
+                    print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
+                    with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
+                        cmd = ["ssh", f"{username}@{hpc_name}",
+                            f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    print(" \nGo back to app")
+                    if result.returncode != 0:
+                        st.error("Error updating user group and data access permissions on HPC campaign")
+                        st.code(result.stderr)
+                        st.stop()
 
             # after move, delete the temp t1 & t2 dbs that were actually moved
             os.remove(temp_t2_db_name)
-            os.remove(temp_t1_db_name)
 
             # after successful move, set 'has_moved' col for this project in maven.db to be path to local data
             master_store = get_db(get_master_db_name())
