@@ -2295,7 +2295,7 @@ elif st.session_state.screen == "tier2":
                                 label_visibility="collapsed")
         with r3:
             st.write("Data Access Permissions (Optional)")
-            st.caption("Set acccess permissions for all files in the campaign data folder")
+            st.caption("Set access permissions for all files in the campaign data folder")
 
             PERMISSION_OPTIONS = {
                 "750": "Owner full access; group read/execute; others no access",
