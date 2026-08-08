@@ -1629,7 +1629,7 @@ enums:
       Data_Curation:
         description: >-
           Management activities to annotate (produce metadata), scrub data and maintain research data 
-          (including software code, where it is necessary for interpreting the data itself) for initial use and later re-use.
+          (including software code, where it is necessary for interpreting the data itself) for initial use and later reuse.
           Conducting tasks like data processing, cleaning, cataloging, annotating, archiving modeling, and retention.
           Integrating and aggregating data in diverse formats and from diverse sources.
           Managing and updating data descriptions and metadata, including maintaining version
@@ -2672,7 +2672,7 @@ slots:
     in_subset:
       - interoperability_if_applicable
     description: >-
-      The type of the Identifer (e.g., DOI, UUID, ARK), following a controlled vocabulary of identifier types.
+      The type of the Identifier (e.g., DOI, UUID, ARK), following a controlled vocabulary of identifier types.
       
       Assign if the datacard has an identifier; required if 'id' is provided.
     broad_mappings:

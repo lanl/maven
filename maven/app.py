@@ -92,7 +92,7 @@ from maven.ursa_autofill import (
     summarize_autofill,
 )
 
-from maven.tier1_GenesisCard_agent import run_tier1_catalog
+from maven.tier1_genesis_dc_agent import run_tier1_catalog
 from ursa.agents.chat_agent import ChatAgent
 try:
     from ursa.util.http import inject_truststore_into_ssl
@@ -1409,7 +1409,7 @@ def update_ai_model_dialog():
                 f"AI_API_URL={url}\n"
                 f"AI_MODEL=openai:{selected_model}\n"
             )
-            st.success(f"Updated AI Model")
+            st.success("Updated AI Model")
             st.session_state.api_variables = []
             st.session_state.select_model_screen = False
             st.session_state.update_ai_info_screen = False
@@ -1614,7 +1614,7 @@ if not loaded_keys:
                         f"AI_API_URL={url}\n"
                         f"AI_MODEL=openai:{selected_model}\n"
                     )
-                    st.success(f"Saved model")
+                    st.success("Saved model")
                     st.session_state.api_variables = []
                     st.session_state.select_model_screen = False
                     st.rerun()
@@ -2514,7 +2514,7 @@ elif st.session_state.screen == "tier2":
 
                     # check if short_proj_name is in campaign folder
                     if short_proj_name in curr_folders:
-                        # if current username matches the username of person owning data on remote, notifiy them it will overwrite
+                        # if current username matches the username of person owning data on remote, notify them it will overwrite
                         #TODO?: maybe allow the user to not overwrite with a stop button
                         retrieved_username = curr_folders[short_proj_name]
                         if username == retrieved_username:
@@ -2612,7 +2612,7 @@ elif st.session_state.screen == "tier2":
                     
                     if local_move_error is not None:
                         st.error("Local Data to HPC Staging Move Error:")
-                        st.code(str(e))
+                        st.code(str(local_move_error))
                         st.stop()
 
                     st.session_state.local_to_staging_moved = True

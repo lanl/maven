@@ -100,7 +100,7 @@ def yaml_card_prompt(datasheet_text: str,
         Overwrite the existing values assigned to it with the extracted value. 
         
         For all nested keys, the keys in this JSON should be a dot notation to represent the actual structure. 
-        That is how **FLATTENED_FIELDS_OUTPUT** is strucutred
+        That is how **FLATTENED_FIELDS_OUTPUT** is structured.
         Ex: if field_C is under field_B which is under field_A, field_C in the JSON will be "field_A.field_B.field_C" : value_for_field_C
 
         Each key should be in dot notation format with the value a string representation of the extracted info. If no value, then should be empty string.
@@ -145,7 +145,7 @@ def markdown_card_prompt(datasheet_text: str, markdown_template: str, reference_
         
         # OUTPUT:
         - Return the autocompleted MARKDOWN_TEMPLATE as a string with all **[!TODO] <REPLACE:** replaced with the correct values. 
-        - The output string should be a direct copy of MARKDOWN_TEMPLATE that is editted for the [!TODO] <REPLACE: entries.
+        - The output string should be a direct copy of MARKDOWN_TEMPLATE that is edited for the [!TODO] <REPLACE: entries.
         - Follow any formatting guidance that is in the description following [!TODO] <REPLACE:
         - Exclude the INSTRUCTIONS sections at the top the MARKDOWN_TEMPLATE.
         - **DO NOT** include ANY verbose commentary, explanations, or text not corresponding to a field value.

@@ -1,6 +1,5 @@
 from maven.ursa_utils import run_ursa_agent
 import pandas as pd
-from typing import Tuple
 
 
 def create_tier1_prompt(metadata_info: dict[str, str], datasheet_text: str, all_classes_dict: dict[str, dict[str, str]]) -> str:
@@ -36,7 +35,7 @@ def create_tier1_prompt(metadata_info: dict[str, str], datasheet_text: str, all_
         Extract the metadata fields precisely and accurately for each table in the scientific data described in the text. provided in json format, given the following:
         1. **all_tables_dict** - a nested dictionary:
             - each outer key is a name of a table
-            - each inner key are the field names in the table that contain `desription` string describing the column and `required` bool if it is a required field.
+            - each inner key are the field names in the table that contain `description` string describing the column and `required` bool if it is a required field.
         2. **text** — a string containing relevant information to be extracted. The previous agent's logs can be found in `agent_meta` and `user_clarifications`.
 
         # INSTRUCTIONS:

@@ -1,7 +1,6 @@
 from typing import Any
 import json
 import re
-import yaml
 
 from ursa.agents.chat_agent import ChatAgent
 
