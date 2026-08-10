@@ -80,6 +80,9 @@ from openai import OpenAI
 import httpx
 # from linkml_runtime import SchemaView
 from datetime import UTC, datetime
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
@@ -1274,6 +1277,53 @@ def ai_model_message(url: str):
         st.markdown(':red[<span style="font-weight:800;">NOTE: All models can currently handle CUI level data</span>]', unsafe_allow_html=True)
 
 
+def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
+    base_url = "https://rassti.lanl.gov"
+    try:
+        response = requests.get(base_url, verify=verify_ssl, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to connect to {base_url}; check network. Error: {str(e)}")
+        st.stop()
+
+    test_url = f"{base_url}/api/query/rosy?submitter_znumber={rosy_z_num}&rosy_pid={rosy_id}"
+    try:
+        response = requests.get(
+            test_url,
+            verify=verify_ssl,
+            timeout=2
+        )
+        
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get("error"):
+            st.error("Error while checking if the ROSY ID was reviewed. Review ID and Z# fields.")
+            st.stop()
+        if not (data.get("rosy_pid") and data.get("submitter_znumber") and data.get("review_complete")):
+            st.error("Error while checking if the ROSY ID was reviewed. Review ID and Z# fields.")
+            st.stop()
+        
+        return data["review_complete"]
+
+    except requests.exceptions.ConnectionError:
+        st.error(f"Connection failed: Cannot connect to {base_url}. Ensure you are on an approved network.")
+        st.stop()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            st.error(f"ROSY API not found at {base_url}. Verify this is a valid ROSY endpoint.")
+            st.stop()
+        else:
+            st.error(f"HTTP {e.response.status_code} Error: {str(e)}")
+            st.stop()
+    except ValueError as e:
+        st.error(f"Invalid JSON response from {base_url}: {str(e)}")
+        st.stop()
+    except Exception:
+        st.error("Error accessing ROSY; ensure you are on an approved network.")
+        st.stop()
+
+
 @st.dialog("Confirm Data Changes", width="medium", dismissible=False)
 def confirm_unchanged_data_dialog(qid: int, local_data: str):
     st.subheader(f"The data at '{local_data}' was recently moved")
@@ -2413,8 +2463,13 @@ elif st.session_state.screen == "tier2":
             # only add rosy id and z num to datasheet table if both complete
             valid_rosy_id = rosy_id_input is not None and rosy_id_input.strip()
             if valid_rosy_id and rosy_z_num_input is not None:
-                # TODO Add code to verify ROSY ID + Z# is valid
-                t1_store.query(f"UPDATE {DATASHEET_TABLE} SET ROSY_ID = ?, ROSY_Z_NUMBER = ?", params=(rosy_id_input, rosy_z_num_input))
+                reviewed_rosy_id = validate_rosy(rosy_id_input, int(rosy_z_num_input))
+                if reviewed_rosy_id:
+                    t1_store.query(f"UPDATE {DATASHEET_TABLE} SET ROSY_ID = ?, ROSY_Z_NUMBER = ?", params=(rosy_id_input, rosy_z_num_input))
+                else:
+                    st.error("This ROSY ID has not been reviewed yet and cannot be associated with this datasheet. " \
+                            "Please try again later or clear the ROSY fields for now.")
+                    st.stop()
             elif (valid_rosy_id and rosy_z_num_input is None) or (not valid_rosy_id and rosy_z_num_input is not None):
                 st.error("If registering ROSY review, enter both ID and associated Z#. Cannot only save one and not the other.")
                 st.stop()
