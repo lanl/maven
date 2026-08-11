@@ -19,7 +19,7 @@ tier2_table = 55555
 os.chdir(staging_folder)
 
 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-if "conduit/conduit-x86_64 (L)" in str(result.stderr):
+if "conduit/conduit-x86_64" in str(result.stderr):
     copy_tool = "conduit"
 elif shutil.which("pfcp"):
     copy_tool = "pfcp"

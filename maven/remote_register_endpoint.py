@@ -16,7 +16,7 @@ Path(f"{proj_name}_endpoint.txt").write_text(endpoint_line, encoding="utf-8")
 Path(f"{proj_name}_endpoint.txt").chmod(0o644)
 
 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-if "conduit/conduit-x86_64 (L)" in str(result.stderr):
+if "conduit/conduit-x86_64" in str(result.stderr):
     result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
     copy_command = str(result.stdout).split()
     for idx, s in enumerate(copy_command):

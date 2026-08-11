@@ -1293,7 +1293,6 @@ def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
             verify=verify_ssl,
             timeout=2
         )
-        
         response.raise_for_status()
         data = response.json()
 
@@ -1303,7 +1302,7 @@ def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
         if not (data.get("rosy_pid") and data.get("submitter_znumber") and data.get("review_complete")):
             st.error("Error while checking if the ROSY ID was reviewed. Review ID and Z# fields.")
             st.stop()
-        
+
         return data["review_complete"]
 
     except requests.exceptions.ConnectionError:
@@ -1314,7 +1313,7 @@ def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
             st.error(f"ROSY API not found at {base_url}. Verify this is a valid ROSY endpoint.")
             st.stop()
         else:
-            st.error(f"HTTP {e.response.status_code} Error: {str(e)}")
+            st.error(f"{str(e)}. Review ID and Z# fields")
             st.stop()
     except ValueError as e:
         st.error(f"Invalid JSON response from {base_url}: {str(e)}")
@@ -2750,7 +2749,7 @@ elif st.session_state.screen == "tier2":
 
             if local_data.lower() == "n/a":
                 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-                if "conduit/conduit-x86_64 (L)" in str(result.stderr):
+                if "conduit/conduit-x86_64" in str(result.stderr):
                     copy_tool = "conduit"
                 elif shutil.which("pfcp"):
                     copy_tool = "pfcp"
