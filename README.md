@@ -17,19 +17,19 @@ Then, open the provided localhost URL in your preferred browser.
 ## Virtual Environment
 It is recommended that users create a virtual environment to run MAVEN with Python 3.12. 
 
-   **Option A: Miniconda3 ([Download](https://www.anaconda.com/download/success))**
+   **Option A: Miniconda3 [Download](https://www.anaconda.com/download/success)**
    ```
    . ~/miniconda3/bin/activate
    conda create -n maven_env python=3.12
    conda activate maven_env                # start here if virtual environment exists
    ```
-   **Option B: Python venv ([Download python 3.12+](https://www.python.org/downloads/))**
+   **Option B: Python venv [Download python 3.12+](https://www.python.org/downloads/)**
    ```
-   python3 -m venv maven_env
+   python -m venv maven_env
    source maven_env/bin/activate           # start here if virtual environment exists
    pip install --upgrade pip
    ```
-   **Option C: uv ([Download](https://pydevtools.com/handbook/how-to/how-to-install-uv/))**
+   **Option C: uv [Download](https://pydevtools.com/handbook/how-to/how-to-install-uv/)**
    ```
    uv venv
    source .venv/bin/activate
