@@ -441,7 +441,7 @@ def get_tier1_fields():
     flattened_fields = flattened_tier1_fields(datacard_dict)
 
     # YAML dict - TODO: Can maybe skip this since not using this in tier1_GenesisCard_agent.py
-    tier1_cards["data_card_yaml"] = yaml.safe_load(GENESIS_MISSION_DATA_CARD_YAML.read_text(encoding="utf-8"))
+    # tier1_cards["data_card_yaml"] = yaml.safe_load(GENESIS_MISSION_DATA_CARD_YAML.read_text(encoding="utf-8"))
 
     # MD str
     with open(GENESIS_MISSION_DATA_CARD_MD, "r") as f:
@@ -2228,7 +2228,10 @@ elif st.session_state.screen == "tier1":
                                           flattened_fields[col] and not str(val).strip()
                                         )
                         if req_field_missing:
-                            missing_fields.get(top_key, []) + [col.replace(".", " -> ")]
+                            if top_key in missing_fields.keys():
+                                missing_fields.get(top_key, []) + [col.replace(".", " -> ")]
+                            else:
+                                missing_fields[top_key] = [col.replace(".", " -> ")]
                     elif not str(val).strip(): # check if missing support fields
                         missing_support.append(col)
 

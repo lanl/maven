@@ -143,7 +143,7 @@ discoverability:
               required: true
               description: " If this data card has a source
                 marking, provide the marking string exactly as it appears on the data
-                card."
+                card. Otherwise the source marking is None."
               value: "${STRING}"
             source_marking_scheme:
               required: true
@@ -153,7 +153,8 @@ discoverability:
                 | Legacy_OUO | Legacy_Site_Specific | Other_Agency | None if a Legacy_OUO
                 is unresolved to a current standard marking, normalized_control_basis
                 should be populated as "Legacy_Needs_Mapping" to indicate that the
-                control basis is legacy and needs interpretation for governance purposes.'
+                control basis is legacy and needs interpretation for governance purposes.
+                Otherwise the source marking is None.'
               value: "${SCHEME}"
             classified_status:
               required: true
@@ -314,11 +315,11 @@ discoverability:
                   description: ""
                   value:
                     given_name:
-                      required: true
+                      required: false
                       description: ""
                       value: "${GIVEN_NAME}"
                     family_name:
-                      required: true
+                      required: false
                       description: ""
                       value: "${FAMILY_NAME}"
                     orcid:
@@ -327,15 +328,15 @@ discoverability:
                         Required where DOE employee/contractor author policy applies, if locally applicable"
                       value: __ORCID__
                     email:
-                      required: true
+                      required: false
                       description: ""
                       value: "${EMAIL}"
                     affiliation:
-                      required: true
+                      required: false
                       description: ""
                       value:
                         name:
-                          required: true
+                          required: false
                           description: ""
                           value: "${ORG_NAME}"
                         ror_id:
@@ -356,11 +357,11 @@ discoverability:
                   description: ""
                   value:
                     name:
-                      required: true
+                      required: false
                       description: ""
                       value: "${ORG_NAME}"
                     ror_id:
-                      required: true
+                      required: false
                       description: ""
                       value: __ROR_ID__
                     role:
@@ -373,30 +374,30 @@ discoverability:
                       - __ROLE__
                 ai_model:
                   required: false
-                  description: "e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3"
+                  description: "e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3 "
                   value:
                     name:
-                      required: true
+                      required: false
                       description: ""
                       value: "${MODEL_NAME}"
                     version:
-                      required: true
+                      required: false
                       description: ""
                       value: __VERSION__
                     accessed_date:
-                      required: true
+                      required: false
                       description: ""
                       value: "${YYYY-MM-DD}"
                     identifier:
-                      required: true
+                      required: false
                       description: ""
                       value:
                         type:
-                          required: true
+                          required: false
                           description: doi | ark | handle | url | local | other
                           value: __TYPE__
                         value:
-                          required: true
+                          required: false
                           description: Link to model card or documentation if available
                           value: __VALUE__
                     role:
@@ -421,23 +422,23 @@ discoverability:
                   description: ""
                   value:
                     name:
-                      required: true
+                      required: false
                       description: ""
                       value: "${SOFTWARE_NAME}"
                     version:
-                      required: true
+                      required: false
                       description: ""
                       value: __VERSION__
                     identifier:
-                      required: true
+                      required: false
                       description: ""
                       value:
                         type:
-                          required: true
+                          required: false
                           description: "doi | ark | handle | url | local | other"
                           value: __TYPE__
                         value:
-                          required: true
+                          required: false
                           description: ""
                           value: __VALUE__
                     role:
@@ -803,11 +804,11 @@ discoverability:
           description: ""
           value:
             given_name:
-              required: true
+              required: false
               description: ""
               value: "${GIVEN_NAME}"
             family_name:
-              required: true
+              required: false
               description: ""
               value: "${FAMILY_NAME}"
             orcid:
@@ -820,11 +821,11 @@ discoverability:
               description: ""
               value: __EMAIL__
             affiliation:
-              required: true
+              required: false
               description: ""
               value:
                 name:
-                  required: true
+                  required: false
                   description: ""
                   value: "${ORG_NAME}"
                 ror_id:
@@ -843,7 +844,7 @@ discoverability:
           description: ""
           value:
             name:
-              required: true
+              required: false
               description: ""
               value: __ORG_NAME__
             ror_id:
@@ -990,7 +991,7 @@ discoverability:
         source_marking_string:
           required: true
           description: " If this dataset has a source marking,
-            provide the marking string exactly as it appears on the data card."
+            provide the marking string exactly as it appears on the data card. Otherwise the source marking is None."
           value: "${STRING}"
         source_marking_scheme:
           required: true
@@ -1253,27 +1254,27 @@ accessibility:
                 If more than one data service or API endpoint exists, list them all.'
               value:
               - name:
-                  required: true
+                  required: false
                   description: 'e.g., "REST API" | "GraphQL endpoint'
                   value: __NAME__
                 endpoint:
-                  required: true
+                  required: false
                   description: ""
                   value: __URL__
                 documentation_url:
-                  required: true
+                  required: false
                   description: ""
                   value: __URL__
                 authentication:
-                  required: true
+                  required: false
                   description: "None | API_Key | OAuth2 | SAML | Certificate | OpenID_Connect | Basic_Auth | Bearer_Token | Other"
                   value: __AUTH__
                 version:
-                  required: true
+                  required: false
                   description: ""
                   value: __VERSION__
                 rate_limit:
-                  required: true
+                  required: false
                   description: 'e.g., "1000 requests/hour"'
                   value: __LIMIT__
     dataset_scale:
@@ -1371,19 +1372,19 @@ interoperability:
                 use for area coverage aligns with datacite:geoLocationBox"
               value:
                 westBoundLongitude:
-                  required: true
+                  required: false
                   description: aligns with datacite:westBoundLongitude
                   value: __DECIMAL_DEG__
                 eastBoundLongitude:
-                  required: true
+                  required: false
                   description: aligns with datacite:eastBoundLongitude
                   value: __DECIMAL_DEG__.
                 southBoundLatitude:
-                  required: true
+                  required: false
                   description: aligns with datacite:southBoundLatitude
                   value: __DECIMAL_DEG__
                 northBoundLatitude:
-                  required: true
+                  required: false
                   description: aligns with datacite:northBoundLatitude
                   value: __DECIMAL_DEG__
         temporal_coverage:
@@ -1422,16 +1423,15 @@ interoperability:
           value: "${DESCRIPTION}"
         source_data:
           required: false
-          description: " Source datasets this dataset
-            was derived from."
+          description: " Source datasets or experiments this dataset was derived from."
           value:
             name:
               required: true
-              description: ""
+              description: "List the data owner"
               value: __NAME__
             identifier:
               required: true
-              description: ""
+              description: "doi | ark | handle | url | local | other"
               value:
                 type:
                   required: true
@@ -1439,7 +1439,7 @@ interoperability:
                   value: __TYPE__
                 value:
                   required: true
-                  description: ""
+                  description: "List the corresponding info for type. Otherwise list not_applicable"
                   value: __VALUE__
             relationship:
               required: true
@@ -1544,15 +1544,15 @@ interoperability:
         \| trained_on \| evaluated_on. '
       value:
         datasets:
-          required: true
+          required: false
           description: ""
           value: []
         publications:
-          required: true
+          required: false
           description: ""
           value: []
         software:
-          required: true
+          required: false
           description: ""
           value: []
         ai_models:
@@ -1566,11 +1566,11 @@ interoperability:
         metadata for more than one domain or schema. Domain-specific metadata supplements
         the discoverability-level metadata and should not replace the common metadata
         expected elsewhere in the data card.  e.g.,
-        "Accelerator Operations Metadata" | "Climate Data Variables"'
+        "Accelerator Operations Metadata" | "Climate Data Variables" | "None"'
       value:
       - name:
-          required: true
-          description: '"Climate Data Variables"'
+          required: false
+          description: ''
           value: __NAME__
         description:
           required: false
@@ -1589,11 +1589,11 @@ interoperability:
           description: ""
           value:
             type:
-              required: true
+              required: false
               description: doi | url | ark | handle | local | other
               value: __TYPE__
             value:
-              required: true
+              required: false
               description: ""
               value: __VALUE__
         version:
@@ -1873,12 +1873,12 @@ reusability:
           description: ' "Yes" | "No"'
           value: __Yes|No__
         checksum_type:
-          required: true
+          required: false
           description: '[required if checksum_available="Yes"] sha256 | sha512 | md5
             | other sha256 recommended; md5 not recommended for new datasets'
           value: __TYPE__
         checksum_value:
-          required: true
+          required: false
           description: '[required if checksum_available="Yes"] Checksum of primary
             data file(s). For multi-file datasets, provide a checksum manifest and
             link here.'
