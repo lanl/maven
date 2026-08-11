@@ -1397,16 +1397,16 @@ def update_short_project_title_dialog(qid: int, short_proj_name: str, hpc_campai
         st.rerun()
 
 
-@st.dialog("Update Maven Directory", width="medium")
+@st.dialog("Update MAVEN Directory", width="medium")
 def update_maven_dir_dialog():
-    st.write("Enter a directory where Maven should store all metadata databases.")
+    st.write("Enter a directory where MAVEN should store all metadata databases.")
 
     curr_dir = get_maven_dir()
-    dir_input = st.text_input("Maven Directory", value=curr_dir, key="update_maven_dir")
+    dir_input = st.text_input("MAVEN Directory", value=curr_dir, key="update_maven_dir")
 
     if st.button("Save", type="primary", width="stretch"):
         if save_maven_dir(dir_input):
-            st.success("Maven Directory saved.")
+            st.success("MAVEN Directory saved.")
             st.rerun()
 
 
@@ -1500,7 +1500,7 @@ def confirm_context_files_dialog(context_files): # add :str or :list
 # -----------------------------
 # App start
 # -----------------------------
-st.set_page_config(page_title="Maven",
+st.set_page_config(page_title="MAVEN",
                    page_icon="📝", layout="wide")
 
 st.markdown("""
@@ -1562,12 +1562,12 @@ if "confirm_submit_context_files" not in st.session_state:
     st.session_state.confirm_submit_context_files = False
 
 if get_maven_dir() is None:
-    st.title("Welcome to the Maven App")
+    st.title("Welcome to the MAVEN App")
     st.write("Enter a space to create a directory store metadata databases and AI API variables.")
 
-    st.write("Maven Directory")
+    st.write("MAVEN Directory")
     st.caption("Location where a directory will be created that stores all metadata files")
-    dir_input = st.text_input("Maven Directory", placeholder="/path/to/maven/projects", label_visibility="collapsed")
+    dir_input = st.text_input("MAVEN Directory", placeholder="/path/to/maven/projects", label_visibility="collapsed")
     api_keys_exist = load_env_keys()
     if not api_keys_exist:
         st.write("AI API Key")
@@ -1600,7 +1600,7 @@ loaded_keys = load_env_keys()
 if not loaded_keys:
     aim_left, aim_mid, aim_right = st.columns([0.5, 3.6, 0.5], width='stretch')
     with aim_mid:
-        st.title("Welcome to the Maven App")
+        st.title("Welcome to the MAVEN App")
         if not st.session_state.select_model_screen:
             st.subheader("Enter AI API Key and Base URL")
             
@@ -1703,10 +1703,10 @@ if st.session_state.screen == "datasheet":
 
         first_l, first_m, first_r = st.columns([0.75, 5, 0.75])
         with first_m:
-            st.title("Maven Home")
+            st.title("MAVEN Home")
             second_l, second_r = st.columns(2)
             with second_l:
-                if st.button("Edit Maven Directory", key="edit_maven_dir_btn", width="stretch"):
+                if st.button("Edit MAVEN Directory", key="edit_maven_dir_btn", width="stretch"):
                     st.session_state.select_model_screen = False
                     st.session_state.update_ai_info_screen = False
                     update_maven_dir_dialog()
@@ -2470,6 +2470,7 @@ elif st.session_state.screen == "tier2":
                             "Please try again later or clear the ROSY fields for now.")
                     st.stop()
             elif (valid_rosy_id and rosy_z_num_input is None) or (not valid_rosy_id and rosy_z_num_input is not None):
+                # TODO: should incorrect ROSY info throw error or just warning and say not saving it.
                 st.error("If registering ROSY review, enter both ID and associated Z#. Cannot only save one and not the other.")
                 st.stop()
             t1_store.close()
