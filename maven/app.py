@@ -2229,7 +2229,7 @@ elif st.session_state.screen == "tier1":
                                         )
                         if req_field_missing:
                             if top_key in missing_fields.keys():
-                                missing_fields.get(top_key, []) + [col.replace(".", " -> ")]
+                                missing_fields[top_key].append(col.replace(".", " -> "))
                             else:
                                 missing_fields[top_key] = [col.replace(".", " -> ")]
                     elif not str(val).strip(): # check if missing support fields
@@ -2473,7 +2473,6 @@ elif st.session_state.screen == "tier2":
                             "Please try again later or clear the ROSY fields for now.")
                     st.stop()
             elif (valid_rosy_id and rosy_z_num_input is None) or (not valid_rosy_id and rosy_z_num_input is not None):
-                # TODO: should incorrect ROSY info throw error or just warning and say not saving it.
                 st.error("If registering ROSY review, enter both ID and associated Z#. Cannot only save one and not the other.")
                 st.stop()
             t1_store.close()
