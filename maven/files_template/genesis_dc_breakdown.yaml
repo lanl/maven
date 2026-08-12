@@ -1,0 +1,2206 @@
+---
+supports_discoverability:
+  required: true
+  description: Dataset can be found and identified in catalogs. Required for every
+    data card, with no exceptions. "Yes" (only valid value — always required and always
+    Yes) [required] "Yes" is required as all data cards must support basic discovery
+    and identification of the dataset. "Yes" is required for all data cards.
+  value: 'Yes'
+
+
+supports_accessibility:
+  required: true
+  description: Data card includes the metadata needed for others to know how to access
+    the dataset (account, agreement, location, etc.). Recommended for all; required
+    for datasets being shared. "No" [required] Set to "Yes" if this data card includes
+    the metadata to support accessibility of the dataset. Required for data cards
+    describing datasets that are shared or published. Does not necessary indicate
+    that the dataset itself is accessible, only that the data card includes all the
+    metadata to support accessibility.
+  value: ${"Yes|No"}
+
+
+supports_interoperability:
+  required: true
+  description: Data card includes the metadata needed to integrate or combine this
+    dataset with others (formats, schema, provenance). "No" [required] Set to "Yes"
+    if this data card includes the metadata to support interoperability of the dataset.
+    Does not necessary indicate that the dataset itself is interoperable, only that
+    the data card includes all the metadata to support interoperability.
+  value: ${"Yes|No"}
+
+
+supports_reusability:
+  required: true
+  description: Data card includes licensing, stewardship, data quality, and citation
+    metadata needed for reuse. "No" [required] Set to "Yes" if this data card includes
+    the metadata to support reusability of the dataset. Does not necessary indicate
+    that the dataset itself is reusable, only that the data card includes some metadata
+    to support reusability.
+  value: ${"Yes|No"}
+
+
+supports_governed_use:
+  required: true
+  description: Data card includes governance metadata (export control, privacy, rights,
+    compliance, review history) for datasets subject to oversight. "No" [required]
+    Set to "Yes" if this data card includes the metadata to support governed use of
+    the dataset. Does not necessary indicate that the dataset itself is cleared for
+    governed use, only that the data card includes some metadata to support governed
+    use.
+  value: ${"Yes|No"}
+
+
+supports_ai_usability:
+  required: true
+  description: Data card includes the metadata needed for AI/ML training, inference,
+    or evaluation use. "No" [required] Set to "Yes" if this data card includes the
+    metadata to support AI usability of the dataset. Does not necessary indicate that
+    the dataset itself is AI-usable, only that the data card includes some metadata
+    to support AI usability.
+  value: ${"Yes|No"}
+
+
+discoverability:
+  required: true
+  description: "Required for all datasets regardless of publication state other intended capabilities. 
+    Populate the fields marked [discoverability_required] to support basic discovery and identification 
+    of this dataset, and to provide essential context for understanding the dataset's sensitivity and use. 
+    Population discoverability_if_applicable fields is optional but recommended to further enhance 
+    discoverability and support responsible use."
+  value:
+    datacard:
+      required: true
+      description: DATA CARD METADATA Describes this document itself — not the dataset.
+      value:
+        template_version:
+          required: true
+          description: " DO NOT MODIFY — used by parsers to apply version-specific logic"
+          value: '1.2'
+        datacard_version:
+          required: true
+          description: " Version of this specific data card
+            document. Increment when the data card is meaningfully updated. Use semantic
+            versioning: MAJOR.MINOR.PATCH e.g., 1.0 → 1.1 for content updates; 1.x
+            → 2.0 for structural changes"
+          value: '1.0'
+        filename:
+          required: true
+          description: " Follow naming convention; align
+            with identification.name; use genesis_datacard_other for datasets that
+            are not part of a Genesis project or sub-project."
+          value: genesis_datacard_${SNAKE_CASE_DATASET_NAME}.md
+        language:
+          required: true
+          description: " ISO 639-1 language code for this data card's content"
+          value: en
+        id:
+          required: false
+          description: " Persistent identifier for
+            this data card document itself, distinct from the dataset identifier.
+            Assign if the data card is registered in a catalog or repository independently
+            of the dataset."
+          value:
+            type:
+              required: false
+              description: doi | ark | handle | url | local | other
+              value: __TYPE__
+            value:
+              required: false
+              description: " the identifier value"
+              value: __VALUE__
+        sensitivity:
+          required: true
+          description: Sensitivity of the DATA CARD itself, which may differ from
+            the sensitivity of the dataset it describes. Populate based on the sensitivity
+            of the data card content alone, not the dataset. See NOTE ON SENSITIVITY
+            above.
+          value:
+            overall_sensitivity:
+              required: true
+              description: " The overall sensitivity of
+                THE DATA CARD only. Set based solely on the sensitivity of this data
+                card. not the dataset it describes. See NOTE ON SENSITIVITY above.
+                The sensitivity of the data card and the dataset are independent and
+                will often differ. Uses a controlled vocabulary: - Public: No sensitivity;
+                publicly shareable. - Unclassified_Uncontrolled: Unclassified but
+                uncontrolled; may have minimal sensitivity; generally shareable with
+                minimal controls. - CUI: CUI (Controlled Unclassified Information);
+                requires handling per CUI guidelines; access controls required. -
+                UCNI: UCNI (Unclassified Controlled Nuclear Information); requires
+                handling per UCNI guidelines; strict access controls required. - Classified:
+                Classified information; requires handling per classification level
+                and guide; strict access controls required. - Legacy_Controlled: Legacy
+                controlled information; may have specific handling requirements based
+                on legacy controls; access controls required. - Mixed: Mixed sensitivity;
+                contains a combination of sensitive and non-sensitive information;
+                handling requirements depend on the specific content; access controls
+                required. - Other_Controlled: Other controlled information; may have
+                specific handling requirements based on other controls; access controls
+                required."
+              value: "${OVERALL_SENSITIVITY}"
+            source_marking_string:
+              required: true
+              description: " If this data card has a source
+                marking, provide the marking string exactly as it appears on the data
+                card. Otherwise the source marking is None."
+              value: "${STRING}"
+            source_marking_scheme:
+              required: true
+              description: ' If this data card has a source
+                marking, provide the marking scheme used. use vocabulary: DOE_CUI
+                | DOE_UCNI | EO13526_Classified | AEA_RD_FRD_TFNI | DOD_CUI | DHS_CUI
+                | Legacy_OUO | Legacy_Site_Specific | Other_Agency | None if a Legacy_OUO
+                is unresolved to a current standard marking, normalized_control_basis
+                should be populated as "Legacy_Needs_Mapping" to indicate that the
+                control basis is legacy and needs interpretation for governance purposes.
+                Otherwise the source marking is None.'
+              value: "${SCHEME}"
+            classified_status:
+              required: true
+              description: ' "Yes" | "No" description: Indicates
+                whether the asset is classified.'
+              value: "${STATUS}"
+            classification_level:
+              required: false
+              description: " For classified information,
+                Top_Secret | Secret | Confidential classification level"
+              value: __LEVEL__
+            classification_category:
+              required: false
+              description: " For classified information,
+                list the classification category or categories, if applicable. use
+                vocabulary: NSI | RD | FRD | TFNI | Other_Classified"
+              value: []
+            classified_control_markings:
+              required: false
+              description: ' For classified information,
+                list the specific control markings that apply, if any. Provide as
+                a list of unique entries if multiple markings apply. e.g., - "NOFORN"
+                - "CNWDI" - "SIGMA 14" - "REL TO USA, CAN, GBR" - "ORCON"'
+              value: []
+            cui_status:
+              required: true
+              description: ' "Yes" | "No" description: Indicates
+                whether the asset is CUI.'
+              value: "${STATUS}"
+            cui_basic_categories:
+              required: false
+              description: '[discoverability_if_applicable, at least one basic or
+                specified category is required if cui_status = "Yes"] For CUI, list
+                the basic category or categories that apply, if any. use DOE/ISOO-authoritative
+                CUI Basic categories or subcategories. provide as a list of unique
+                entries if multiple categories apply.'
+              value: []
+            cui_specified_categories:
+              required: false
+              description: '[discoverability_if_applicable, at least one basic or
+                specified category is required if cui_status = "Yes"] For CUI, list
+                the specified category or categories that apply, if any. use DOE/ISOO-authoritative
+                CUI Specified categories or subcategories. provide as a list of unique
+                entries if multiple categories apply.'
+              value: []
+            cui_limited_dissemination_controls:
+              required: false
+              description: ' List the applicable CUI
+                limited dissemination controls, if any. provide as a list of unique
+                entries if multiple controls apply. e.g., - "NOFORN" - "DL ONLY" -
+                "REL TO USA, GBR" - "DISPLAY ONLY USA, GBR" - "RELIDO" If cui_limited_dissemination_controls
+                contains NOFORN, REL TO..., DISPLAY ONLY..., or similar controls,
+                foreign_national_access_status should be consistent with those controls.'
+              value: []
+            ucni_status:
+              required: true
+              description: ' "Yes" | "No" description: Indicates
+                whether the asset contains UCNI. UCNI is represented separately and
+                should not be treated as an ordinary CUI category value.'
+              value: "${STATUS}"
+            uk_mda_status:
+              required: false
+              description: ' "Yes" | "No"| "Unknown"
+                | "not_applicable" Indicates whether the asset is subject to UK Ministry
+                of Defence Assessment (MDA) controls.'
+              value: __STATUS__
+            legacy_label_source:
+              required: false
+              description: ' Preserves deprecated or
+                local historical control labels such as OUO, SBU, if source_marking_scheme
+                = Legacy_OUO, legacy_label_source should be populated or site-specific
+                legacy markings as provenance/source information only. Provide as
+                a list of unique entries if multiple legacy labels apply. E.g., -
+                "OUO" - "SBU"'
+              value: []
+            normalized_control_basis:
+              required: false
+              description: ' Optional interpreted control
+                basis used for governance where source materials This does not replace
+                authoritative source markings. Provide as a list of unique entries
+                if multiple control bases apply. If source_marking_scheme = Legacy_OUO
+                and the legacy marking is unresolved to a current standard marking,
+                this should be populated as "Legacy_Needs_Mapping" to indicate that
+                the control basis is legacy and needs interpretation for governance
+                purposes. Entries should use this controlled vocabulary: - "Classified"
+                - "CUI" - "UCNI" - "Public_Release_Approved" - "Legacy_Needs_Mapping"
+                - "Other_Controlled"'
+              value: __BASIS__
+        created_date:
+          required: true
+          description: " ISO 8601 date this data card was
+            first created"
+          value: "${YYYY-MM-DD}"
+        updated_date:
+          required: false
+          description: " ISO 8601 date of most recent
+            update; revise on every change"
+          value: __YYYY-MM-DD__
+        change_log:
+          required: true
+          description: " Running history of meaningful changes
+            to this data card. Add a new entry every time the data card is updated.
+            Do not overwrite or delete prior entries."
+          value:
+            change_date:
+              required: true
+              description: " ISO 8601 date of this change"
+              value: "${YYYY-MM-DD}"
+            data_card_version:
+              required: true
+              description: " Running history of meaningful
+                changes to this data card. Add a new entry every time the data card
+                is updated. Do not overwrite or delete prior entries."
+              value: '1.0'
+            summary:
+              required: true
+              description: " Running history of meaningful
+                changes to this data card. Add a new entry every time the data card
+                is updated. Do not overwrite or delete prior entries."
+              value: "${SUMMARY}"
+        creation_method:
+          required: true
+          description: " Method used to create or most recently
+            update this data card. Manual | Automated | Hybrid"
+          value: "${METHOD}"
+        created_by:
+          required: true
+          description: " All individuals, organizations,
+            AI models, or software tools that created or updated this data card. List
+            in chronological order of contribution — e.g., if an AI model generated
+            the initial draft and a person then edited it, list the AI model first."
+          value:
+            contribution_date:
+              required: true
+              description: " ISO 8601 date of this specific
+                contribution"
+              value: "${YYYY-MM-DD}"
+            description:
+              required: false
+              description: " Describe what this contributor did.
+                e.g., 'Automated generation of data card from dataset metadata'
+                e.g., 'Reviewed and corrected AI-generated content'"
+              value: __DESCRIPTION__
+            creator:
+              required: true
+              description: " person | organization | ai_model | software
+                add one block per creator; 
+                list the block that corresponds to the parent {ROLE} contributed to the creation of this data card.
+                Delete the three blocks below that do not apply."
+              value:
+                agent_type:
+                  required: true
+                  description: " person | organization | ai_model | software
+                    TYPE: person — use for a human contributor"
+                  value: "${TYPE}"
+                person:
+                  required: false
+                  description: ""
+                  value:
+                    given_name:
+                      required: false
+                      description: ""
+                      value: "${GIVEN_NAME}"
+                    family_name:
+                      required: false
+                      description: ""
+                      value: "${FAMILY_NAME}"
+                    orcid:
+                      required: false
+                      description: " Format: https://orcid.org/0000-0000-0000-0000
+                        Required where DOE employee/contractor author policy applies, if locally applicable"
+                      value: __ORCID__
+                    email:
+                      required: false
+                      description: ""
+                      value: "${EMAIL}"
+                    affiliation:
+                      required: false
+                      description: ""
+                      value:
+                        name:
+                          required: false
+                          description: ""
+                          value: "${ORG_NAME}"
+                        ror_id:
+                          required: false
+                          description: " Format: https://ror.org/XXXXXXX
+                            Look up at https://ror.org"
+                          value: __ROR_ID__
+                    role:
+                      required: false
+                      description: " list from roles extending the CRediT taxonomy: 
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                        Writing_Review_Editing | Data_Collection | Other"
+                      value:
+                      - __ROLE__
+                organization:
+                  required: false
+                  description: ""
+                  value:
+                    name:
+                      required: false
+                      description: ""
+                      value: "${ORG_NAME}"
+                    ror_id:
+                      required: false
+                      description: ""
+                      value: __ROR_ID__
+                    role:
+                      required: false
+                      description: " list from roles extending the CRediT taxonomy: 
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                        Writing_Review_Editing | Data_Collection | Other"
+                      value:
+                      - __ROLE__
+                ai_model:
+                  required: false
+                  description: "e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3 "
+                  value:
+                    name:
+                      required: false
+                      description: ""
+                      value: "${MODEL_NAME}"
+                    version:
+                      required: false
+                      description: ""
+                      value: __VERSION__
+                    accessed_date:
+                      required: false
+                      description: ""
+                      value: "${YYYY-MM-DD}"
+                    identifier:
+                      required: false
+                      description: ""
+                      value:
+                        type:
+                          required: false
+                          description: doi | ark | handle | url | local | other
+                          value: __TYPE__
+                        value:
+                          required: false
+                          description: Link to model card or documentation if available
+                          value: __VALUE__
+                    role:
+                      required: false
+                      description: " list from roles extending the CRediT taxonomy: 
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                        Writing_Review_Editing | Data_Collection | Other"
+                      value:
+                      - __ROLE__
+                    relationship:
+                      required: false
+                      description: "[discoverability_if_applicable, required for ai_model] select from: 
+                        used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; 
+                        relationship of AI model to the  data card creation process. e.g., 'used_to_create' if the AI model 
+                        generated the initial draft of the data card, 'used_to_analyze' if the AI model analyzed dataset 
+                        metadata to populate the data card, 'evaluated_on' if the AI model was used to evaluate or validate the 
+                        data card content, or 'other' if none of the predefined relationships apply."
+                      value: __RELATIONSHIP__
+                software:
+                  required: false
+                  description: ""
+                  value:
+                    name:
+                      required: false
+                      description: ""
+                      value: "${SOFTWARE_NAME}"
+                    version:
+                      required: false
+                      description: ""
+                      value: __VERSION__
+                    identifier:
+                      required: false
+                      description: ""
+                      value:
+                        type:
+                          required: false
+                          description: "doi | ark | handle | url | local | other"
+                          value: __TYPE__
+                        value:
+                          required: false
+                          description: ""
+                          value: __VALUE__
+                    role:
+                      required: false
+                      description: " list from roles extending the CRediT taxonomy: 
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                        Writing_Review_Editing | Data_Collection | Other"
+                      value:
+                      - __ROLE__
+                    relationship:
+                      required: false
+                      description: "[discoverability_if_applicable, required for ai_model] select from: 
+                        used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; 
+                        relationship of AI model to the  data card creation process. e.g., 'used_to_create' if the AI model 
+                        generated the initial draft of the data card, 'used_to_analyze' if the AI model analyzed dataset 
+                        metadata to populate the data card, 'evaluated_on' if the AI model was used to evaluate or validate the 
+                        data card content, or 'other' if none of the predefined relationships apply."
+                      value: __RELATIONSHIP__
+    identification:
+      required: true
+      description: " Key metadata fields that uniquely identify
+        this dataset."
+      value:
+        name:
+          required: true
+          description: " Single human-readable name for
+            this dataset. Use the same name in the data card filename. If this data
+            card covers a collection, provide the collection name."
+          value: "${DATASET_NAME}"
+        project:
+          required: true
+          description: ' If the dataset is part of a Genesis
+            project or sub-project, specify it here; otherwise, use "not_applicable".
+            e.g., genesis | genesis-fusion | genesis-lightsource'
+          value: "${PROJECT_NAME}"
+        version:
+          required: true
+          description: " Dataset version using semantic
+            versioning: MAJOR.MINOR.PATCH Increment MAJOR for breaking changes, MINOR
+            for additions, PATCH for corrections. Start at 1.0 for first release.
+            See supersedes / superseded_by below for linking versions, and stewardship.versioning_strategy
+            for how versions are managed."
+          value: '1.0'
+        primary_id:
+          required: true
+          description: " Primary persistent identifier for
+            this dataset. Aligns with dcterms:identifier and is the main identifier
+            used in citations and references. Use ark or local if a DOI has not yet
+            been assigned."
+          value:
+            type:
+              required: true
+              description: doi | ark | handle | url | osti | local | other | unregistered
+              value: "${TYPE}"
+            value:
+              required: true
+              description: "value of the primary identifier."
+              value: __VALUE__
+        additional_ids:
+          required: false
+          description: " Additional identifiers for
+            this dataset. Aligns with adms:identifier and can include secondary identifiers,
+            legacy identifiers, or identifiers for specific versions if primary_id
+            is a collection-level identifier."
+          value:
+            type:
+              required: false
+              description: "doi | ark | handle | url | osti | sand | la-ur | local | other"
+              value: __TYPE__
+            value:
+              required: false
+              description: " e.g., SAND2024-XXXXX | LAUR-XX-XXXXX"
+              value: __VALUE__
+        supersedes:
+          required: false
+          description: " Identifier of the prior version
+            this dataset replaces. See stewardship.versioning_strategy for how versions
+            are managed."
+          value:
+            type:
+              required: false
+              description: doi | ark | handle | url | local | other
+              value: __TYPE__
+            value:
+              required: false
+              description: "value of the identifier"
+              value: __VALUE__
+        superseded_by:
+          required: false
+          description: " Identifier of the newer version
+            that replaces this dataset. Populate when this version is deprecated."
+          value:
+            type:
+              required: false
+              description: doi | ark | handle | url | local | other
+              value: __TYPE__
+            value:
+              required: false
+              description: "value of the identifier"
+              value: __VALUE__
+        parent_collection:
+          required: false
+          description: " Parent collection or experimental
+            campaign this dataset belongs to. Use when this dataset is one of many
+            in a larger organized collection or ensemble."
+          value:
+            name:
+              required: false
+              description: "name of the parent collection"
+              value: __NAME__
+            identifier:
+              required: false
+              description: ""
+              value:
+                type:
+                  required: false
+                  description: doi | ark | handle | url | local | other
+                  value: __TYPE__
+                value:
+                  required: false
+                  description: "value of the identifier"
+                  value: __VALUE__
+    dataset_description:
+      required: true
+      description: ""
+      value:
+        science_domain:
+          required: false
+          description: ' Extends the the list of OSTI
+            Subject Areas with an Other category for datasets that do not fit into
+            the OSTI list. Controlled vocabulary: "Biology and Medicine" | "Chemistry"
+            | "Energy Storage, Conversion, and Utilization" | "Engineering" | "Environmental
+            Sciences" | "Fission and Nuclear Technologies" | "Fossil Fuels" | "Geosciences"
+            | "Materials" | "Mathematics and Computing" | "National Defense" | "Physics"
+            | "Power Generation and Distribution" | "Renewable Energy" | "Other"'
+          value: __DOMAIN__
+        dataset_summary:
+          required: true
+          description: " 1-3 sentence plain-language description
+            of the dataset. Write for a broad scientific audience unfamiliar with
+            your project."
+          value: "${SUMMARY}"
+        purpose:
+          required: false
+          description: " Why was this dataset created?
+            What gap does it fill?"
+          value: __PURPOSE__
+        collection_methodology:
+          required: false
+          description: " How was data acquired? e.g.,
+            experimental sensors | computational simulation | human annotation | derived
+            from prior datasets"
+          value: __METHODOLOGY__
+        data_characteristics:
+          required: false
+          description: " Key structural and content
+            characteristics: scale, dimensionality, temporal coverage, spatial resolution"
+          value: __CHARACTERISTICS__
+        limitations:
+          required: false
+          description: " Known limitations, gaps, or
+            caveats users should be aware of before using this dataset."
+          value: __LIMITATIONS__
+        tags:
+          required: false
+          description: " Structured tags for catalog
+            filtering and discovery."
+          value:
+            project:
+              required: false
+              description: e.g., genesis | SCIDAC
+              value: __PROJECT__
+            science:
+              required: false
+              description: e.g., lightsource | fusion | materials | biology
+              value: __SCIENCE__
+            object_type:
+              required: false
+              description: 'select one of: Dataset | Model | Software | AI_Agent |
+                Infrastructure | Resource | Other'
+              value: __TYPE__
+        task_category:
+          required: false
+          description: "[discoverability_if_applicable, at least one value required
+            if task_subcategory is present] Primary ML task category or categories
+            for this dataset. Populate for AI-ready data; helps ML practitioners find
+            relevant datasets in the catalog. e.g., classification | regression |
+            segmentation | detection | generation | translation | summarization |
+            ranking | anomaly_detection | clustering | reinforcement_learning | other"
+          value: []
+        task_subcategory:
+          required: false
+          description: " More specific ML task subcategory
+            or subcategories. e.g., binary_classification | multi_class_classification
+            | multi_label_classification | image_segmentation | object_detection |
+            time_series_forecasting | named_entity_recognition | question_answering
+            | other"
+          value: []
+        keywords:
+          required: true
+          description: " Terms that describe this dataset
+            and aid discovery. Include domain terms, methods, instruments, and relevant
+            ontology terms."
+          value: []
+    product_type:
+      required: true
+      description: 'Primary type of product described by this data card. Aligns with
+        and extends the STI Product Types to support interoperability with STI catalogs
+        and the OSTI DOE Data Explorer. Controlled vocabulary (ProductTypeEnum): Technical_Report
+        \| Paper_or_Proceedings \| Journal_Article \| Software_Manual \| Data \| Collection
+        \| Computer_Related \| Model \| Agent. Data is expected here for a data card
+        describing a dataset; select the best fit if this data card describes a different
+        type of product.  Primary type of product type described
+        by this data card. These align with and extend the STI Product Types to support
+        interoperability with STI catalogs and OSTI DOE Data Explorer. Select the
+        single best-fit: Technical_Report | Paper_or_Proceedings | Journal_Article
+        | Software_Manual | Data | Collection | Computer_Related | Model | Agent Data
+        is expected here for a data card describing a dataset, but select the best
+        fit if this data card describes a different type of product.'
+      value: "${TYPE}"
+    dataset_type:
+      required: false
+      description: 'OSTI DOE Data Explorer type code. Select the single best fit.
+        Controlled vocabulary (DatasetTypeEnum):  OSTI
+        DOE Data Explorer type code. Select the single best-fit: GD Genome/Genetic
+        Data — DNA/RNA sequences, genomic annotations IM Image — photographs, scans,
+        microscopy, visualizations ND Numeric Data — measurements, time series, tabular,
+        sensor readings SM Specialized Mix — multiple data types combined FP Figure/Plot
+        — charts, graphs, plots as primary deliverable I Interactive Resource — web
+        apps, interactive visualizations, dashboards MM Multimedia — audio, video,
+        combined media MD Model — computational models, simulations, trained ML models
+        AS Automated Software — scripts, analysis pipelines, workflows IP Instrumentation/Protocols
+        — experimental protocols, instrument specs IG Integrated Genomic Resources
+        — combined genomic databases and tools'
+      value: __TYPE__
+    release_status:
+      required: true
+      description: 'Current publication and governance state of this dataset. See
+        Workflow state vs. release status in Part 1 for expected alignment with workflow.state.
+        Controlled vocabulary (ReleaseStatusEnum):  Current
+        publication and governance state of this dataset. See NOTE ON WORKFLOW STATE
+        vs. RELEASE STATUS in the header for expected alignment with workflow.state.
+        Draft — work in progress; not ready for sharing Under_Review — submitted for
+        formal review Approved — review complete; cleared for release Published —
+        publicly released and accessible Deprecated — superseded or retired; no longer
+        recommended for use'
+      value: "${STATUS}"
+    dataset_publisher:
+      required: false
+      description: 'Entity responsible for making this dataset available. Often the
+        same as the primary research organization, but may differ if a separate publisher
+        is involved. Sub-fields: name (organization or individual that published this
+        dataset), ror_id (format https://ror.org/XXXXXXX). [discoverability_if_applicable,
+        required when release_status = Approved | Published]'
+      value:
+        name:
+          required: false
+          description: " Organization or individual
+            that published this dataset."
+          value: __ORG_NAME__
+        ror_id:
+          required: false
+          description: " Format: https://ror.org/XXXXXXX"
+          value: __ROR_ID__
+    contact:
+      required: true
+      description: 'The primary point of contact for questions about this dataset.
+        Required for all data cards — every dataset must have a reachable contact.
+        This is who users will reach out to with questions, problems, or collaboration
+        interest. If the dataset is part of a larger collection, the contact may be
+        for the collection as a whole. agent_type: only person is allowed as the primary
+        contact (to ensure accountability and a clear point of contact), or organization
+        (e.g., a data management office, if no single named contact is appropriate).
+        person sub-fields: given_name, family_name, orcid (if_applicable — format
+        https://orcid.org/0000-0000-0000-0000; required where DOE employee/contractor
+        author policy applies), email, affiliation.name, affiliation.ror_id (if_applicable).
+        valid_until (if_applicable): date after which this contact may no longer be
+        valid — use for project-bound contacts (students, postdocs, term staff). succession_note
+        (if_applicable): who to contact if this contact is no longer reachable, e.g.,
+        "Contact the ORNL data management office at data@ornl.gov." Choose a contact
+        who will be reachable for the foreseeable future. For datasets with long retention
+        periods, consider whether the named contact will still be associated with
+        the project in 5–10 years.  Primary point of contact
+        for questions about this DATASET.'
+      value:
+        agent_type:
+          required: true
+          description: person (only a person is allowed as the primary contact to
+            ensure accountability and a clear point of contact) | organization (e.g.,
+            data management office if no single named contact)
+          value: "${TYPE}"
+        person:
+          required: true
+          description: ""
+          value:
+            given_name:
+              required: true
+              description: ""
+              value: "${GIVEN_NAME}"
+            family_name:
+              required: true
+              description: ""
+              value: "${FAMILY_NAME}"
+            orcid:
+              required: false
+              description: " Format: https://orcid.org/0000-0000-0000-0000
+                Required where DOE employee/contractor author policy applies, if locally
+                applicable"
+              value: __ORCID__
+            email:
+              required: true
+              description: ""
+              value: __EMAIL__
+            affiliation:
+              required: true
+              description: ""
+              value:
+                name:
+                  required: true
+                  description: ""
+                  value: __ORG_NAME__
+                ror_id:
+                  required: false
+                  description: " Format: https://ror.org/XXXXXXX"
+                  value: __ROR_ID__
+        valid_until:
+          required: false
+          description: " Date after which this contact
+            may no longer be valid. Use for project-bound contacts (students, postdocs,
+            term staff)."
+          value: __YYYY-MM-DD__
+        succession_note:
+          required: false
+          description: ' Who to contact if this contact
+            is no longer reachable. e.g., "Contact the ORNL data management office
+            at data@ornl.gov"'
+          value: __NOTE__
+    additional_contacts:
+      required: false
+      description: 'Additional contacts (e.g., instrument PI, data steward). Same
+        structure as contact above, with type: person | organization per entry. 
+        Additional contacts (e.g., instrument PI, data steward). Same structure as
+        contact above: contact_details: - type: person | organization person: given_name:
+        __GIVEN_NAME__ family_name: __FAMILY_NAME__ orcid: __ORCID__ # Required where
+        DOE employee/contractor author policy applies, if locally applicable email:
+        __EMAIL__ affiliation: name: __ORG_NAME__ ror_id: __ROR_ID__ valid_until:
+        __YYYY-MM-DD__ succession_note: __NOTE__'
+      value: []
+    authors:
+      required: true
+      description: 'Authors are individuals or organizations with primary intellectual
+        responsibility for the dataset — typically the PI, lead scientist, or data
+        creator. For supporting roles (technicians, annotators, submitters), use contributors
+        instead. Each entry: type: person | organization. '
+      value:
+        type:
+          required: true
+          description: person | organization
+          value: "${TYPE}"
+        person:
+          required: true
+          description: ""
+          value:
+            given_name:
+              required: false
+              description: ""
+              value: "${GIVEN_NAME}"
+            family_name:
+              required: false
+              description: ""
+              value: "${FAMILY_NAME}"
+            orcid:
+              required: false
+              description: ' Strongly recommended — enables disambiguation and credit tracking
+                Required where DOE employee/contractor author policy applies, if locally applicable'
+              value: __ORCID__
+            email:
+              required: false
+              description: ""
+              value: __EMAIL__
+            affiliation:
+              required: false
+              description: ""
+              value:
+                name:
+                  required: false
+                  description: ""
+                  value: "${ORG_NAME}"
+                ror_id:
+                  required: false
+                  description: ""
+                  value: __ROR_ID__
+            role:
+              required: false
+              description: ' list from roles extending the CRediT taxonomy: 
+                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
+                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                Writing_Review_Editing | Data_Collection | Other'
+              value: __ROLE__
+        organization:
+          required: true
+          description: ""
+          value:
+            name:
+              required: false
+              description: ""
+              value: __ORG_NAME__
+            ror_id:
+              required: false
+              description: ""
+              value: __ROR_ID__
+            role:
+              required: false
+              description: ' list from roles extending the CRediT taxonomy: 
+                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
+                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                Writing_Review_Editing | Data_Collection | Other'
+              value: __ROLE__
+    contributors:
+      required: false
+      description: Supporting contributors who are not primary authors — e.g., sample
+        preparers, annotators, reviewers, submitters. Same structure as authors above.
+         Supporting contributors who are not primary
+        authors. e.g., sample preparers, annotators, reviewers, submitters. Same structure
+        as authors above.
+      value: []
+    sponsor_organizations:
+      required: true
+      description: 'Organizations that funded or sponsored this dataset. Populate
+        with known information even for in-workflow data — this supports provenance
+        tracking and credit assignment from the earliest stages of the project. Each
+        entry: name (e.g., DOE Office of Science \| NNSA \| NSF), ror_id (if_applicable),
+        award_number (if_applicable, e.g., DE-AC05-00OR22725), funding_source (if_applicable
+        — controlled vocabulary FundingSourceEnum: DOE_Program_SC \| DOE_Program_NNSA
+        \| LDRD \| WFO \| CRADA \| Other_Federal \| State_Government \| Subcontract
+        \| Industry \| Nonprofit \| Internal \| Other), program (if_applicable, e.g.,
+        "Advanced Scientific Computing Research").  Organizations
+        that funded or sponsored this dataset.'
+      value:
+        name:
+          required: true
+          description: e.g., DOE Office of Science | NNSA | NSF
+          value: "${ORG_NAME}"
+        ror_id:
+          required: false
+          description: ""
+          value: __ROR_ID__
+        award_number:
+          required: false
+          description: "e.g., DE-AC05-00OR22725"
+          value: __AWARD__
+        funding_source:
+          required: false
+          description: 'Identifies the funding source from a controlled vocabulary: 
+            DOE_Program_SC | DOE_Program_NNSA | LDRD | WFO | CRADA | Other_Federal | 
+            State_Government | Subcontract | Industry | Nonprofit | Internal | Other'
+          value: __SOURCE__
+        program:
+          required: false
+          description: 'e.g., "Advanced Scientific Computing Research"'
+          value: __PROGRAM__
+    sponsoring_doe_program_office:
+      required: false
+      description: DOE program office that sponsored this dataset, if applicable.
+         DOE program office that sponsored this dataset,
+        if applicable.
+      value: __NAME__
+    sponsoring_doe_subprogram:
+      required: false
+      description: DOE subprogram that sponsored this dataset, if applicable. 
+        DOE subprogram that sponsored this dataset, if applicable.
+      value: __NAME__
+    research_organizations:
+      required: true
+      description: 'Organizations that created or collected the data. Populate with
+        known information even for in-workflow data, for the same provenance/credit
+        reasons as sponsor_organizations. Each entry: name (e.g., Oak Ridge National
+        Laboratory \| Sandia National Laboratories), ror_id (if_applicable). 
+        Organizations that created or collected the data.'
+      value:
+        name:
+          required: true
+          description: e.g., Oak Ridge National Laboratory | Sandia National Laboratories
+          value: "${ORG_NAME}"
+        ror_id:
+          required: false
+          description: ""
+          value: __ROR_ID__
+    facilities:
+      required: false
+      description: 'User facilities, HPC centers, or research infrastructure used
+        to collect, process, or store the dataset. Populate with known information
+        even for in-workflow data. Each entry: name (e.g., Spallation Neutron Source
+        \| Summit \| Frontier), ror_id (if_applicable), role (list, CRediT-extended
+        RoleEnum), location.description (if_applicable, e.g., "SNS Beamline 1B, Oak
+        Ridge National Laboratory, TN, USA"), location.ror_id (if_applicable — ROR
+        ID of the facility, cross-reference with name). 
+        User facilities, HPC centers, or research infrastructure used to collect,
+        process, or store the dataset. - name: __FACILITY_NAME__ # e.g., Spallation
+        Neutron Source | Summit | Frontier ror_id: __ROR_ID__ role: - __ROLE__ # 
+        list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation
+        | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration
+        | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft
+        | Writing_Review_Editing | Data_Collection | Other location: # 
+        Point location for facility-based experimental data. description: __DESC__
+        # e.g., "SNS Beamline 1B, Oak Ridge National Laboratory, TN, USA" ror_id:
+        __ROR_ID__ # ROR ID of the facility; cross-reference with name above'
+      value: []
+    sensitivity:
+      required: true
+      description: Sensitivity of the dataset described by this data card — distinct
+        from discoverability.datacard.sensitivity, the sensitivity of the data card
+        document itself. See Sensitivity — two independent fields in Part 1. This
+        structure is intended to preserve authoritative source markings/designations
+        while minimizing redundant manual entry, separating actual source marking/control
+        information from adjacent governance metadata (export control, privacy, rights,
+        release, and records status — captured in governed_use). This sub-block shares
+        an identical field layout with discoverability.datacard.sensitivity (see above
+        for the full field table — overall_sensitivity, source_marking_string, source_marking_scheme,
+        classified_status, classification_level, classification_category, classified_control_markings,
+        cui_status, cui_basic_categories, cui_specified_categories, cui_limited_dissemination_controls,
+        ucni_status, uk_mda_status, legacy_label_source, normalized_control_basis),
+        applied here to the dataset rather than the document. Sensitivity of the DATASET
+        described by this data card, which may differ from the sensitivity of the
+        data card itself. Populate based on the sensitivity of the dataset alone,
+        not the data card. See NOTE ON SENSITIVITY above.
+      value:
+        overall_sensitivity:
+          required: true
+          description: " The overall sensitivity of THE
+            DATASET only. Set based solely on the sensitivity of this dataset. not
+            the data card it describes. See NOTE ON SENSITIVITY above. The sensitivity
+            of the data card and the dataset are independent and will often differ.
+            Uses a controlled vocabulary: - Public: No sensitivity; publicly shareable.
+            - Unclassified_Uncontrolled: Unclassified but uncontrolled; may have minimal
+            sensitivity; generally shareable with minimal controls. - CUI: CUI (Controlled
+            Unclassified Information); requires handling per CUI guidelines; access
+            controls required. - UCNI: UCNI (Unclassified Controlled Nuclear Information);
+            requires handling per UCNI guidelines; strict access controls required.
+            - Classified: Classified information; requires handling per classification
+            level and guide; strict access controls required. - Legacy_Controlled:
+            Legacy controlled information; may have specific handling requirements
+            based on legacy controls; access controls required. - Mixed: Mixed sensitivity;
+            contains a combination of sensitive and non-sensitive information; handling
+            requirements depend on the specific content; access controls required.
+            - Other_Controlled: Other controlled information; may have specific handling
+            requirements based on other controls; access controls required."
+          value: "${OVERALL_SENSITIVITY}"
+        source_marking_string:
+          required: true
+          description: " If this dataset has a source marking,
+            provide the marking string exactly as it appears on the data card. Otherwise the source marking is None."
+          value: "${STRING}"
+        source_marking_scheme:
+          required: true
+          description: " If this dataset has a source marking,
+            provide the marking scheme used. use vocabulary: DOE_CUI | DOE_UCNI |
+            EO13526_Classified | AEA_RD_FRD_TFNI | DOD_CUI | DHS_CUI | Legacy_OUO
+            | Legacy_Site_Specific | Other_Agency | None"
+          value: "${SCHEME}"
+        classified_status:
+          required: true
+          description: ' "Yes" | "No" description: Indicates
+            whether the asset is classified.'
+          value: "${STATUS}"
+        classification_level:
+          required: false
+          description: " For classified information,
+            Top_Secret | Secret | Confidential classification level"
+          value: __LEVEL__
+        classification_category:
+          required: false
+          description: " For classified information,
+            list the classification category or categories, if applicable. use vocabulary:
+            NSI | RD | FRD | TFNI | Other_Classified"
+          value: []
+        classified_control_markings:
+          required: false
+          description: ' For classified information,
+            list the specific control markings that apply, if any. Provide as a list
+            of unique entries if multiple markings apply. e.g., - "NOFORN" - "CNWDI"
+            - "SIGMA 14" - "REL TO USA, CAN, GBR" - "ORCON"'
+          value: []
+        cui_status:
+          required: true
+          description: ' "Yes" | "No" description: Indicates
+            whether the asset is CUI.'
+          value: "${STATUS}"
+        cui_basic_categories:
+          required: false
+          description: '[discoverability_if_applicable, at least one basic or specified
+            category is required if cui_status = "Yes"] For CUI, list the basic category
+            or categories that apply, if any. use DOE/ISOO-authoritative CUI Basic
+            categories or subcategories. provide as a list of unique entries if multiple
+            categories apply.'
+          value: []
+        cui_specified_categories:
+          required: false
+          description: '[discoverability_if_applicable, at least one basic or specified
+            category is required if cui_status = "Yes"] For CUI, list the specified
+            category or categories that apply, if any. use DOE/ISOO-authoritative
+            CUI Specified categories or subcategories. provide as a list of unique
+            entries if multiple categories apply.'
+          value: []
+        cui_limited_dissemination_controls:
+          required: false
+          description: ' List the applicable CUI limited
+            dissemination controls, if any. provide as a list of unique entries if
+            multiple controls apply. e.g., - "NOFORN" - "DL ONLY" - " REL TO USA,
+            GBR" - "DISPLAY ONLY USA, GBR" - "RELIDO" If cui_limited_dissemination_controls
+            contains NOFORN, REL TO..., DISPLAY ONLY..., or similar controls, foreign_national_access_status
+            should be consistent with those controls.'
+          value: []
+        ucni_status:
+          required: true
+          description: ' "Yes" | "No" description: Indicates
+            whether the asset contains UCNI. UCNI is represented separately and should
+            not be treated as an ordinary CUI category value.'
+          value: "${STATUS}"
+        uk_mda_status:
+          required: false
+          description: ' "Yes" | "No" | "Unknown" |
+            not_applicable Indicates whether the asset is subject to UK Ministry of
+            Defence Assessment (MDA) controls.'
+          value: __STATUS__
+        legacy_label_source:
+          required: false
+          description: ' Preserves deprecated or local
+            historical control labels such as OUO, SBU, or site-specific legacy markings
+            as provenance/source information only. Provide as a list of unique entries
+            if multiple legacy labels apply. E.g., - "OUO" - "SBU"'
+          value: __STRING__
+        normalized_control_basis:
+          required: false
+          description: " Optional interpreted control
+            basis used for governance where source materials contain legacy, mixed,
+            or non-standard constructs. This does not replace authoritative source
+            markings. Provide as a list of unique entries if multiple control bases
+            apply. Entries should use this controlled vocabulary: - Classified - CUI
+            - UCNI - Public_Release_Approved - Legacy_Needs_Mapping - Other_Controlled"
+          value: __BASIS__
+    workflow:
+      required: true
+      description: Describes the technical and processing lifecycle position of the
+        dataset. See Workflow state vs. release status in Part 1 for expected alignment
+        with release_status.
+      value:
+        state:
+          required: true
+          description: " Current lifecycle position: Raw
+            — data as collected; no processing applied Processing — actively being
+            cleaned, transformed, or reduced QA — undergoing quality assurance or
+            validation Analysis — in active scientific analysis Review — under formal
+            review (security, export, IRB, etc.) Embargo — complete but intentionally
+            withheld from release Published — publicly released Archived — preserved;
+            no longer actively maintained not_applicable - use when workflow state
+            is not applicable or not yet determined"
+          value: "${STATE}"
+        is_intermediate:
+          required: false
+          description: ' "Yes" | "No" if this is an
+            intermediate processing artifact rather than a final deliverable. "No"
+            if this is final.'
+          value: __Yes|No__
+        pipeline_stage:
+          required: false
+          description: ' Freetext position in processing
+            pipeline. e.g., "post-detector, pre-reconstruction" e.g., "raw telemetry,
+            pre-calibration"'
+          value: __STAGE__
+        embargo_until:
+          required: false
+          description: " Required if state=embargo.
+            ISO 8601 date after which release is permitted."
+          value: __YYYY-MM-DD__
+
+
+accessibility:
+  required: true
+  description: 'Describes who can access this dataset and under what conditions. Access policy
+    for the dataset. Describes the access level and any restrictions or requirements
+    for accessing the dataset, which is critical information for users to understand
+    how they can access the dataset and any potential barriers to access. Access policy
+    is DISTINCT from sensitivity, which describes the nature of the data and its potential
+    risks) and from release status (which describes the publication state of the dataset).
+    access_policy.access_level is a required field that indicates the level of permissions
+    required for users to access the dataset, following AccessLevelEnum. - open: no
+    additional permissions required beyond standard account registration and agreement
+    to terms of service. This indicates that the dataset is freely accessible to the
+    public and can be used without any special permissions or restrictions. Note that
+    "open" does not necessarily mean that the dataset is free of copyright or other
+    legal restrictions, but rather that there are no additional access controls in
+    place. Users may still need to comply with any applicable laws or regulations
+    when using the dataset. - restricted: access may be granted to users who meet
+    certain criteria, such as being part of a specific research community, having
+    a legitimate research purpose, or agreeing to specific terms and conditions. This
+    indicates that the dataset is not freely accessible to the public and that users
+    must meet certain requirements or restrictions in order to access it. The specific
+    criteria for access may vary depending on the dataset and the organization providing
+    it, but could include things like institutional affiliation, research purpose,
+    or agreement to specific terms and conditions. - controlled: access is tightly
+    controlled and may require specific authorization, agreements, or approvals. This
+    indicates that the dataset contains sensitive information and that only authorized
+    users can access it.'
+  value:
+    access_policy:
+      required: true
+      description: ""
+      value:
+        access_level:
+          required: true
+          description: " Open | Restricted | Controlled"
+          value: "${LEVEL}"
+        access_restrictions:
+          required: false
+          description: ' Freetext description of access
+            restrictions. e.g., "Requires signed DUA" | "None - publicly accessible"'
+          value: __RESTRICTIONS__
+        authorization_required:
+          required: false
+          description: " Required if access_level is
+            not open. List of authorization needed to access this dataset: Account
+            — registered account required User_Agreement — user agreement or terms
+            of service Data_Use_Agreement — formal DUA required Sponsor_Approval —
+            sponsor or PI approval required Export_Control_Review — export control
+            review required IRB_Approval — IRB approval required Other — describe
+            in access_restrictions"
+          value: __AUTH__
+        intended_partner_classes:
+          required: false
+          description: " List of intended partner classes
+            or user groups for this dataset, if any. from controlled vocabulary: Internal_Team
+            | Tri_Lab | DOE_NNSA_Lab | Federal_Partner | Contractor | Academic_Researchers
+            | External_Research_Partner | Public | Industry_Partner | Other If absent,
+            or null, this field is not yet known or determined. Use an empty list
+            if definitively no specific partner classes are targeted. Use public if
+            this dataset is intended for broad public use without restrictions."
+          value: []
+        approved_environments:
+          required: false
+          description: ' Describe the approved environment
+            for access. List of approved environments, if more than one — e.g., "DOE
+            HPC facilities with export control review" | "On-site access only at Oak
+            Ridge National Laboratory" [] means no explicitly approved environments;
+            access may still be granted on a case-by-case basis. null or absent means
+            it has not yet been determined whether approved environments are required.'
+          value: []
+        policy_url:
+          required: false
+          description: " URL to the full access policy
+            document"
+          value: __URL__
+        policy_text:
+          required: false
+          description: " Inline summary if no policy_url
+            exists"
+          value: __TEXT__
+    access:
+      required: true
+      description: ""
+      value:
+        current_location:
+          required: true
+          description: " Where the data physically resides
+            right now. Use for in-workflow data not yet deposited in a repository,
+            or for any dataset with a known internal or external storage path. e.g.,
+            /mnt/ecs/scientific-data/project/dataset/ e.g., /lustre/orion/proj-shared/dataset/
+            e.g., s3://genesis-bucket/dataset/"
+          value: "${PATH_OR_URL}"
+        publicly_facing_landing_page_url:
+          required: false
+          description: " URL to the publicly facing landing
+            page for this dataset. This is the URL that should be shared publicly
+            and included in citations. It may differ from the current_location if
+            the dataset is not yet publicly released or if the current_location is
+            an internal storage path."
+          value: __URL__
+        intended_repositories:
+          required: false
+          description: " Repositories you intend to deposit
+            or have deposited this dataset in. The managing repository or catalog
+            system will resolve and populate repository-assigned fields at ingest
+            (see REPOSITORY-MANAGED block). Repositories may be institutional, project-owned,
+            community, or national (e.g., Zenodo, institutional data repository, project
+            data store)."
+          value:
+            name:
+              required: false
+              description: ' e.g., "Zenodo" | "Globus" | "internal"'
+              value: __NAME__
+            access_level:
+              required: false
+              description: " Intended access level: Open | Restricted | Controlled
+                The same dataset may have different access levels per repository.
+                Open: anyone can discovery and access without special permissions.
+                Restricted: data may be discoverable, but users must satisfy basic access requirements (authentication, 
+                institutional affiliation, registration, agreement to terms, etc.). Approval is generally automatic or administrative.
+                Controlled: Access is granted only after review and explicit authorization based on the requester, intended use, 
+                legal requirements, or security considerations. Requests may be denied."
+              value: __LEVEL__
+            is_primary:
+              required: false
+              description: ' "Yes" | "No" — only one entry should be marked "Yes"'
+              value: __Yes|No__
+            date_deposited:
+              required: false
+              description: ""
+              value: __YYYY-MM-DD__
+            data_services:
+              required: false
+              description: 'Populate if Data Service / API endpoints exists for this dataset aligns with dcterms:DataService. 
+                If more than one data service or API endpoint exists, list them all.'
+              value:
+              - name:
+                  required: false
+                  description: 'e.g., "REST API" | "GraphQL endpoint'
+                  value: __NAME__
+                endpoint:
+                  required: false
+                  description: ""
+                  value: __URL__
+                documentation_url:
+                  required: false
+                  description: ""
+                  value: __URL__
+                authentication:
+                  required: false
+                  description: "None | API_Key | OAuth2 | SAML | Certificate | OpenID_Connect | Basic_Auth | Bearer_Token | Other"
+                  value: __AUTH__
+                version:
+                  required: false
+                  description: ""
+                  value: __VERSION__
+                rate_limit:
+                  required: false
+                  description: 'e.g., "1000 requests/hour"'
+                  value: __LIMIT__
+    dataset_scale:
+      required: false
+      description: Physical size and record counts for the dataset. Fill in what you
+        know — even approximate values help catalog users assess whether a dataset
+        is practical to download and use. 
+      value:
+        record_count:
+          required: false
+          description: Number of primary records, samples, or files 
+          value: __COUNT__
+        record_unit:
+          required: false
+          description: samples | files | records | timesteps | images | tokens | other
+          value: __UNIT__
+        compressed_bytes:
+          required: false
+          description: Total dataset size when compressed, in bytes 
+          value: __BYTES__
+        uncompressed_bytes:
+          required: false
+          description: Total dataset size when uncompressed, in bytes 
+          value: __BYTES__
+
+
+interoperability:
+  required: true
+  description: "Metadata elements that describe the interoperability of this dataset — context of data collection, 
+    data structure, provenance, related resources, schema, and domain-specific metadata. Important for users to understand 
+    how they can use the dataset and what tools or software they may need to work with it."
+  value:
+    data_structure:
+      required: true
+      description: ""
+      value:
+        formats:
+          required: true
+          description: ' File formats in this dataset.
+            e.g., ["CSV", "HDF5", "NetCDF4", "Parquet", "TIFF", "JSON"]'
+          value: []
+        encoding:
+          required: false
+          description: " Character encoding for text-based
+            formats. e.g., UTF-8 | ASCII | Latin-1 UTF-8 strongly recommended. Use
+            not_applicable for binary formats."
+          value: __ENCODING__
+        schema_version:
+          required: false
+          description: " Version of the data schema
+            used in this dataset. Distinct from data card_version. Increment when
+            field names, types, or structure change between dataset versions."
+          value: __VERSION__
+        modalities:
+          required: true
+          description: ' Data modalities present. e.g.,
+            ["tabular", "image", "time-series", "text", "graph", "point-cloud"]'
+          value: []
+        features:
+          required: true
+          description: ' Primary variables, fields, or
+            features. IMPORTANT: choose ONE form and use it consistently — do not
+            mix. For basic documentation — flat string list: - name: temperature -
+            name: pressure - name: timestamp - name: label To support AI-ready data
+            — structured form (replace flat list above): - name: temperature: data_type:
+            float # float | int | string | boolean | datetime | other unit: Kelvin
+            description: Sample temperature at time of measurement range: "273.15
+            - 373.15"'
+          value: []
+        splits:
+          required: false
+          description: ' Dataset splits if pre-divided.
+            e.g., ["train", "test", "validation"]'
+          value: []
+        language:
+          required: false
+          description: " ISO 639-1 language code for
+            dataset content (e.g., text corpora, annotation labels). Distinct from
+            data card.language. Use not_applicable for non-linguistic data (numeric,
+            image, simulation output, etc.)"
+          value: __LANG__
+        spatial_coverage:
+          required: false
+          description: " Geographic coverage of the
+            dataset. Use for geospatial datasets or facility-based experiments."
+          value:
+            description:
+              required: false
+              description: ' e.g., "Continental United
+                States" | "SNS Beamline 1B, ORNL"'
+              value: __DESC__
+            geo_location_box:
+              required: false
+              description: " WGS84 decimal degrees;
+                use for area coverage aligns with datacite:geoLocationBox"
+              value:
+                westBoundLongitude:
+                  required: false
+                  description: aligns with datacite:westBoundLongitude
+                  value: __DECIMAL_DEG__
+                eastBoundLongitude:
+                  required: false
+                  description: aligns with datacite:eastBoundLongitude
+                  value: __DECIMAL_DEG__.
+                southBoundLatitude:
+                  required: false
+                  description: aligns with datacite:southBoundLatitude
+                  value: __DECIMAL_DEG__
+                northBoundLatitude:
+                  required: false
+                  description: aligns with datacite:northBoundLatitude
+                  value: __DECIMAL_DEG__
+        temporal_coverage:
+          required: false
+          description: ' Time period the dataset content
+            represents. aligns with schema:temporalCoverage NOTE: distinct from dates.data_collection_start/end,
+            which describe when collection occurred. Use temporal_coverage when the
+            dataset describes a specific historical or projected time period that
+            differs from when collection happened. e.g., "Monthly climate averages
+            1950–2020" collected in 2024: temporal_coverage.start = 1950-01-01 dates.data_collection_start
+            = 2024-01-01'
+          value:
+            start_date:
+              required: false
+              description: " aligns with dcterms:coverage"
+              value: __YYYY-MM-DD__
+            end_date:
+              required: false
+              description: " aligns with dcterms:coverage"
+              value: __YYYY-MM-DD__
+            description:
+              required: false
+              description: ""
+              value: __DESC__
+    provenance:
+      required: true
+      description: "Describes how this dataset was created, what it was derived from, and what processing was applied."
+      value:
+        was_generated_by:
+          required: true
+          description: ' High-level description of the
+            generating process. Even a one-line answer dramatically improves catalog
+            value. e.g., "Neutron scattering experiment at SNS Beamline 1B" e.g.,
+            "Monte Carlo simulation using MCNP 6.2" e.g., "Derived from raw telemetry
+            via calibration pipeline v2.1"'
+          value: "${DESCRIPTION}"
+        source_data:
+          required: false
+          description: " Source datasets or experiments this dataset was derived from."
+          value:
+            name:
+              required: true
+              description: "List the data owner"
+              value: __NAME__
+            identifier:
+              required: true
+              description: "doi | ark | handle | url | local | other"
+              value:
+                type:
+                  required: true
+                  description: "doi | ark | handle | url | local | other"
+                  value: __TYPE__
+                value:
+                  required: true
+                  description: "List the corresponding info for type. Otherwise list not_applicable"
+                  value: __VALUE__
+            relationship:
+              required: true
+              description: "is_derived_from | is_based_on | is_part_of | has_part | references | other"
+              value: __REL__
+        processing_steps:
+          required: true
+          description: " Key processing, cleaning, calibration,
+            or transformation steps applied to produce this dataset."
+          value: "${DESCRIPTION}"
+        instrumentation:
+          required: false
+          description: " Instruments, sensors, detectors,
+            or equipment used. Include make, model, and version where relevant."
+          value: __DESCRIPTION__
+        simulation_details:
+          required: false
+          description: ' For simulation-derived data:
+            code, version, key parameters, and configuration. e.g., "LAMMPS 23Jun2022,
+            NVT ensemble, 300K, 10ns run, CHARMM36"'
+          value: __DESC__
+        software_environment:
+          required: false
+          description: " Software environment used
+            to generate or process this dataset. Captures what is needed for computational
+            reproducibility."
+          value:
+            os:
+              required: false
+              description: ' e.g., "RHEL 8.6" | "Ubuntu
+                22.04"'
+              value: __OS__
+            compiler:
+              required: false
+              description: ' e.g., "GCC 11.3" | "Intel
+                oneAPI 2023.1"'
+              value: __COMPILER__
+            container:
+              required: false
+              description: ' e.g., "docker://registry/image:tag"'
+              value: __CONTAINER__
+            hpc_environment:
+              required: false
+              description: ' e.g., "module load python/3.10
+                cuda/11.8 openmpi/4.1"'
+              value: __ENV__
+            notes:
+              required: false
+              description: ' Additional environment
+                details, key library versions, or reference to a full environment
+                manifest. e.g., "See requirements.txt in dataset root" e.g., "numpy
+                1.24, pytorch 2.0.1, h5py 3.8.0"'
+              value: __NOTES__
+    dates:
+      required: false
+      description: ""
+      value:
+        data_collection_start:
+          required: false
+          description: ISO 8601 date data collection or generation began 
+            ISO 8601 date data collection or generation began
+          value: __YYYY-MM-DD__
+        data_collection_end:
+          required: false
+          description: ISO 8601 date data collection or generation ended 
+            ISO 8601 date data collection or generation ended
+          value: __YYYY-MM-DD__
+        issued:
+          required: false
+          description: ISO 8601 date the dataset was first publicly released 
+            ISO 8601 date the dataset was first publicly released
+          value: __YYYY-MM-DD__
+        modified:
+          required: false
+          description: ISO 8601 date of the most recent significant modification 
+            ISO 8601 date of most recent significant modification
+          value: __YYYY-MM-DD__
+    semantic_layer:
+      required: false
+      description: Formal schema and semantic context information. To support agentic
+        use, federated use, or cross-domain use, populate schema_url at minimum. 
+      value:
+        schema_url:
+          required: false
+          description: URL to a formal schema for this dataset, e.g. a JSON Schema,
+            XML Schema, or NeXus application definition 
+            URL to a formal schema for this dataset. e.g., JSON Schema | XML Schema | NeXus application definition
+          value: __URL__
+        semantic_context:
+          required: false
+          description: '"NeXus NXmonopd"  Semantic
+            conventions applied. e.g., "NetCDF CF Conventions 1.10" | "NeXus NXmonopd"'
+          value: []
+    related_resources:
+      required: false
+      description: 'Links to related datasets, publications, software, and AI models.
+        Base relationship vocabulary (RelationshipTypeEnum, applies to all resource
+        types): is_derived_from \| is_based_on \| is_part_of \| has_part \| references
+        \| other. Extended relationship vocabulary (ExtendedRelationshipEnum, software
+        and AI models only — extends the base vocabulary, so base values remain valid
+        too): used_to_create \| used_to_process \| used_to_analyze \| recorded_by
+        \| trained_on \| evaluated_on. '
+      value:
+        datasets:
+          required: false
+          description: ""
+          value: []
+        publications:
+          required: false
+          description: ""
+          value: []
+        software:
+          required: false
+          description: ""
+          value: []
+        ai_models:
+          required: false
+          description: ""
+          value: []
+    domain_metadata:
+      required: false
+      description: 'Any additional domain-specific metadata not otherwise captured
+        in the data card. Supports multiple entries so a single dataset can carry
+        metadata for more than one domain or schema. Domain-specific metadata supplements
+        the discoverability-level metadata and should not replace the common metadata
+        expected elsewhere in the data card.  e.g.,
+        "Accelerator Operations Metadata" | "Climate Data Variables" | "None"'
+      value:
+      - name:
+          required: false
+          description: ''
+          value: __NAME__
+        description:
+          required: false
+          description: Freetext description of the domain-specific metadata, its purpose,
+            and any important details Description of the field and its significance
+          value: __DESCRIPTION__
+        science_domain:
+          required: false
+          description: 'Extends OSTIs supported Subject Areas: "Biology and Medicine" | "Chemistry" | 
+            "Energy Storage, Conversion, and Utilization" | "Engineering" | "Environmental Sciences" | 
+            "Fission and Nuclear Technologies" | "Fossil Fuels" | "Geosciences" | "Materials" | "Mathematics and Computing" | 
+            "National Defense" | "Physics" | "Power Generation and Distribution" | "Renewable Energy" | "Other"'
+          value: __DOMAIN__
+        schema_reference:
+          required: false
+          description: ""
+          value:
+            type:
+              required: false
+              description: doi | url | ark | handle | local | other
+              value: __TYPE__
+            value:
+              required: false
+              description: ""
+              value: __VALUE__
+        version:
+          required: false
+          description: Version of the domain-specific schema or metadata convention used
+          value: __VERSION__
+        fields:
+          required: false
+          description: Key-value pairs of domain-specific metadata fields. The specific fields will depend on the domain and 
+            schema referenced above.
+          value:
+            FIELD_NAME:
+              required: false
+              description: The name of the domain-specific metadata field.
+              value:
+                field_value:
+                  required: false
+                  description: The value for this domain-specific metadata field. The specific value will depend on the field 
+                    and schema referenced above.
+                  value: __VALUE__
+                data_type:
+                  required: false
+                  description: The data type of the value (e.g., string, integer, float, boolean).
+                  value: __DATATYPE__
+                unit:
+                  required: false
+                  description: The unit of measurement for the value, if applicable.
+                  value: __UNIT__
+                description:
+                  required: false
+                  description: A description of the field and its significance.
+                  value: __DESCRIPTION__
+
+
+reusability:
+  required: true
+  description: ' Information about the reusability of this dataset,
+    such as license and rights, stewardship, data_quality, integrity, citation and
+    stewardship information.'
+  value:
+    license:
+      required: false
+      description: ' Important: Required when release_status = Approved
+        | Published. Use "pending" if not yet assigned. Includes information about the
+        license governing use of the dataset, as well as any additional legal rights statements.
+        NOTE ON LICENSES AND GOVERNANCE: A public/open license is not always the governing
+        instrument for use, some controlled datasets may not have an SPDX-style reuse
+        license at all, and use may instead be governed by contract, agreement, institutional
+        review, or repository policy.'
+      value:
+        spdx_id:
+          required: false
+          description: 'Use Other if the license is not in the SPDX registry.
+            Use pending if not yet assigned. SPDX license identifier: https://spdx.org/licenses/ 
+            e.g., CC-BY-4.0 | CC0-1.0 | Apache-2.0 | MIT'
+          value: __SPDX_ID__
+        name:
+          required: false
+          description: Required if spdx_id = Other — the human-readable license name.
+          value: __LICENSE_NAME__
+        url:
+          required: false
+          description: URL to the full license text, or LICENSE.md if the license
+            file is in the same repository as the dataset. URL to license text or "LICENSE.md" for repo-local file
+          value: __LICENSE_URL__
+        known_contractual_rights:
+          required: false
+          description: 'Legal rights statement, separate from license. Important because DOE/NNSA
+            datasets may have complex contractual arrangements that impact how the
+            data can be used and shared beyond license terms. e.g., "Government has
+            unlimited rights" e.g., "Contractor retains rights with government license"'
+          value: __RIGHTS__
+    additional_licenses:
+      required: false
+      description: Additional licenses that apply to subsets of the dataset — for
+        example, if the dataset contains third-party data under different licensing
+        terms. Each entry uses the same sub-fields as reusability.license above, plus
+        a description field explaining which subset of the data the entry applies
+        to. List of additional licenses that apply to subsets of the dataset, if any. 
+        e.g., if a dataset contains third-party data with different licensing terms, 
+        those can be captured here. Each entry should include the same fields as the main 
+        license block above, along with a description of which subset of the data it applies to.
+      value: []
+    stewardship:
+      required: false
+      description: 'Describes ongoing maintenance responsibilities and versioning
+        approach for this dataset. Note on versioning: three fields work together
+        to fully describe versioning. discoverability.identification.version carries
+        the version number; identification.supersedes / identification.superseded_by
+        link versions together; and stewardship.versioning_strategy describes how
+        versioning is managed over time.  Information about
+        the stewardship of this dataset, including who is responsible for maintaining
+        it and how versioning is managed over time.'
+      value:
+        level:
+          required: false
+          description: " Select one: Project_Managed |
+            Repository_Managed | Externally_Managed | not_applicable"
+          value: __LEVEL__
+        maintainer:
+          required: false
+          description: " Person or organization responsible
+            for ongoing maintenance."
+          value:
+            type:
+              required: false
+              description: person | organization
+              value: __TYPE__
+            person:
+              required: false
+              description: " Person responsible for ongoing maintenance."
+              value:
+                given_name:
+                  required: false
+                  description: ""
+                  value: __GIVEN_NAME__
+                family_name:
+                  required: false
+                  description: ""
+                  value: __FAMILY_NAME__
+                orcid:
+                  required: false
+                  description: " Required where DOE employee/contractor
+                    author policy applies, if locally applicable"
+                  value: __ORCID__
+                email:
+                  required: false
+                  description: ""
+                  value: __EMAIL__
+                affiliation:
+                  required: false
+                  description: " Organization responsible for ongoing maintenance."
+                  value:
+                    name:
+                      required: false
+                      description: ""
+                      value: __ORG_NAME__
+                    ror_id:
+                      required: false
+                      description: ""
+                      value: __ROR_ID__
+            organization:
+              required: false
+              description: " Organization responsible for ongoing maintenance."
+              value:
+                name:
+                  required: false
+                  description: ""
+                  value: __ORG_NAME__
+                ror_id:
+                  required: false
+                  description: ""
+                  value: __ROR_ID__
+        update_frequency:
+          required: false
+          description: "None | Ad_Hoc | Monthly | Quarterly | Annually | Continuously | Other"
+          value: __FREQ__
+        retention_policy:
+          required: false
+          description: ' e.g., "Retained for 10 years per DOE data management policy"'
+          value: __POLICY__
+        versioning_strategy:
+          required: false
+          description: ' e.g., "Semantic versioning; all
+            versions retained in Zenodo" e.g., "Major versions only; prior versions
+            available on request"'
+          value: __STRATEGY__
+    data_quality:
+      required: true
+      description: Be specific throughout this block. Vague entries like "good quality"
+        or "data is clean" reduce trust and reuse. Provide enough information for
+        a user to assess whether quality is adequate for their intended use. 
+      value:
+        completeness:
+          required: true
+          description: ' e.g., "All detector channels present;
+            2% of timesteps missing due to instrument downtime on 2023-04-12"'
+          value: "${DESCRIPTION}"
+        known_issues:
+          required: true
+          description: ' e.g., "Sensor drift observed after
+            2023-06-01T12:00:00Z"'
+          value: "${DESCRIPTION}"
+        validation_methods:
+          required: true
+          description: ' e.g., "Cross-validated against NIST
+            SRM 640f"'
+          value: "${DESC}"
+        noise_characteristics:
+          required: false
+          description: ""
+          value: __DESC__
+        uncertainty_notes:
+          required: false
+          description: ' e.g., "Measurement uncertainty
+            ±0.5% (k=2) per ISO/IEC Guide 98-3"'
+          value: __NOTES__
+        missing_data_codes:
+          required: false
+          description: ""
+          value: []
+    citation:
+      required: false
+      description: Citation information for this dataset. 
+      value:
+        report_number:
+          required: false
+          description: " e.g., SAND2024-XXXXX | LAUR-XX-XXXXX
+            | ORNL/TM-2024/XXXXX"
+          value: __NUMBER__
+        preferred_citation:
+          required: false
+          description: ""
+          value:
+            author:
+              required: false
+              description: '[reusability_if_applicable, required if preferred_citation
+                is included] e.g., "Smith, John A.; Doe, Jane B."'
+              value: __AUTHOR__
+            title:
+              required: false
+              description: '[reusability_if_applicable, required if preferred_citation
+                is included] e.g., "Neutron Scattering Data from SNS Beamline 1B,
+                April 2023"'
+              value: __DATASET_NAME__
+            year:
+              required: false
+              description: "[reusability_if_applicable, required if preferred_citation
+                is included] e.g., 2024"
+              value: __YEAR__
+            publisher:
+              required: false
+              description: '[reusability_if_applicable, either preferred_citation
+                or howpublished is required] e.g., "Oak Ridge National Laboratory"
+                | "DOE NNSA" | "University of X"'
+              value: __PUBLISHER__
+            howpublished:
+              required: false
+              description: '[reusability_if_applicable, either preferred_citation
+                or howpublished is required] e.g., "(Version v1) [Data set]. Zenodo"
+                | "Available at https://doi.org/10.1234/zenodo.1234567"'
+              value: __HOWPUBLISHED__
+            doi:
+              required: false
+              description: '[reusability_if_applicable, either doi or url is required]
+                e.g., "10.1234/zenodo.1234567"'
+              value: __DOI__
+            url:
+              required: false
+              description: '[reusability_if_applicable, either doi or url is required]
+                e.g., "https://doi.org/10.1234/zenodo.1234567"'
+              value: __URL__
+            eprinttype:
+              required: false
+              description: " e.g., arxiv | biorxiv | report_number
+                | other"
+              value: __EPRINT_TYPE__
+            eprint:
+              required: false
+              description: ' e.g., "1234.56789" | "SAND2024-XXXXX'
+              value: __EPRINT__
+            note:
+              required: false
+              description: ' e.g., "Available at \url{ark:/12345/abcde}""
+                For legacy bibtex entries (that don''t accept eprinttype and eprint)
+                and that need to support an ark or other identifiers that don''t fit
+                cleanly into the existing fields, the note field can be used to capture
+                this information in a free-text format. include a note: field use
+                this format for the note field: note: Available at \url{ark:/12345/abcde}'
+              value: __NOTE__
+    integrity:
+      required: false
+      description: ""
+      value:
+        checksum_available:
+          required: false
+          description: ' "Yes" | "No"'
+          value: __Yes|No__
+        checksum_type:
+          required: false
+          description: '[required if checksum_available="Yes"] sha256 | sha512 | md5
+            | other sha256 recommended; md5 not recommended for new datasets'
+          value: __TYPE__
+        checksum_value:
+          required: false
+          description: '[required if checksum_available="Yes"] Checksum of primary
+            data file(s). For multi-file datasets, provide a checksum manifest and
+            link here.'
+          value: __VALUE__
+        fixity_policy:
+          required: false
+          description: ' e.g., "Monthly sha256 verification
+            via repository integrity service"'
+          value: __POLICY__
+
+
+governed_use:
+  required: true
+  description: "--- Use Governance -------------------------------------------------
+     For datasets that are actively being used in workflows,
+    or where use governance is needed to manage risks, ensure responsible use, or
+    enable discoverability for specific use cases. Populate the fields that are relevant
+    to the dataset's current, intended, permitted, out_of_scope, and prohibited use.
+    current_use is required for governed_use_required; the other fields are optional
+    but recommended to support responsible use and discoverability."
+  value:
+    use_governance:
+      required: true
+      description: Describes the current and intended use of this dataset, as well
+        as any explicit permitted, out-of-scope, or prohibited uses. For datasets
+        that are actively in use in workflows, or where use governance is needed to
+        manage risks, ensure responsible use, or enable discoverability for specific
+        use cases. 
+      value:
+        current_use:
+          required: true
+          description: " For in-workflow data: what is this
+            dataset actively being used for right now? Distinct from intended_use."
+          value: "${CURRENT_USE}"
+        intended_use:
+          required: false
+          description: " Tasks or workflows this dataset
+            is designed to support. e.g., ML training | physics analysis | benchmarking
+            | visualization"
+          value: __INTENDED_USE__
+        permitted_use:
+          required: false
+          description: " Uses this dataset is suitable
+            for, beyond the intended use. e.g., exploratory analysis | hypothesis
+            generation | educational use"
+          value: __PERMITTED_USE__
+        out_of_scope_use:
+          required: false
+          description: " Uses this dataset should NOT
+            be applied to. e.g., clinical decision-making | real-time control systems"
+          value: __OUT_OF_SCOPE__
+        prohibited_use:
+          required: false
+          description: " Uses that are explicitly prohibited
+            for this dataset. e.g., any use involving human subjects | commercial
+            applications | use in high-risk domains"
+          value: __PROHIBITED_USE__
+        need_to_know_basis:
+          required: false
+          description: ' If access is restricted based
+            on a need-to-know basis, list the specific basis for the restriction.
+            select one from list: "Mission_Need" | "Job_Duty" | "Project_Program_Association"
+            | "Agreement_Defined" | "DGB_Exception_Waiver"'
+          value: []
+    non_sensitivity_governance_metadata:
+      required: true
+      description: Governance-relevant metadata that may affect sharing and use decisions
+        but is not part of the source sensitivity or marking block itself (those are
+        captured in discoverability.sensitivity). This block describes governance
+        as it applies to the dataset as a whole — which may differ from the sensitivity
+        or classification of any source data from which it was derived. 
+        export control, privacy, right & release as it applies to the dataset as a
+        whole, which may be distinct from the sensitivity or classification of the
+        source data from which it was derived.
+      value:
+        export_control:
+          required: true
+          description: ""
+          value:
+            export_control_status:
+              required: true
+              description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              value: "${EXPORT_CONTROL_STATUS}"
+            export_control_basis:
+              required: false
+              description: '[governed_use_if_applicable, required if export_control_status
+                = "Yes"] select one from: ITAR | EAR | DOE_Nuclear_Export_Control | Other | not_applicable'
+              value: __EXPORT_CONTROL_BASIS__
+            foreign_national_access_status:
+              required: false
+              description: " select one from list: Allowed
+                | Restricted | Prohibited | Conditional | Unknown"
+              value: __ACCESS_STATUS__
+        privacy:
+          required: true
+          description: ""
+          value:
+            privacy_status:
+              required: true
+              description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              value: "${PRIVACY_STATUS}"
+            pii_status:
+              required: true
+              description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              value: __PII_STATUS__
+            phi_status:
+              required: true
+              description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              value: __PHI_STATUS__
+            privacy_control_basis:
+              required: false
+              description: " select all that apply: HIPPA
+                | Privacy_Act | Human_Subjects | Other_Regulated_Privacy | Site_Specific | not_applicable"
+              value: []
+            privacy_regime_notes:
+              required: false
+              description: " Optional notes for privacy
+                regimes or handling nuances not captured by controlled values."
+              value: __PRIVACY_NOTES__
+        rights_release_records:
+          required: true
+          description: ""
+          value:
+            ip_restriction_type:
+              required: false
+              description: " select one from list: Proprietary
+                | Limited_Rights | Restricted_Rights | Government_Purpose_Rights |
+                Unlimited_Rights | Third_Party_Licensed | None"
+              value: __IP_RESTRICTION_TYPE__
+            agreement_required:
+              required: true
+              description: ' select one from list: "Yes" |
+                "No" — Is a rights release agreement required for use of this dataset?'
+              value: "${AGREEMENT_REQUIRED}"
+            agreement_type:
+              required: false
+              description: '[governed_use_if_applicable, required if agreement_required
+                = "Yes"] list all that apply: DUA | CRADA | MOU | NDA | LICENSE |
+                WFO | OTHER'
+              value: []
+            public_release_status:
+              required: true
+              description: ' select one from list: "Approved"
+                | "Pending" | "Not_Approved" | "Requires_STI_Review"'
+              value: "${PUBLIC_RELEASE_STATUS}"
+            record_status:
+              required: true
+              description: ' select one from list: "Federal_Record"
+                | "Contractor_Record" | "Non_Record" | "Mixed" | "Unknown"'
+              value: "${RECORD_STATUS}"
+    compliance:
+      required: true
+      description: 'Compliance confirmation fields. Populate when release_status =
+        Under_Review \| Approved \| Published. Leave blank or omit for Draft and in-workflow
+        datasets. All three fields use YesNoUnknownNotApplicableEnum: "Yes" \| "No"
+        \| "Unknown" \| "not_applicable" — always use quoted strings. '
+      value:
+        doe_data_management_plan:
+          required: true
+          description: 'Whether a DOE Data Management Plan (DMP) is on file for this
+            dataset. Use not_applicable if the dataset is not DOE-funded. 
+            select one from list: "Yes" | "No" | "Unknown" | "not_applicable" — a
+            DOE DMP is on file for this dataset'
+          value: "${DOE_DATA_MANAGEMENT_PLAN}"
+        osti_elink2_metadata_compliant:
+          required: true
+          description: 'Whether the metadata in this data card complies with OSTI
+            E-Link 2.0 API specifications. If unsure, check with your data manager
+            before setting to "Yes".  select one from list:
+            "Yes" | "No" | "Unknown" | "not_applicable" — metadata complies with OSTI
+            E-Link 2 API specs'
+          value: "${OSTI_ELINK2_METADATA_COMPLIANT}"
+        irb_approved:
+          required: true
+          description: 'Whether Institutional Review Board (IRB) approval has been
+            obtained. Use not_applicable if the dataset does not involve human subjects
+            — do not use "No", which implies an IRB review was needed but not obtained.
+             select one from list: "Yes" | "No" | "Unknown"
+            | "not_applicable" - IRB approval is in place for this dataset, if applicable'
+          value: "${IRB_APPROVED}"
+    review_provenance_companion:
+      required: false
+      description: A running chronological history of all formal reviews this dataset
+        has undergone or is currently undergoing. Add one entry per review event.
+        Do not overwrite or delete prior entries — this is an append-only record that
+        supports audit and compliance. This block allows multiple review records to
+        be captured in a structured format, which is especially useful for datasets
+        that have undergone multiple reviews or have complex review histories.
+        This is especially useful to track the provenance of the review.
+      value:
+        source_review_reference:
+          required: false
+          description: e.g., internal_qa | security | export_control | irb | partner | publication | other
+          value: __REVIEW_REFERENCE__
+        review_purpose:
+          required: false
+          description: Freetext description of why this review was conducted, 
+            e.g., "Export control review prior to public release"
+          value: __PURPOSE__
+        source_review_authority:
+          required: false
+          description: 'e.g., "DOE Export Control Officer" | "ORNL IRB"'
+          value: __AUTHORITY__
+        review_contact_name:
+          required: false
+          description: Name of the primary contact for this review, if applicable
+          value: __CONTACT_NAME__
+        review_contact_email:
+          required: false
+          description: Email of the primary contact for this review, if applicable
+          value: __CONTACT_EMAIL__
+        reviewed_by:
+          required: false
+          description: 'organization. Populate only the matching sub-block (person:
+            given_name, family_name, email, ror_id; organization: name, ror_id) and
+            delete the other.'
+          value:
+            type:
+              required: false
+              description: 'person| organization'
+              value: __TYPE__
+            person:
+              required: false
+              description: ""
+              value:
+                given_name:
+                  required: false
+                  description: ""
+                  value: __GIVEN_NAME__
+                family_name:
+                  required: false
+                  description: ""
+                  value: __FAMILY_NAME__
+                email:
+                  required: false
+                  description: ""
+                  value: __EMAIL__
+                ror_id:
+                  required: false
+                  description: ""
+                  value: __ROR_ID__
+            organization:
+              required: false
+              description: ""
+              value:
+                name:
+                  required: false
+                  description: ""
+                  value: __ORG_NAME__
+                ror_id:
+                  required: false
+                  description: ""
+                  value: __ROR_ID__
+        decontrol_or_declassify_on:
+          required: false
+          description: ISO 8601 date ("YYYY-MM-DD") when this dataset will be decontrolled
+            or declassified, if known. Use "not_applicable" for datasets that are
+            not export-controlled or classified.
+          value: __YYYY-MM-DD__
+        review_date:
+          required: false
+          description: ISO 8601 date ("YYYY-MM-DD") the review was completed or last
+            updated. Use "not_applicable" if not yet completed.
+          value: __YYYY-MM-DD__
+        comments:
+          required: false
+          description: Reviewer notes, conditions, or required follow-up actions
+          value: __COMMENTS__
+
+
+ai_usability:
+  required: true
+  description: "Required for the ai_usability intended capability, or for any dataset used
+    in AI/ML training, inference, or evaluation workflows, or
+    where semantic interoperability and verifiable integrity
+    are needed."
+  value:
+    ai_usage:
+      required: true
+      description: "Describes whether and how this dataset may be used in AI/ML workflows.
+        Be explicit — these fields are read by automated pipeline tooling."
+      value:
+        training_use_status:
+          required: true
+          description: ' "Yes" | "No" | "Conditional"'
+          value: "${TRAINING_USE_STATUS}"
+        training_use_conditions:
+          required: false
+          description: '[ai_usability_if_applicable, required if training_use_status
+            is "Conditional"] e.g., "Only for non-commercial research" | "Requires citation of SAND2024-XXXXX"'
+          value: "${TRAINING_USE_CONDITIONS}"
+        inference_use_status:
+          required: true
+          description: ' "Yes" | "No" | "Conditional"'
+          value: "${INFERENCE_USE_STATUS}"
+        inference_use_conditions:
+          required: false
+          description: '[ai_usability_if_applicable, required if inference_use_status
+            is "Conditional"] e.g., "Only for non-commercial research" | "Requires citation of SAND2024-XXXXX"'
+          value: "${INFERENCE_USE_CONDITIONS}"
+        evaluation_use_status:
+          required: true
+          description: ' "Yes" | "No" | "Conditional"'
+          value: "${EVALUATION_USE_STATUS}"
+        evaluation_use_conditions:
+          required: false
+          description: '[ai_usability_if_applicable, required if evaluation_use_status
+            is "Conditional"] e.g., "Only for non-commercial research" | "Requires citation of SAND2024-XXXXX"'
+          value: "${EVALUATION_USE_CONDITIONS}"
+        restrictions:
+          required: true
+          description: ' e.g., "Not for clinical decision-making" | "None"'
+          value: "${RESTRICTIONS}"
+        bias_risks:
+          required: true
+          description: ' e.g., "Overrepresents samples from facility X" | "None"'
+          value: "${BIAS_RISKS}"
+        safety_considerations:
+          required: true
+          description: ' e.g., "Outputs may be export-controlled" | "None"'
+          value: "${SAFETY_CONSIDERATIONS}"
+        human_review_required:
+          required: true
+          description: ' "Yes" | "No"'
+          value: "${HUMAN_REVIEW_REQUIRED}"

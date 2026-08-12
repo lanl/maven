@@ -54,6 +54,7 @@ def main():
                 or "$ xcode-select" in line
                 or "$ pip install watchdog" in line
                 or "Uvicorn server started" in line
+                or "Could not bind IPv6 wildcard address" in line
                 or line == ""
             ):
                 continue

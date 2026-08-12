@@ -18,9 +18,8 @@ tier2_table = 55555
 # change cwd to that scratch folder which has t1 db, t2 db, and data/
 os.chdir(staging_folder)
 
-# TODO: see if we can check conduit without full path
 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-if "conduit/conduit-x86_64 (L)" in str(result.stderr):
+if "conduit/conduit-x86_64" in str(result.stderr):
     copy_tool = "conduit"
 elif shutil.which("pfcp"):
     copy_tool = "pfcp"

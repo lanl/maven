@@ -2,39 +2,40 @@
 MAVEN is a local host interface designed to automate the collection of metadata for DIANA datasets using URSA. 
 It streamlines the process of gathering necessary dataset information before moving data and metadata to a specified HPC campaign directory via DSI.
 
-## Quick Start
 
-If already installed, simply run: `maven` in your terminal.
+# Quick Start
+
+If already installed, simply run `maven` in your terminal.
 Then, open the provided localhost URL in your preferred browser.
 
 
-## Installation and Setup
+# Installation and Setup
 
-### Prerequisites
-- Python 3.12+
+## Prerequisites
+- Python 3.12+ [Download](https://www.python.org/downloads/)
 
-### Virtual Environment
-It is recommended users create a virtual environment to run MAVEN with Python 3.12+. 
+## Virtual Environment
+It is recommended that users create a virtual environment to run MAVEN with Python 3.12. 
 
-**Option A: Miniconda3**
-```
-. ~/miniconda3/bin/activate
-conda create -n maven_env python=3.12
-conda activate maven_env                # start here if virtual environment exists
-```
-**Option B: Python venv**
-```
-python3 -m venv maven_env
-source maven_env/bin/activate           # start here if virtual environment exists
-pip install --upgrade pip
-```
-**Option C: uv**
-```
-uv venv
-source .venv/bin/activate
-```
+   **Option A: Miniconda3 [Download](https://www.anaconda.com/download/success)**
+   ```
+   . ~/miniconda3/bin/activate
+   conda create -n maven_env python=3.12
+   conda activate maven_env                # start here if virtual environment exists
+   ```
+   **Option B: Python venv [Download python 3.12+](https://www.python.org/downloads/)**
+   ```
+   python -m venv maven_env
+   source maven_env/bin/activate           # start here if virtual environment exists
+   pip install --upgrade pip
+   ```
+   **Option C: uv [Download](https://pydevtools.com/handbook/how-to/how-to-install-uv/)**
+   ```
+   uv venv
+   source .venv/bin/activate
+   ```
 
-### Installation
+## Installation and Launching
 Install MAVEN and its dependencies:
 ```
 git clone https://github.com/lanl/maven.git
@@ -42,31 +43,43 @@ cd maven
 pip install .
 ```
 
-### Setup
+After successful install, simply run `maven` in your terminal.
+Then, open the provided localhost URL in your preferred browser. 
+
+## Setup
 When first launching the app, you will be required to complete 3 fields:
 1) **Maven Directory**: Where your metadata databases will be locally saved.
 2) **AI API Key**: Secret API key to connect to an AI model with [URSA](https://github.com/lanl/ursa)
 3) **AI Base URL**: Endpoint to connect to that AI model
 
-
 For further instructions on setting up an AI API Key for LANL users, please contact a MAVEN team member.
 
-### HPC & DSI Setup
+## HPC & DSI Setup
 To move data to an HPC campaign space using [DSI](https://github.com/lanl/dsi), contact a MAVEN team member for setup details.
 
-## App Notes
+
+
+# App Notes
 The app collects 3 levels of metadata:
 
-### 1. The Genesis Datasheet (Sections 1-8)
+## 1. The Genesis Datasheet (Sections 1-8)
 These sections follow the Genesis Datasheet format. URSA leverages your **Project Description** and **Clarification** responses to autofill these fields. 
 
-### 2. Findability Metadata
+## 2. Findability Metadata
 High-level metadata used for indexing and searching.
 
-### 3. AI-Ready Metadata
+## 3. AI-Ready Metadata
 Domain-specific technical metadata that extracts values and types from the data.
 
 Once all levels are complete, the app enables users to move data and metadata to the chosen HPC campaign directory.
+
+
+
+# Contact Us
+For general inquiries or help, reach us at maven-help (at) lanl.gov
+
+Bugs/Feature Requests: [Maven GitHub Requests](https://github.com/lanl/maven/issues)
+
 
 
 # Copyright and License

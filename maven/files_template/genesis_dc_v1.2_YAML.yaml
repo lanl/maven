@@ -241,9 +241,9 @@ discoverability:
     change_log:                                 # [discoverability_required] Running history of meaningful changes to this data card.
                                                 # Add a new entry every time the data card is updated.
                                                 # Do not overwrite or delete prior entries.
-      - change_date: "${YYYY-MM-DD}"            # [discoverability_required] ISO 8601 date of this change
-        data_card_version: "1.0"                # [discoverability_required] Data card version after this change; pre-filled for initial creation
-        summary: ${SUMMARY}                     # [discoverability_required] Brief description of what changed and why.
+      change_date: "${YYYY-MM-DD}"            # [discoverability_required] ISO 8601 date of this change
+      data_card_version: "1.0"                # [discoverability_required] Data card version after this change; pre-filled for initial creation
+      summary: ${SUMMARY}                     # [discoverability_required] Brief description of what changed and why.
                                                 # Update this text for all subsequent revisions.
                                                 # e.g., "Updated license to CC-BY-4.0"
                                                 # e.g., "Added checksum after file transfer to OSTI"
@@ -254,59 +254,55 @@ discoverability:
                                                 # that created or updated this data card. List in chronological order
                                                 # of contribution — e.g., if an AI model generated the initial draft
                                                 # and a person then edited it, list the AI model first.
-      - contribution_date: "${YYYY-MM-DD}"      # [discoverability_required] ISO 8601 date of this specific contribution
-        description: __DESCRIPTION__            # [discoverability_if_applicable] Describe what this contributor did.
-                                                # e.g., "Automated generation of data card from dataset metadata"
-                                                # e.g., "Reviewed and corrected AI-generated content"
-        creator:                                # [discoverability_required] person | organization | ai_model | software
-                                                # add one block per creator; 
-                                                # list the block that corresponds to the parent {ROLE} contributed to the creation of this data card
-                                                # Delete the three blocks below that do not apply.
-          agent_type: ${TYPE}                   # [discoverability_required] person | organization | ai_model | software
-                                                # TYPE: person — use for a human contributor
-          person:
-            given_name: ${GIVEN_NAME}
-            family_name: ${FAMILY_NAME}
-            orcid: __ORCID__                    # [discoverability_if_applicable] Format: https://orcid.org/0000-0000-0000-0000
-                                                # Required where DOE employee/contractor author policy applies, if locally applicable
-                                                # Register at https://orcid.org if needed
-            email: ${EMAIL}
-            affiliation:
-              name: ${ORG_NAME}
-              ror_id: __ROR_ID__                 # [discoverability_if_applicable] Format: https://ror.org/XXXXXXX
-                                                # Look up at https://ror.org
-            role: 
-              - __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
-
-          # TYPE: organization — use when a team or org created the data card without a named individual
-          organization:
+      contribution_date: "${YYYY-MM-DD}"      # [discoverability_required] ISO 8601 date of this specific contribution
+      description: __DESCRIPTION__            # [discoverability_if_applicable] Describe what this contributor did.
+                                              # e.g., "Automated generation of data card from dataset metadata"
+                                              # e.g., "Reviewed and corrected AI-generated content"
+      creator:                                # [discoverability_required] person | organization | ai_model | software
+                                              # add one block per creator; 
+                                              # list the block that corresponds to the parent {ROLE} contributed to the creation of this data card
+                                              # Delete the three blocks below that do not apply.
+        agent_type: ${TYPE}                   # [discoverability_required] person | organization | ai_model | software
+                                              # TYPE: person — use for a human contributor
+        person:
+          given_name: ${GIVEN_NAME}
+          family_name: ${FAMILY_NAME}
+          orcid: __ORCID__                    # [discoverability_if_applicable] Format: https://orcid.org/0000-0000-0000-0000
+                                              # Required where DOE employee/contractor author policy applies, if locally applicable
+                                              # Register at https://orcid.org if needed
+          email: ${EMAIL}
+          affiliation:
             name: ${ORG_NAME}
-            ror_id: __ROR_ID__
-            role: 
-              - __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
+            ror_id: __ROR_ID__                 # [discoverability_if_applicable] Format: https://ror.org/XXXXXXX
+                                              # Look up at https://ror.org
+          role: __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
 
-          # TYPE: ai_model — use when an AI model generated or substantially contributed to this data card
-          ai_model:
-            name: ${MODEL_NAME}                  # e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3
-            version: __VERSION__
-            accessed_date: "${YYYY-MM-DD}"
-            identifier:
-              type: __TYPE__                     # doi | ark | handle | url | local | other
-              value: __VALUE__                   # Link to model card or documentation if available
-            role: 
-              - __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
-            relationship: __RELATIONSHIP__             # [discoverability_if_applicable, required for ai_model] select from: used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; relationship of AI model to the  data card creation process. e.g., "used_to_create" if the AI model generated the initial draft of the data card, "used_to_analyze" if the AI model analyzed dataset metadata to populate the data card, "evaluated_on" if the AI model was used to evaluate or validate the data card content, or "other" if none of the predefined relationships apply.
+        # TYPE: organization — use when a team or org created the data card without a named individual
+        organization:
+          name: ${ORG_NAME}
+          ror_id: __ROR_ID__
+          role: __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
 
-          # TYPE: software — use when an automated pipeline or script generated this data card
-          software:
-            name: ${SOFTWARE_NAME}
-            version: __VERSION__
-            identifier:
-              type: __TYPE__                     # doi | ark | handle | url | local | other
-              value: __VALUE__
-            role: 
-              - __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
-            relationship: __RELATIONSHIP__             # [discoverability_if_applicable, required for software] select from: used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; relationship of software to the  data card creation process. e.g., "used_to_create" if the software generated the initial draft of the data card, "used_to_analyze" if the software analyzed dataset metadata to populate the data card, "evaluated_on" if the software was used to evaluate or validate the data card content, or "other" if none of the predefined relationships apply.
+        # TYPE: ai_model — use when an AI model generated or substantially contributed to this data card
+        ai_model:
+          name: ${MODEL_NAME}                  # e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3
+          version: __VERSION__
+          accessed_date: "${YYYY-MM-DD}"
+          identifier:
+            type: __TYPE__                     # doi | ark | handle | url | local | other
+            value: __VALUE__                   # Link to model card or documentation if available
+          role: __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
+          relationship: __RELATIONSHIP__             # [discoverability_if_applicable, required for ai_model] select from: used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; relationship of AI model to the  data card creation process. e.g., "used_to_create" if the AI model generated the initial draft of the data card, "used_to_analyze" if the AI model analyzed dataset metadata to populate the data card, "evaluated_on" if the AI model was used to evaluate or validate the data card content, or "other" if none of the predefined relationships apply.
+
+        # TYPE: software — use when an automated pipeline or script generated this data card
+        software:
+          name: ${SOFTWARE_NAME}
+          version: __VERSION__
+          identifier:
+            type: __TYPE__                     # doi | ark | handle | url | local | other
+            value: __VALUE__
+          role: __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
+          relationship: __RELATIONSHIP__             # [discoverability_if_applicable, required for software] select from: used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; relationship of software to the  data card creation process. e.g., "used_to_create" if the software generated the initial draft of the data card, "used_to_analyze" if the software analyzed dataset metadata to populate the data card, "evaluated_on" if the software was used to evaluate or validate the data card content, or "other" if none of the predefined relationships apply.
   # --- Identification ---------------------------------------------
   identification:                               # [discoverability_required] Key metadata fields that uniquely identify this dataset.
     name: "${DATASET_NAME}"                     # [discoverability_required] Single human-readable name for this dataset.
@@ -332,8 +328,8 @@ discoverability:
 
     additional_ids:                             # [discoverability_if_applicable] Additional identifiers for this dataset.
                                                 # Aligns with adms:identifier and can include secondary identifiers, legacy identifiers, or identifiers for specific versions if primary_id is a collection-level identifier.
-      - type: __TYPE__                          # doi | ark | handle | url | osti | sand | la-ur | local | other
-        value: __VALUE__                        # e.g., SAND2024-XXXXX | LAUR-XX-XXXXX
+      type: __TYPE__                          # doi | ark | handle | url | osti | sand | la-ur | local | other
+      value: __VALUE__                        # e.g., SAND2024-XXXXX | LAUR-XX-XXXXX
 
     supersedes:                                 # [discoverability_if_applicable] Identifier of the prior version this dataset replaces.
                                                 # See stewardship.versioning_strategy for how versions are managed.
@@ -455,23 +451,21 @@ discoverability:
   # [discoverability_required] At least one author required.
   # For draft or in-workflow data, populate with known contributors.
   authors:                                      # [discoverability_required]
-    - type: ${TYPE}                             # person | organization
-      person:
-        given_name: ${GIVEN_NAME}
-        family_name: ${FAMILY_NAME}
-        orcid: __ORCID__                        # [discoverability_if_applicable] Strongly recommended — enables disambiguation and credit tracking
-                                                # Required where DOE employee/contractor author policy applies, if locally applicable
-        email: __EMAIL__                        # [discoverability_if_applicable]
-        affiliation:
-          name: ${ORG_NAME}
-          ror_id: __ROR_ID__                    # [discoverability_if_applicable]
-        role: 
-              - __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
-      organization:
-        name: __ORG_NAME__
-        ror_id: __ROR_ID__
-        role: 
-              - __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
+    type: ${TYPE}                             # person | organization
+    person:
+      given_name: ${GIVEN_NAME}
+      family_name: ${FAMILY_NAME}
+      orcid: __ORCID__                        # [discoverability_if_applicable] Strongly recommended — enables disambiguation and credit tracking
+                                              # Required where DOE employee/contractor author policy applies, if locally applicable
+      email: __EMAIL__                        # [discoverability_if_applicable]
+      affiliation:
+        name: ${ORG_NAME}
+        ror_id: __ROR_ID__                    # [discoverability_if_applicable]
+      role: __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
+    organization:
+      name: __ORG_NAME__
+      ror_id: __ROR_ID__
+      role: __ROLE__                           # [discoverability_if_applicable] list from roles extending the CRediT taxonomy: Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other
 
   contributors: []                              # [discoverability_if_applicable] Supporting contributors who are not primary authors.
                                                 # e.g., sample preparers, annotators, reviewers, submitters.
@@ -482,12 +476,12 @@ discoverability:
   # Populate with known information even for in-workflow data;
   #  this supports provenance tracking and credit assignment from the earliest stages of the project.
   sponsor_organizations:                       # [discoverability_required] Organizations that funded or sponsored this dataset.
-    - name: ${ORG_NAME}                        # e.g., DOE Office of Science | NNSA | NSF
-      ror_id: __ROR_ID__                       # [discoverability_if_applicable]
-      award_number: __AWARD__                  # [discoverability_if_applicable] e.g., DE-AC05-00OR22725
-      funding_source: __SOURCE__               # [discoverability_if_applicable] Identifies the funding source from a controlled vocabulary: 
-                                               # DOE_Program_SC | DOE_Program_NNSA | LDRD | WFO | CRADA | Other_Federal | State_Government | Subcontract | Industry | Nonprofit | Internal | Other
-      program: __PROGRAM__                     # [discoverability_if_applicable] e.g., "Advanced Scientific Computing Research"
+    name: ${ORG_NAME}                        # e.g., DOE Office of Science | NNSA | NSF
+    ror_id: __ROR_ID__                       # [discoverability_if_applicable]
+    award_number: __AWARD__                  # [discoverability_if_applicable] e.g., DE-AC05-00OR22725
+    funding_source: __SOURCE__               # [discoverability_if_applicable] Identifies the funding source from a controlled vocabulary: 
+                                              # DOE_Program_SC | DOE_Program_NNSA | LDRD | WFO | CRADA | Other_Federal | State_Government | Subcontract | Industry | Nonprofit | Internal | Other
+    program: __PROGRAM__                     # [discoverability_if_applicable] e.g., "Advanced Scientific Computing Research"
 
   sponsoring_doe_program_office: __NAME__      # [discoverability_if_applicable] DOE program office that sponsored this dataset, if applicable.
   sponsoring_doe_subprogram: __NAME__          # [discoverability_if_applicable] DOE subprogram that sponsored this dataset, if applicable. 
@@ -497,8 +491,8 @@ discoverability:
   # Populate with known information even for in-workflow data;
   #  this supports provenance tracking and credit assignment from the earliest stages of the project.
   research_organizations:                      # [discoverability_required] Organizations that created or collected the data.
-    - name: ${ORG_NAME}                        # e.g., Oak Ridge National Laboratory | Sandia National Laboratories
-      ror_id: __ROR_ID__                       # [discoverability_if_applicable]
+    name: ${ORG_NAME}                        # e.g., Oak Ridge National Laboratory | Sandia National Laboratories
+    ror_id: __ROR_ID__                       # [discoverability_if_applicable]
 
   # --- Facilities [discoverability_if_applicable] -------------------------------------
   # Facilities are user facilities, HPC centers, or research infrastructure used to 
@@ -679,24 +673,24 @@ accessibility:                              # [accessibility_required]
                                               # this dataset in. The managing repository or catalog system will
                                               # resolve and populate repository-assigned fields at ingest
                                               # (see REPOSITORY-MANAGED block). Repositories may be institutional,
-                                              # project-owned, community, or national (e.g., Zenodo,
+                                              # project-owned, community, or national (e.g., OSTI, Zenodo,
                                               # institutional data repository, project data store).
-      - name: __NAME__                        # [accessibility_if_applicable] e.g., "Zenodo" | "Globus" | "internal"
-        access_level: __LEVEL__               # [accessibility_if_applicable] Intended access level: Open | Restricted | Controlled
-                                              # The same dataset may have different access levels per repository.
-                                              # Open: anyone can discovery and access without special permissions.
-                                              # Restricted: data may be discoverable, but users must satisfy basic access requirements (authentication, institutional affiliation, registration, agreement to terms, etc.). Approval is generally automatic or administrative.
-                                              # Controlled: Access is granted only after review and explicit authorization based on the requester, intended use, legal requirements, or security considerations. Requests may be denied.
-        is_primary: "__Yes|No__"              # [accessibility_if_applicable] "Yes" | "No" — only one entry should be marked "Yes"
-        date_deposited: __YYYY-MM-DD__        # [accessibility_if_applicable]
-        data_services:                        # [accessibility_if_applicable] Populate if Data Service / API endpoints exists for this dataset
-                                              # aligns with dcterms:DataService. If more than one data service or API endpoint exists, list them all.
-          - name: __NAME__                    # e.g., "REST API" | "GraphQL endpoint"
-            endpoint: __URL__
-            documentation_url: __URL__
-            authentication: __AUTH__           # None | API_Key | OAuth2 | SAML | Certificate | OpenID_Connect | Basic_Auth | Bearer_Token | Other
-            version: __VERSION__
-            rate_limit: __LIMIT__              # e.g., "1000 requests/hour"
+      name: __NAME__                        # [accessibility_if_applicable] e.g.,  "Zenodo" | "Globus" | "internal"
+      access_level: __LEVEL__               # [accessibility_if_applicable] Intended access level: Open | Restricted | Controlled
+                                            # The same dataset may have different access levels per repository.
+                                            # Open: anyone can discovery and access without special permissions.
+                                            # Restricted: data may be discoverable, but users must satisfy basic access requirements (authentication, institutional affiliation, registration, agreement to terms, etc.). Approval is generally automatic or administrative.
+                                            # Controlled: Access is granted only after review and explicit authorization based on the requester, intended use, legal requirements, or security considerations. Requests may be denied.
+      is_primary: "__Yes|No__"              # [accessibility_if_applicable] "Yes" | "No" — only one entry should be marked "Yes"
+      date_deposited: __YYYY-MM-DD__        # [accessibility_if_applicable]
+      data_services:                        # [accessibility_if_applicable] Populate if Data Service / API endpoints exists for this dataset
+                                            # aligns with dcterms:DataService. If more than one data service or API endpoint exists, list them all.
+        name: __NAME__                    # e.g., "REST API" | "GraphQL endpoint"
+        endpoint: __URL__
+        documentation_url: __URL__
+        authentication: __AUTH__           # None | API_Key | OAuth2 | SAML | Certificate | OpenID_Connect | Basic_Auth | Bearer_Token | Other
+        version: __VERSION__
+        rate_limit: __LIMIT__              # e.g., "1000 requests/hour"
 
   # --- Dataset Scale & Size Metrics -------------------------------------------
   # These fields describe the scale of the dataset, which is important for users to understand the scope and potential resource requirements for using the dataset. 
@@ -782,11 +776,11 @@ interoperability:                             # [interoperability_required]
                                               # e.g., "Monte Carlo simulation using MCNP 6.2"
                                               # e.g., "Derived from raw telemetry via calibration pipeline v2.1"
     source_data:                              # [interoperability_if_applicable] Source datasets this dataset was derived from.
-      - name: __NAME__
-        identifier:
-          type: __TYPE__                      # doi | ark | handle | url | local | other
-          value: __VALUE__
-        relationship: __REL__                 # is_derived_from | is_based_on | is_part_of | has_part | references | other
+      name: __NAME__
+      identifier:
+        type: __TYPE__                      # doi | ark | handle | url | local | other
+        value: __VALUE__
+      relationship: __REL__                 # is_derived_from | is_based_on | is_part_of | has_part | references | other
     processing_steps: ${DESCRIPTION}         # [interoperability_required] Key processing, cleaning, calibration, or
                                               # transformation steps applied to produce this dataset.
     instrumentation: __DESCRIPTION__          # [interoperability_if_applicable] Instruments, sensors, detectors, or equipment used.
@@ -870,20 +864,20 @@ interoperability:                             # [interoperability_required]
   # Domain-specific metadata fields supplement the Discoverable card 
   # and should not replace the common metadata expected by the data card.
   domain_metadata:                        # [interoperability_if_applicable] e.g., "Accelerator Operations Metadata" | "Climate Data Variables"
-    - name: __NAME__
-      description: __DESCRIPTION__        # [interoperability_if_applicable] Free-text description of the domain-specific metadata, its purpose, and any important details.
-      science_domain: __DOMAIN__          # [interoperability_if_applicable] 
-                                          # Extends OSTI's supported Subject Areas: "Biology and Medicine" | "Chemistry" | "Energy Storage, Conversion, and Utilization" | "Engineering" | "Environmental Sciences" | "Fission and Nuclear Technologies" | "Fossil Fuels" | "Geosciences" | "Materials" | "Mathematics and Computing" | "National Defense" | "Physics" | "Power Generation and Distribution" | "Renewable Energy" | "Other"
-      schema_reference:                   # [interoperability_if_applicable]
-        type: __TYPE__       # doi | url | ark | handle | local | other
-        value: __VALUE__
-      version: __VERSION__
-      fields:                             # [interoperability_if_applicable] Key-value pairs of domain-specific metadata fields. The specific fields will depend on the domain and schema referenced above.
-        FIELD_NAME:                       # ${FIELD_NAME} [interoperability_if_applicable] The name of the domain-specific metadata field.
-          field_value: __VALUE__          # [interoperability_if_applicable] The value for this domain-specific metadata field. The specific value will depend on the field and schema referenced above.
-          data_type: __DATATYPE__         # [interoperability_if_applicable] The data type of the value (e.g., string, integer, float, boolean).
-          unit: __UNIT__                  # [interoperability_if_applicable] The unit of measurement for the value, if applicable.
-          description: __DESCRIPTION__    # [interoperability_if_applicable] A description of the field and its significance.
+    name: __NAME__
+    description: __DESCRIPTION__        # [interoperability_if_applicable] Free-text description of the domain-specific metadata, its purpose, and any important details.
+    science_domain: __DOMAIN__          # [interoperability_if_applicable] 
+                                        # Extends OSTI's supported Subject Areas: "Biology and Medicine" | "Chemistry" | "Energy Storage, Conversion, and Utilization" | "Engineering" | "Environmental Sciences" | "Fission and Nuclear Technologies" | "Fossil Fuels" | "Geosciences" | "Materials" | "Mathematics and Computing" | "National Defense" | "Physics" | "Power Generation and Distribution" | "Renewable Energy" | "Other"
+    schema_reference:                   # [interoperability_if_applicable]
+      type: __TYPE__       # doi | url | ark | handle | local | other
+      value: __VALUE__
+    version: __VERSION__
+    fields:                             # [interoperability_if_applicable] Key-value pairs of domain-specific metadata fields. The specific fields will depend on the domain and schema referenced above.
+      FIELD_NAME:                       # ${FIELD_NAME} [interoperability_if_applicable] The name of the domain-specific metadata field.
+        field_value: __VALUE__          # [interoperability_if_applicable] The value for this domain-specific metadata field. The specific value will depend on the field and schema referenced above.
+        data_type: __DATATYPE__         # [interoperability_if_applicable] The data type of the value (e.g., string, integer, float, boolean).
+        unit: __UNIT__                  # [interoperability_if_applicable] The unit of measurement for the value, if applicable.
+        description: __DESCRIPTION__    # [interoperability_if_applicable] A description of the field and its significance.
 # ============================================================
 # REUSABILITY                   [reusability_required]
 # ============================================================
@@ -1060,24 +1054,24 @@ governed_use:
   # This block extends the Genesis Sensitivity V2 review_provenance_companion (which only accepts a single review) by allowing multiple review records to be captured in a structured format, 
   # which is especially useful for datasets that have undergone multiple reviews or have complex provenance histories.
   review_provenance_companion:                      # [governed_use_if_applicable] This is especially useful to track the provenance of the review.
-    - source_review_reference: __REVIEW_REFERENCE__ # [governed_use_if_applicable] e.g., internal_qa | security | export_control | irb | partner | publication | other
-      review_purpose: __PURPOSE__                   # [governed_use_if_applicable] e.g., "Export control review prior to public release"
-      source_review_authority: __AUTHORITY__        # [governed_use_if_applicable] e.g., "DOE Export Control Officer" | "ORNL IRB"
-      review_contact_name: __CONTACT_NAME__         # [governed_use_if_applicable] Name of the primary contact for this review, if applicable.
-      review_contact_email: __CONTACT_EMAIL__       # [governed_use_if_applicable] Email of the primary contact for this review, if applicable.
-      reviewed_by:                                  # [governed_use_if_applicable] Delete the block that does not apply.
-        type: __TYPE__                              # person | organization
-        person:
-          given_name: __GIVEN_NAME__                # [governed_use_if_applicable]
-          family_name: __FAMILY_NAME__              # [governed_use_if_applicable]
-          email: __EMAIL__                          # [governed_use_if_applicable]
-          ror_id: __ROR_ID__                        # [governed_use_if_applicable]
-        organization:
-          name: __ORG_NAME__                        # [governed_use_if_applicable]
-          ror_id: __ROR_ID__                        # [governed_use_if_applicable]
-      decontrol_or_declassify_on: "__YYYY-MM-DD__"  # [governed_use_if_applicable] If provided, use "YYYY-MM-DD" format or "not_applicable", for export-controlled or classified datasets, the date when the dataset will be decontrolled or declassified, if known.
-      review_date: "__YYYY-MM-DD__"                 # [governed_use_if_applicable] If provided, use "YYYY-MM-DD" format or "not_applicable"
-      comments: __COMMENTS__                        # [governed_use_if_applicable]
+    source_review_reference: __REVIEW_REFERENCE__ # [governed_use_if_applicable] e.g., internal_qa | security | export_control | irb | partner | publication | other
+    review_purpose: __PURPOSE__                   # [governed_use_if_applicable] e.g., "Export control review prior to public release"
+    source_review_authority: __AUTHORITY__        # [governed_use_if_applicable] e.g., "DOE Export Control Officer" | "ORNL IRB"
+    review_contact_name: __CONTACT_NAME__         # [governed_use_if_applicable] Name of the primary contact for this review, if applicable.
+    review_contact_email: __CONTACT_EMAIL__       # [governed_use_if_applicable] Email of the primary contact for this review, if applicable.
+    reviewed_by:                                  # [governed_use_if_applicable] Delete the block that does not apply.
+      type: __TYPE__                              # person | organization
+      person:
+        given_name: __GIVEN_NAME__                # [governed_use_if_applicable]
+        family_name: __FAMILY_NAME__              # [governed_use_if_applicable]
+        email: __EMAIL__                          # [governed_use_if_applicable]
+        ror_id: __ROR_ID__                        # [governed_use_if_applicable]
+      organization:
+        name: __ORG_NAME__                        # [governed_use_if_applicable]
+        ror_id: __ROR_ID__                        # [governed_use_if_applicable]
+    decontrol_or_declassify_on: "__YYYY-MM-DD__"  # [governed_use_if_applicable] If provided, use "YYYY-MM-DD" format or "not_applicable", for export-controlled or classified datasets, the date when the dataset will be decontrolled or declassified, if known.
+    review_date: "__YYYY-MM-DD__"                 # [governed_use_if_applicable] If provided, use "YYYY-MM-DD" format or "not_applicable"
+    comments: __COMMENTS__                        # [governed_use_if_applicable]
 
 # ============================================================
 # AI USABILITY    [ai_usability_required]
@@ -1124,14 +1118,14 @@ _repository:                               # [reference_only_do_not_include] Rep
     value: null                             # [reference_only_do_not_include] Checksum of the raw data card .md file as ingested.
                                             # Recomputed on each ingest to detect post-ingest modifications.
   repositories:                             # [reference_only_do_not_include] Resolved repository records keyed to access.intended_repositories
-    - name: ""                              # [reference_only_do_not_include] Echoed from access.intended_repositories.name
-      identifier:
-        type: null                          # [reference_only_do_not_include] ror | url | local | other
-        value: null                         # [reference_only_do_not_include] Authoritative repository identifier; ROR ID preferred
-      dataset_landing_page: null            # [reference_only_do_not_include] Human-readable dataset page assigned by the repository
-      dataset_download_url: null            # [reference_only_do_not_include] Direct download URL assigned by the repository
-      dataset_id_in_repo: null              # [reference_only_do_not_include] Accession number or ID assigned by this repository
-      access_protocol: null                 # [reference_only_do_not_include] https | ftp | s3 | globus | nfs | lustre | other
+    name: ""                              # [reference_only_do_not_include] Echoed from access.intended_repositories.name
+    identifier:
+      type: null                          # [reference_only_do_not_include] ror | url | local | other
+      value: null                         # [reference_only_do_not_include] Authoritative repository identifier; ROR ID preferred
+    dataset_landing_page: null            # [reference_only_do_not_include] Human-readable dataset page assigned by the repository
+    dataset_download_url: null            # [reference_only_do_not_include] Direct download URL assigned by the repository
+    dataset_id_in_repo: null              # [reference_only_do_not_include] Accession number or ID assigned by this repository
+    access_protocol: null                 # [reference_only_do_not_include] https | ftp | s3 | globus | nfs | lustre | other
   usage_metrics:                            # [reference_only_do_not_include] Populated by the managing repository; do not edit
     download_count: null
     view_count: null
