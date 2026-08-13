@@ -454,6 +454,77 @@ def get_tier1_fields():
     return flattened_fields, tier1_cards, datacard_dict
 
 
+def get_conditional_info(field_path: str, yaml_dict: dict) -> dict | None:
+    """
+    Check if a field path is inside a conditional context block.
+    Returns dict with conditional info if found, None otherwise.
+    
+    The discriminator field is a SIBLING of the conditional alternative,
+    so we need to build the path correctly.
+    
+    Example:
+    field_path = "discoverability.authors.person.given_name"
+    
+    Structure:
+        authors:
+        type: <discriminator>
+        person: <conditional alternative>
+            given_name: <this field>
+            
+    Returns: {
+        "is_conditional": True,
+        "discriminator": "type",
+        "discriminator_path": "discoverability.authors.type",  # Sibling of person
+        "alternative": "person"
+    }
+    """
+    parts = field_path.split(".")
+
+    # Walk the YAML structure following the path
+    current = yaml_dict
+    path_to_here = []
+
+    for i, part in enumerate(parts):
+        path_to_here.append(part)
+
+        # Navigate into the structure
+        if isinstance(current, dict):
+            if part in current:
+                current = current[part]
+            elif "value" in current and isinstance(current["value"], dict):
+                # Step into value dict
+                current = current["value"]
+                if part in current:
+                    current = current[part]
+                else:
+                    return None
+            else:
+                return None
+        else:
+            return None
+
+        # Check if THIS level has conditional_context
+        if isinstance(current, dict) and current.get("conditional_context") == "one_of_alternatives":
+            discriminator = current.get("condition_discriminator")
+
+            # The discriminator is a SIBLING - go back to parent level
+            # parent_path is everything EXCEPT the current part
+            parent_path_parts = path_to_here[:-1]  # Remove the conditional alternative from path
+
+            # Build discriminator path: parent + discriminator name
+            discriminator_path_parts = parent_path_parts + [discriminator]
+
+            return {
+                "is_conditional": True,
+                "discriminator": discriminator,
+                "discriminator_path": ".".join(discriminator_path_parts),
+                "alternative": part,  # The current part IS the alternative name
+                "parent_path": ".".join(parent_path_parts)
+            }
+
+    return None
+
+
 def flattened_tier1_fields(yaml_dict: dict):
     def get_children(field):
         value = field.get("value")
@@ -469,18 +540,25 @@ def flattened_tier1_fields(yaml_dict: dict):
 
         return {}
 
-    def walk(field, path, result):
+    def walk(field, path, result, in_conditional_block=False):
         children = get_children(field)
 
         # This is an actual field.
         if not children:
-            result[path] = field.get("required", False)
+            # If inside a conditional block, mark as not required at UI level
+            if in_conditional_block:
+                result[path] = False  # ← Don't validate conditionally required fields at UI level
+            else:
+                result[path] = field.get("required", False)
             return
+
+        # Check if this field is a conditional alternative
+        is_conditional = field.get("conditional_context") == "one_of_alternatives" 
         
         for key, child in children.items():
             child_path = f"{path}.{key}"
             if isinstance(child, dict):
-                walk(child, child_path, result)
+                walk(child, child_path, result, is_conditional or in_conditional_block)
             else:
                 result[child_path] = False
 
@@ -2155,8 +2233,28 @@ elif st.session_state.screen == "tier1":
                             if depth > 0: # display "support_" keys differently
                                 supports_key = "supports_" + current_path[0]
                                 field_req = ""
-                                if tbl_data[supports_key].lower() == "yes" and flattened_fields[widget_key]:
+
+                                # Check if field is part of a conditional block
+                                conditional_info = get_conditional_info(widget_key, datacard_dict)  
+
+                                if conditional_info and conditional_info["is_conditional"]:
+                                    # Get discriminator value to see if this alternative is selected
+                                    discriminator_path = conditional_info["discriminator_path"]
+                                    discriminator_value = tbl_data.get(discriminator_path, "")
+                                    
+                                    if discriminator_value == conditional_info["alternative"]:
+                                        # This alternative IS selected - show as required if needed
+                                        if tbl_data[supports_key].lower() == "yes":
+                                            # Check the raw schema for the actual required value
+                                            # (since flattened_fields marks it as False)
+                                            field_req = " * (selected)"
+                                    else:   
+                                        # This alternative is NOT selected
+                                        field_req = " (not selected)"
+
+                                elif tbl_data[supports_key].lower() == "yes" and flattened_fields[widget_key]:
                                     field_req = " *"
+
                                 st.write(key + field_req)
 
                                 # TODO: decide whether to include description for each field too

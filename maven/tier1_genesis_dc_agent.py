@@ -74,11 +74,26 @@ def yaml_card_prompt(datasheet_text: str,
         reference guide described in **REFERENCE_GUIDE**
 
         # INSTRUCTIONS:
-        - For each key in **YAML_INPUT_WITH_CONTEXT** whose value is not a nested dictionary, extract info to complete its value. 
+        - For each key in **YAML_INPUT_WITH_CONTEXT** whose value is not a nested dictionary, extract info to complete its value.
           Pre-existing text for a key's value is only a placeholder, and must be overwritten with an extracted value, even if that extracted value is empty.
         - Use a key's "description" field as reference for what information must be extracted. Many fields have more description in the **REFERENCE_GUIDE**
+        - **REFERENCE_GUIDE takes precedence** for understanding conditional requirements and "one-of" relationships.
         - Extract the **most specific yet complete value** present using the **CONTEXT_INFORMATION** with only necessary info and concise.
         - At minimum, extract values for all fields that that have a `required` field which is True.
+
+        # HANDLING CONDITIONAL REQUIREMENTS (CRITICAL):
+        - When a field has `conditional_context: "one_of_alternatives"`, this means it's part of a mutually exclusive choice.
+        - The `condition_discriminator` field (e.g., "type", "agent_type") determines which alternative to use.
+        - **Process these fields as follows:**
+          1. First, determine the value of the discriminator field from CONTEXT_INFORMATION
+          2. Consult the REFERENCE_GUIDE for guidance on which alternative matches that discriminator value
+          3. Populate ONLY the matching alternative block (e.g., if type="person", populate person block only)
+          4. Within the selected alternative, treat all `required: true` fields as REQUIRED
+          5. Completely ignore and leave empty all other alternative blocks
+        - **Example:** If authors.type = "person", then:
+          - Populate authors.person.given_name (required: true means required in this context)
+          - Leave authors.organization completely empty (it's the non-selected alternative)
+
         - **REMEMBER:** None, NA, and Not provided mean different things:
             --`None` implies that no entries are present for the field (usually specified in the text);
             --`Not provided` implies that the entry for this field probably exists but is not provided in the given text;

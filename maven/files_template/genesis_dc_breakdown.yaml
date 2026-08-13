@@ -1,4 +1,30 @@
 ---
+# ============================================================================
+# Genesis Data Card Breakdown Schema v1.2
+# ============================================================================
+#
+# PURPOSE: This file provides a structured index of all fields in the Genesis
+# Data Card schema, including field paths, types, basic requirements, and
+# machine-readable descriptions.
+#
+# CONDITIONAL REQUIREMENTS:
+# Some fields use "one-of" patterns where multiple alternatives exist but only
+# ONE should be populated based on a discriminator field. For example:
+#   - authors.type determines whether to use authors.person OR authors.organization
+#   - created_by.creator.agent_type determines person | organization | ai_model | software
+#
+# These alternatives are marked with:
+#   conditional_context: "one_of_alternatives"
+#   condition_discriminator: "<field_name>"
+#
+# Within each alternative, required: true means "required IF this alternative
+# is selected". The reference guide (genesis_dc_v1.2_reference_guide.md) is the
+# authoritative source for understanding which alternative to select.
+#
+# For detailed field descriptions, conditional logic, controlled vocabularies,
+# and examples, always consult: genesis_dc_v1.2_reference_guide.md
+# ============================================================================
+
 supports_discoverability:
   required: true
   description: Dataset can be found and identified in catalogs. Required for every
@@ -312,14 +338,16 @@ discoverability:
                   value: "${TYPE}"
                 person:
                   required: false
-                  description: ""
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'person'. Delete if using organization, ai_model, or software."
                   value:
                     given_name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${GIVEN_NAME}"
                     family_name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${FAMILY_NAME}"
                     orcid:
@@ -328,15 +356,15 @@ discoverability:
                         Required where DOE employee/contractor author policy applies, if locally applicable"
                       value: __ORCID__
                     email:
-                      required: false
+                      required: true
                       description: ""
                       value: "${EMAIL}"
                     affiliation:
-                      required: false
+                      required: true
                       description: ""
                       value:
                         name:
-                          required: false
+                          required: true
                           description: ""
                           value: "${ORG_NAME}"
                         ror_id:
@@ -346,106 +374,112 @@ discoverability:
                           value: __ROR_ID__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                         Writing_Review_Editing | Data_Collection | Other"
                       value:
                       - __ROLE__
                 organization:
                   required: false
-                  description: ""
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'organization'. Delete if using person, ai_model, or software."
                   value:
                     name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${ORG_NAME}"
                     ror_id:
-                      required: false
+                      required: true
                       description: ""
                       value: __ROR_ID__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                         Writing_Review_Editing | Data_Collection | Other"
                       value:
                       - __ROLE__
                 ai_model:
                   required: false
-                  description: "e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3 "
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'ai_model'. Delete if using person, organization, or software. e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3"
                   value:
                     name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${MODEL_NAME}"
                     version:
-                      required: false
+                      required: true
                       description: ""
                       value: __VERSION__
                     accessed_date:
-                      required: false
+                      required: true
                       description: ""
                       value: "${YYYY-MM-DD}"
                     identifier:
-                      required: false
+                      required: true
                       description: ""
                       value:
                         type:
-                          required: false
+                          required: true
                           description: doi | ark | handle | url | local | other
                           value: __TYPE__
                         value:
-                          required: false
+                          required: true
                           description: Link to model card or documentation if available
                           value: __VALUE__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                         Writing_Review_Editing | Data_Collection | Other"
                       value:
                       - __ROLE__
                     relationship:
                       required: false
-                      description: "[discoverability_if_applicable, required for ai_model] select from: 
-                        used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; 
-                        relationship of AI model to the  data card creation process. e.g., 'used_to_create' if the AI model 
-                        generated the initial draft of the data card, 'used_to_analyze' if the AI model analyzed dataset 
-                        metadata to populate the data card, 'evaluated_on' if the AI model was used to evaluate or validate the 
+                      description: "[discoverability_if_applicable, required for ai_model] select from:
+                        used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on;
+                        relationship of AI model to the  data card creation process. e.g., 'used_to_create' if the AI model
+                        generated the initial draft of the data card, 'used_to_analyze' if the AI model analyzed dataset
+                        metadata to populate the data card, 'evaluated_on' if the AI model was used to evaluate or validate the
                         data card content, or 'other' if none of the predefined relationships apply."
                       value: __RELATIONSHIP__
                 software:
                   required: false
-                  description: ""
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'software'. Delete if using person, organization, or ai_model."
                   value:
                     name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${SOFTWARE_NAME}"
                     version:
-                      required: false
+                      required: true
                       description: ""
                       value: __VERSION__
                     identifier:
-                      required: false
+                      required: true
                       description: ""
                       value:
                         type:
-                          required: false
+                          required: true
                           description: "doi | ark | handle | url | local | other"
                           value: __TYPE__
                         value:
-                          required: false
+                          required: true
                           description: ""
                           value: __VALUE__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                         Writing_Review_Editing | Data_Collection | Other"
                       value:
                       - __ROLE__
@@ -800,15 +834,17 @@ discoverability:
           description: person | organization
           value: "${TYPE}"
         person:
-          required: true
-          description: ""
+          required: false
+          conditional_context: "one_of_alternatives"
+          condition_discriminator: "type"
+          description: "Required when type is 'person'. Delete if using organization."
           value:
             given_name:
-              required: false
+              required: true
               description: ""
               value: "${GIVEN_NAME}"
             family_name:
-              required: false
+              required: true
               description: ""
               value: "${FAMILY_NAME}"
             orcid:
@@ -821,11 +857,11 @@ discoverability:
               description: ""
               value: __EMAIL__
             affiliation:
-              required: false
+              required: true
               description: ""
               value:
                 name:
-                  required: false
+                  required: true
                   description: ""
                   value: "${ORG_NAME}"
                 ror_id:
@@ -834,17 +870,19 @@ discoverability:
                   value: __ROR_ID__
             role:
               required: false
-              description: ' list from roles extending the CRediT taxonomy: 
-                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+              description: ' list from roles extending the CRediT taxonomy:
+                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                 Writing_Review_Editing | Data_Collection | Other'
               value: __ROLE__
         organization:
-          required: true
-          description: ""
+          required: false
+          conditional_context: "one_of_alternatives"
+          condition_discriminator: "type"
+          description: "Required when type is 'organization'. Delete if using person."
           value:
             name:
-              required: false
+              required: true
               description: ""
               value: __ORG_NAME__
             ror_id:
@@ -853,9 +891,9 @@ discoverability:
               value: __ROR_ID__
             role:
               required: false
-              description: ' list from roles extending the CRediT taxonomy: 
-                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+              description: ' list from roles extending the CRediT taxonomy:
+                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                 Writing_Review_Editing | Data_Collection | Other'
               value: __ROLE__
     contributors:
@@ -1699,19 +1737,21 @@ reusability:
             for ongoing maintenance."
           value:
             type:
-              required: false
+              required: true
               description: person | organization
               value: __TYPE__
             person:
               required: false
-              description: " Person responsible for ongoing maintenance."
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'person'. Delete if using organization."
               value:
                 given_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __GIVEN_NAME__
                 family_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __FAMILY_NAME__
                 orcid:
@@ -1725,7 +1765,7 @@ reusability:
                   value: __EMAIL__
                 affiliation:
                   required: false
-                  description: " Organization responsible for ongoing maintenance."
+                  description: " Organization affiliation."
                   value:
                     name:
                       required: false
@@ -1737,10 +1777,12 @@ reusability:
                       value: __ROR_ID__
             organization:
               required: false
-              description: " Organization responsible for ongoing maintenance."
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'organization'. Delete if using person."
               value:
                 name:
-                  required: false
+                  required: true
                   description: ""
                   value: __ORG_NAME__
                 ror_id:
@@ -2092,17 +2134,17 @@ governed_use:
           value: __CONTACT_EMAIL__
         reviewed_by:
           required: false
-          description: 'organization. Populate only the matching sub-block (person:
-            given_name, family_name, email, ror_id; organization: name, ror_id) and
-            delete the other.'
+          description: 'Person or organization that conducted the review. Populate only the matching sub-block based on type and delete the other.'
           value:
             type:
               required: false
-              description: 'person| organization'
+              description: 'person | organization'
               value: __TYPE__
             person:
               required: false
-              description: ""
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'person'. Delete if using organization."
               value:
                 given_name:
                   required: false
@@ -2122,7 +2164,9 @@ governed_use:
                   value: __ROR_ID__
             organization:
               required: false
-              description: ""
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'organization'. Delete if using person."
               value:
                 name:
                   required: false
