@@ -2194,6 +2194,7 @@ elif st.session_state.screen == "tier1":
 
     with st.form(f"tier1_metadata_form_{qid}"):
         updated_values = {}
+        actual_field_reqs = {}
         if "datacard_yaml" in curr_tables.keys():
             tbl_name = "datacard_yaml"
             tbl_df = curr_tables[tbl_name]
@@ -2252,14 +2253,20 @@ elif st.session_state.screen == "tier1":
                                             # (since flattened_fields marks it as False)
                                             if flattened_fields[widget_key]:
                                                 field_req = " * (selected)"
+                                                actual_field_reqs[widget_key] = True
                                             else:
                                                 field_req = " (selected)"
+                                                actual_field_reqs[widget_key] = False
                                     else:
                                         # This alternative is NOT selected
                                         field_req = " (not selected)"
+                                        actual_field_reqs[widget_key] = False
 
                                 elif tbl_data[supports_key].lower() == "yes" and flattened_fields[widget_key]:
                                     field_req = " *"
+                                    actual_field_reqs[widget_key] = True
+                                else:
+                                    actual_field_reqs[widget_key] = False
 
                                 st.write(key + field_req)
 
@@ -2300,6 +2307,7 @@ elif st.session_state.screen == "tier1":
                                     st.error(f"Unsupported type: {field_dict['type']}")
                                     st.stop()
                             else: # display "support_" keys differently
+                                actual_field_reqs[widget_key] = True
                                 st.write(f"### {key} *")
                                 st.caption(datacard_dict[key]["description"])
 
@@ -2329,6 +2337,7 @@ elif st.session_state.screen == "tier1":
 
             st.write("### Markdown portion")
             st.caption("Carefully review model-generated text in this text block")
+            actual_field_reqs[markdown_col_key] = True
             updated_values[tbl_name][markdown_col_key] = st.text_area(
                 "enter",
                 height = 750,
@@ -2351,9 +2360,9 @@ elif st.session_state.screen == "tier1":
                 missing_fields = {}
                 for col, val in updated_values["datacard_yaml"].items():
                     top_key = col.split(".", 1)[0]
-                    if f"supports_{top_key}" in flattened_fields.keys():
+                    if f"supports_{top_key}" in actual_field_reqs.keys():
                         req_field_missing = (updated_values["datacard_yaml"][f"supports_{top_key}"].lower() == "yes" and 
-                                          flattened_fields[col] and not str(val).strip()
+                                          actual_field_reqs[col] and not str(val).strip()
                                         )
                         if req_field_missing:
                             if top_key in missing_fields.keys():
