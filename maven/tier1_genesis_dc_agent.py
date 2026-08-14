@@ -102,6 +102,9 @@ def yaml_card_prompt(datasheet_text: str,
         - Return your output in **structured JSON** described below.
         - **DO NOT** include ANY verbose commentary, explanations, or text not corresponding to a field value.
         - Strictly follow one standard in terms of capitalization or choices for a categorical variable or value. DO NOT change structure of a key's name.
+        - Certain keys in **YAML_INPUT_WITH_CONTEXT** have additional keys in its nested dictionary, type (either radio or dropdown) and options (a list of valid answers for that key).
+          If options is present, then ensure that the completed/filled-in value for the key is one of the choices in the list.
+          If the value for that key cannot be filled in, select No/None/Unknown/Other/Not_applicable, or a choice from the options list that best matches an empty value.
 
         # CRITICAL NOTES:
         - EACH ANSWER MUST BE UNIQUE: Every field should have a distinct answer tailored to that question.

@@ -546,11 +546,14 @@ def flattened_tier1_fields(yaml_dict: dict):
         # This is an actual field.
         if not children:
             # If inside a conditional block, mark as not required at UI level
-            if in_conditional_block:
-                result[path] = False  # ← Don't validate conditionally required fields at UI level
-            else:
-                result[path] = field.get("required", False)
+
+            result[path] = field.get("required", False)
             return
+            # if in_conditional_block:
+            #     result[path] = False  # ← Don't validate conditionally required fields at UI level
+            # else:
+            #     result[path] = field.get("required", False)
+            # return
 
         # Check if this field is a conditional alternative
         is_conditional = field.get("conditional_context") == "one_of_alternatives" 
@@ -2230,7 +2233,7 @@ elif st.session_state.screen == "tier1":
                         )
                     else:
                         with content:
-                            if depth > 0: # display "support_" keys differently
+                            if depth > 0: # actual child fields
                                 supports_key = "supports_" + current_path[0]
                                 field_req = ""
 
@@ -2247,8 +2250,11 @@ elif st.session_state.screen == "tier1":
                                         if tbl_data[supports_key].lower() == "yes":
                                             # Check the raw schema for the actual required value
                                             # (since flattened_fields marks it as False)
-                                            field_req = " * (selected)"
-                                    else:   
+                                            if flattened_fields[widget_key]:
+                                                field_req = " * (selected)"
+                                            else:
+                                                field_req = " (selected)"
+                                    else:
                                         # This alternative is NOT selected
                                         field_req = " (not selected)"
 
@@ -2258,18 +2264,42 @@ elif st.session_state.screen == "tier1":
                                 st.write(key + field_req)
 
                                 # TODO: decide whether to include description for each field too
-                                # field_template_value = datacard_dict
-                                # for part in current_path[-1]:
-                                #     field_template_value = field_template_value[part]["value"]
-                                # field_template_value = field_template_value[key]
-                                # st.caption(field_template_value["description"])
-                                updated_values[tbl_name][widget_key] = st.text_input(
-                                    label=key,
-                                    value="" if pd.isna(value) else str(value),
-                                    key="field:" + widget_key,
-                                    label_visibility="collapsed"
-                                )
-                            else:
+                                field_dict = datacard_dict
+                                for part in current_path[:-1]:
+                                    field_dict = field_dict[part]["value"]
+                                field_dict = field_dict[key]
+                                st.caption(field_dict["description"])
+                                if "type" not in field_dict:
+                                    updated_values[tbl_name][widget_key] = st.text_input(
+                                        label=key,
+                                        value="" if pd.isna(value) else str(value),
+                                        key="field:" + widget_key,
+                                        label_visibility="collapsed"
+                                    )
+                                elif field_dict["type"] == "radio":
+                                    options = field_dict["options"]
+                                    default_index = options.index(str(value).capitalize()) if str(value) in options else None
+                                    updated_values[tbl_name][widget_key] = st.radio(
+                                        "radio_label",
+                                        options,
+                                        index=default_index,
+                                        key="field:" + widget_key,
+                                        label_visibility="collapsed"
+                                    )
+                                elif field_dict["type"] == "dropdown":
+                                    options = list(field_dict["options"])
+                                    # saved_permission = field_dict["access_permissions"].iloc[0] if not locations_tbl.empty else None
+                                    updated_values[tbl_name][widget_key] = st.selectbox(
+                                        "Enter",
+                                        options=options,
+                                        index=options.index(value) if value is not None and value in options else None,
+                                        key="field:" + widget_key,
+                                        label_visibility="collapsed"
+                                    )
+                                else:
+                                    st.error(f"Unsupported type: {field_dict['type']}")
+                                    st.stop()
+                            else: # display "support_" keys differently
                                 st.write(f"### {key} *")
                                 st.caption(datacard_dict[key]["description"])
 
