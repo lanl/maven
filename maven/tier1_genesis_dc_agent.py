@@ -129,14 +129,14 @@ def yaml_card_prompt(datasheet_text: str,
     return prompt
 
 
-def markdown_card_prompt(datasheet_text: str, markdown_template: str, reference_guide: str) -> str:
+def markdown_card_prompt(tier1_yaml: str, markdown_template: str, reference_guide: str) -> str:
     prompt = f'''
         You are an expert agent designed to extract technical information about a dataset. 
         Using previous context about this dataset, complete entries for a markdown template.
 
         # Inputs
         ### **CONTEXT_INFORMATION** (from previous URSA output)
-        {datasheet_text}
+        {tier1_yaml}
 
         ## **MARKDOWN_TEMPLATE**
         {markdown_template}
@@ -150,7 +150,7 @@ def markdown_card_prompt(datasheet_text: str, markdown_template: str, reference_
 
         # INSTRUCTIONS:
         - Read the instructions in the top of MARKDOWN_TEMPLATE.
-        - The CONTEXT_INFORMATION contains the needed dataset information to parse and complete the MARKDOWN_TEMPLATE.
+        - The CONTEXT_INFORMATION contains the necessary dataset information to parse and complete the MARKDOWN_TEMPLATE.
         - When completing the MARKDOWN_TEMPLATE extract the **most specific yet complete value** present based on the text.
         - Do not extract unnecessary phrases, keep the fields as concise as possible.
         - At minimum, extract values for all fields that are in each table with a `required` True bool.
@@ -172,11 +172,11 @@ def markdown_card_prompt(datasheet_text: str, markdown_template: str, reference_
     return prompt
 
 
-def run_tier1_catalog(chat_agent: ChatAgent,
-                      datasheet: pd.DataFrame, 
-                      datacard_dict: dict[str, dict[str, str]],
-                      tier1_cards: dict[dict[str, str], str],
-                      flattened_fields: dict) -> dict[str, dict[str, str]]:
+def run_tier1_yaml(chat_agent: ChatAgent,
+                   datasheet: pd.DataFrame, 
+                   datacard_dict: dict[str, dict[str, str]],
+                   tier1_cards: dict[dict[str, str], str],
+                   flattened_fields: dict) -> dict[str, dict[str, str]]:
 
     datasheet_string = datasheet.to_string(index=False)
 
@@ -184,7 +184,18 @@ def run_tier1_catalog(chat_agent: ChatAgent,
     yaml_prompt = yaml_card_prompt(datasheet_string, datacard_dict, flattened_fields, tier1_cards["card_reference"])
     yaml_payload = run_ursa_agent(chat_agent, yaml_prompt)
     
-    markdown_prompt = markdown_card_prompt(datasheet_string, tier1_cards["markdown_template"], tier1_cards["card_reference"])
+    # markdown_prompt = markdown_card_prompt(datasheet_string, tier1_cards["markdown_template"], tier1_cards["card_reference"])
+    # markdown_payload = run_ursa_agent(chat_agent, markdown_prompt, extract_json=False)
+    return {"datacard_yaml": yaml_payload}
+
+
+def run_tier1_markdown(chat_agent: ChatAgent, 
+                       tier1_yaml: pd.DataFrame, 
+                       tier1_cards: dict[dict[str, str], str]) -> dict[str, dict[str, str]]:
+
+    tier1_yaml_string = tier1_yaml.to_string(index=False)
+
+    markdown_prompt = markdown_card_prompt(tier1_yaml_string, tier1_cards["markdown_template"], tier1_cards["card_reference"])
     markdown_payload = run_ursa_agent(chat_agent, markdown_prompt, extract_json=False)
 
-    return {"datacard_yaml": yaml_payload, "datacard_markdown": {"markdown_output": markdown_payload}}
+    return {"datacard_markdown": {"markdown_output": markdown_payload}}
