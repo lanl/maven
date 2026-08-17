@@ -1320,44 +1320,6 @@ def rebuild_yaml_structure(flattened_keys_dict):
     return result
 
 
-def ai_model_message(url: str):
-    if "aiportal-api" in url:
-        st.markdown(
-            """
-            <div style="background-color: rgba(255, 75, 75, 0.1); padding: 1rem; border: 2px solid rgb(255, 75, 75); 
-            border-radius: 0.25rem; font-size: 1.15rem; font-weight: 600;">
-            ⚠️ IMPORTANT: Model-Specific Data Restrictions
-            
-            Different AI models support different data levels. YOU are responsible for verifying that your selected model supports
-            the data level of the content you send via the API.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.write(" ")
-        st.markdown("""
-        - <span style="font-weight:800;">AWS GovCloud Bedrock</span> and <span style="font-weight:800;">LANL IT Hosted</span> 
-                    models are approved for unclassified data levels, including: 
-        OPEN, CUI, LA-CP, PHI, PII, RSI, TPI, UCNI, U-NNPI, DOE 810, ECI, EAR, ITAR.
-        These include the following models:
-            - <span style="font-weight:800;">Claude 4.5 Sonnet</span> (AWS GovCloud Bedrock)
-            - <span style="font-weight:800;">Claude Opus 4.8</span> (AWS GovCloud Bedrock)
-            - <span style="font-weight:800;">ChatGPT 5.4 - Gov</span> (AWS GovCloud Bedrock)
-            - <span style="font-weight:800;">Gemma 4 31B</span> (LANL IT)
-            - <span style="font-weight:800;">Nemotron 3 Super 120B</span> (LANL IT)
-            - <span style="font-weight:800;">ChatGPT OSS 120B</span> (LANL IT)
-            - <span style="font-weight:800;">Nova Pro v1</span> (AWS GovCloud Bedrock)
-        - <span style="font-weight:800;">Azure Commercial Foundry</span> models are approved for OPEN, CUI, LA-CP, PHI, PII, TPI but 
-                    <span style="font-weight:800;">:red[ARE NOT approved for export controlled or nuclear information]</span>. 
-                    The following models have restrictions:
-            - <span style="font-weight:800;">ChatGPT 5.5</span>: :red[NO ECI, NO ITAR, NO EAR, NO UCNI, NO UNNPI, NO RSI, NO DOE 810]
-            - <span style="font-weight:800;">ChatGPT 5.4 - Comm</span>: :red[NO ECI, NO ITAR, NO EAR, NO UCNI, NO UNNPI, NO RSI, NO DOE 810]
-        """, unsafe_allow_html=True)
-        st.write(" ")
-    elif "circe-keys" in url:
-        st.markdown(':red[<span style="font-weight:800;">NOTE: All models can currently handle CUI level data</span>]', unsafe_allow_html=True)
-
-
 def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
     base_url = "https://rassti.lanl.gov"
     try:
@@ -1536,7 +1498,7 @@ def update_ai_model_dialog():
         st.error(e)
         st.stop()
 
-    ai_model_message(url.lower())
+    st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
     selected_model = st.selectbox("val", models, label_visibility="collapsed", index=None,
                                     key="update_ai_model_selection")
@@ -1742,7 +1704,7 @@ if not loaded_keys:
             st.space()
             st.subheader("Pick the AI model to use with your API key")
 
-            ai_model_message(url.lower())
+            st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
             selected_model = st.selectbox("val", models, label_visibility="collapsed", index=None,
                                         key="new_ai_model_selection")
