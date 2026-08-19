@@ -677,6 +677,7 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
 
 def generate_tier1_datacard(qid: int, output_file: str):
     # TODO: maybe use agent to format yaml values as per template -- but yaml is standardized so might be fine
+    # CWJ 19AUG2026 testing so far shows the yaml is formatting correctly. 
 
     tier1_tbls = get_tier1_table(qid)
     flattened_fields_dict = tier1_tbls["datacard_yaml"].iloc[0].to_dict()
@@ -2338,8 +2339,8 @@ elif st.session_state.screen == "tier1":
                     if next_clicked:
                         if "datacard_markdown" not in curr_tables:
                             with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                                tier1_yaml_df = pd.DataFrame(updated_values["datacard_yaml"])
-                                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_cards)
+                                tier1_yaml_df = pd.DataFrame([updated_values["datacard_yaml"]])
+                                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
 
                         st.session_state.screen = "tier1"
                         st.session_state.render_t1_markdown = True
