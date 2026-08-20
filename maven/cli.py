@@ -55,8 +55,8 @@ def main():
                 or "$ pip install watchdog" in line
                 or "Uvicorn server started" in line
                 or "Could not bind IPv6 wildcard address" in line
-                or "Could not bind IPv6 wildcard address" in line
                 or "Did not auto detect external IP" in line
+                or "debugging hints" in line
                 or line == ""
             ):
                 continue
