@@ -2942,8 +2942,9 @@ elif st.session_state.screen == "tier2":
                 
                 if scratch_move_error is not None:
                     st.error("Scratch to Campaign Move Error:")
-                    if "conduit get" in str(scratch_move_error) and "no credentials" in str(scratch_move_error).lower():
-                        st.code("Please run 'conduit get' in the other terminal to be able to move data on this HPC.")
+                    lower_error_str = str(scratch_move_error).lower()
+                    if "conduit get" in lower_error_str and( "no credentials" in lower_error_str or  "not authenticated" in lower_error_str):
+                        st.code("Please run 'conduit get' in another terminal to move data on this HPC.")
                     else:
                         st.code(str(scratch_move_error))
                     st.stop()
