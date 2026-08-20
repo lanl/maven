@@ -30,4 +30,4 @@ include = ["maven*"]
 exclude = ["ursa_workspace"]
 
 [tool.setuptools.package-data]
-maven = ["files/*", "files_template/*"]
+maven = ["metadata_template/*"]

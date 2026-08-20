@@ -1,4 +1,30 @@
 ---
+# ============================================================================
+# Genesis Data Card Breakdown Schema v1.2
+# ============================================================================
+#
+# PURPOSE: This file provides a structured index of all fields in the Genesis
+# Data Card schema, including field paths, types, basic requirements, and
+# machine-readable descriptions.
+#
+# CONDITIONAL REQUIREMENTS:
+# Some fields use "one-of" patterns where multiple alternatives exist but only
+# ONE should be populated based on a discriminator field. For example:
+#   - authors.type determines whether to use authors.person OR authors.organization
+#   - created_by.creator.agent_type determines person | organization | ai_model | software
+#
+# These alternatives are marked with:
+#   conditional_context: "one_of_alternatives"
+#   condition_discriminator: "<field_name>"
+#
+# Within each alternative, required: true means "required IF this alternative
+# is selected". The reference guide (genesis_dc_v1.2_reference_guide.md) is the
+# authoritative source for understanding which alternative to select.
+#
+# For detailed field descriptions, conditional logic, controlled vocabularies,
+# and examples, always consult: genesis_dc_v1.2_reference_guide.md
+# ============================================================================
+
 supports_discoverability:
   required: true
   description: Dataset can be found and identified in catalogs. Required for every
@@ -104,6 +130,8 @@ discoverability:
             type:
               required: false
               description: doi | ark | handle | url | local | other
+              type: dropdown
+              options: [doi, ark, handle, url, local, other]
               value: __TYPE__
             value:
               required: false
@@ -138,6 +166,15 @@ discoverability:
                 required. - Other_Controlled: Other controlled information; may have
                 specific handling requirements based on other controls; access controls
                 required."
+              type: dropdown
+              options: ["Public: No sensitivity; publicly shareable", 
+                        "Unclassified_Uncontrolled: Unclassified but uncontrolled",
+                        "CUI: CUI (Controlled Unclassified Information)",
+                        "UCNI: UCNI (Unclassified Controlled Nuclear Information)",
+                        "Classified: Classified information; requires handling per classification level and guide;",
+                        "Legacy_Controlled: Legacy controlled information;",
+                        "Mixed: Mixed sensitivity; contains a combination of sensitive and non-sensitive information;",
+                        "Other_Controlled: Other controlled information;"]
               value: "${OVERALL_SENSITIVITY}"
             source_marking_string:
               required: true
@@ -147,7 +184,7 @@ discoverability:
               value: "${STRING}"
             source_marking_scheme:
               required: true
-              description: ' If this data card has a source
+              description: 'If this data card has a source
                 marking, provide the marking scheme used. use vocabulary: DOE_CUI
                 | DOE_UCNI | EO13526_Classified | AEA_RD_FRD_TFNI | DOD_CUI | DHS_CUI
                 | Legacy_OUO | Legacy_Site_Specific | Other_Agency | None if a Legacy_OUO
@@ -155,22 +192,31 @@ discoverability:
                 should be populated as "Legacy_Needs_Mapping" to indicate that the
                 control basis is legacy and needs interpretation for governance purposes.
                 Otherwise the source marking is None.'
+              type: dropdown
+              options: [DOE_CUI, DOE_UCNI, EO13526_Classified, AEA_RD_FRD_TFNI, DOD_CUI, DHS_CUI, Legacy_OUO, 
+                        Legacy_Site_Specific, Other_Agency, None]
               value: "${SCHEME}"
             classified_status:
               required: true
               description: ' "Yes" | "No" description: Indicates
                 whether the asset is classified.'
+              type: radio
+              options: ["Yes", "No"]
               value: "${STATUS}"
             classification_level:
               required: false
               description: " For classified information,
                 Top_Secret | Secret | Confidential classification level"
+              type: dropdown
+              options: [Top_Secret, Secret, Confidential, None]
               value: __LEVEL__
             classification_category:
               required: false
               description: " For classified information,
                 list the classification category or categories, if applicable. use
                 vocabulary: NSI | RD | FRD | TFNI | Other_Classified"
+              type: dropdown
+              options: [Top_Secret, Secret, Confidential, None]
               value: []
             classified_control_markings:
               required: false
@@ -183,6 +229,8 @@ discoverability:
               required: true
               description: ' "Yes" | "No" description: Indicates
                 whether the asset is CUI.'
+              type: radio
+              options: ["Yes", "No"]
               value: "${STATUS}"
             cui_basic_categories:
               required: false
@@ -214,12 +262,16 @@ discoverability:
               description: ' "Yes" | "No" description: Indicates
                 whether the asset contains UCNI. UCNI is represented separately and
                 should not be treated as an ordinary CUI category value.'
+              type: radio
+              options: ["Yes", "No"]
               value: "${STATUS}"
             uk_mda_status:
               required: false
               description: ' "Yes" | "No"| "Unknown"
                 | "not_applicable" Indicates whether the asset is subject to UK Ministry
                 of Defence Assessment (MDA) controls.'
+              type: dropdown
+              options: ["Yes", "No", "Unknown"]
               value: __STATUS__
             legacy_label_source:
               required: false
@@ -242,6 +294,8 @@ discoverability:
                 purposes. Entries should use this controlled vocabulary: - "Classified"
                 - "CUI" - "UCNI" - "Public_Release_Approved" - "Legacy_Needs_Mapping"
                 - "Other_Controlled"'
+              type: dropdown
+              options: [Classified, CUI, UCNI, Public_Release_Approved, Legacy_Needs_Mapping, Other_Controlled, None]
               value: __BASIS__
         created_date:
           required: true
@@ -307,19 +361,22 @@ discoverability:
               value:
                 agent_type:
                   required: true
-                  description: " person | organization | ai_model | software
-                    TYPE: person — use for a human contributor"
+                  description: "person | organization | ai_model | software. TYPE: person — use for a human contributor"
+                  type: dropdown
+                  options: [person, organization, ai_model, software]
                   value: "${TYPE}"
                 person:
                   required: false
-                  description: ""
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'person'. Delete if using organization, ai_model, or software."
                   value:
                     given_name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${GIVEN_NAME}"
                     family_name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${FAMILY_NAME}"
                     orcid:
@@ -328,15 +385,15 @@ discoverability:
                         Required where DOE employee/contractor author policy applies, if locally applicable"
                       value: __ORCID__
                     email:
-                      required: false
+                      required: true
                       description: ""
                       value: "${EMAIL}"
                     affiliation:
-                      required: false
+                      required: true
                       description: ""
                       value:
                         name:
-                          required: false
+                          required: true
                           description: ""
                           value: "${ORG_NAME}"
                         ror_id:
@@ -346,109 +403,137 @@ discoverability:
                           value: __ROR_ID__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
-                        Writing_Review_Editing | Data_Collection | Other"
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | 
+                        Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other"
+                      type: dropdown
+                      options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
+                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
-                      - __ROLE__
+                        __ROLE__
                 organization:
                   required: false
-                  description: ""
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'organization'. Delete if using person, ai_model, or software."
                   value:
                     name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${ORG_NAME}"
                     ror_id:
-                      required: false
+                      required: true
                       description: ""
                       value: __ROR_ID__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
-                        Writing_Review_Editing | Data_Collection | Other"
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | 
+                        Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other"
+                      type: dropdown
+                      options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
+                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
-                      - __ROLE__
+                        __ROLE__
                 ai_model:
                   required: false
-                  description: "e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3 "
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'ai_model'. Delete if using person, organization, or software. e.g., Claude 3.5 Sonnet | GPT-4o | Llama 3"
                   value:
                     name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${MODEL_NAME}"
                     version:
-                      required: false
+                      required: true
                       description: ""
                       value: __VERSION__
                     accessed_date:
-                      required: false
+                      required: true
                       description: ""
                       value: "${YYYY-MM-DD}"
                     identifier:
-                      required: false
+                      required: true
                       description: ""
                       value:
                         type:
-                          required: false
+                          required: true
                           description: doi | ark | handle | url | local | other
+                          type: dropdown
+                          options: [doi, ark, handle, url, local, other]
                           value: __TYPE__
                         value:
-                          required: false
+                          required: true
                           description: Link to model card or documentation if available
                           value: __VALUE__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
-                        Writing_Review_Editing | Data_Collection | Other"
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | 
+                        Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other"
+                      type: dropdown
+                      options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
+                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
-                      - __ROLE__
+                        __ROLE__
                     relationship:
                       required: false
-                      description: "[discoverability_if_applicable, required for ai_model] select from: 
-                        used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on; 
-                        relationship of AI model to the  data card creation process. e.g., 'used_to_create' if the AI model 
-                        generated the initial draft of the data card, 'used_to_analyze' if the AI model analyzed dataset 
-                        metadata to populate the data card, 'evaluated_on' if the AI model was used to evaluate or validate the 
+                      description: "[discoverability_if_applicable, required for ai_model] select from:
+                        used_to_create | used_to_process | used_to_analyze | recorded_by | trained_on | evaluated_on;
+                        relationship of AI model to the  data card creation process. e.g., 'used_to_create' if the AI model
+                        generated the initial draft of the data card, 'used_to_analyze' if the AI model analyzed dataset
+                        metadata to populate the data card, 'evaluated_on' if the AI model was used to evaluate or validate the
                         data card content, or 'other' if none of the predefined relationships apply."
+                      type: dropdown
+                      options: [used_to_create, used_to_process, used_to_analyze, recorded_by, trained_on, evaluated_on, None]
                       value: __RELATIONSHIP__
                 software:
                   required: false
-                  description: ""
+                  conditional_context: "one_of_alternatives"
+                  condition_discriminator: "agent_type"
+                  description: "Required when agent_type is 'software'. Delete if using person, organization, or ai_model."
                   value:
                     name:
-                      required: false
+                      required: true
                       description: ""
                       value: "${SOFTWARE_NAME}"
                     version:
-                      required: false
+                      required: true
                       description: ""
                       value: __VERSION__
                     identifier:
-                      required: false
+                      required: true
                       description: ""
                       value:
                         type:
-                          required: false
+                          required: true
                           description: "doi | ark | handle | url | local | other"
+                          type: dropdown
+                          options: [doi, ark, handle, url, local, other]
                           value: __TYPE__
                         value:
-                          required: false
+                          required: true
                           description: ""
                           value: __VALUE__
                     role:
                       required: false
-                      description: " list from roles extending the CRediT taxonomy: 
-                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+                      description: " list from roles extending the CRediT taxonomy:
+                        Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                        Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                         Writing_Review_Editing | Data_Collection | Other"
+                      type: dropdown
+                      options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
+                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
-                      - __ROLE__
+                        __ROLE__
                     relationship:
                       required: false
                       description: "[discoverability_if_applicable, required for ai_model] select from: 
@@ -457,6 +542,8 @@ discoverability:
                         generated the initial draft of the data card, 'used_to_analyze' if the AI model analyzed dataset 
                         metadata to populate the data card, 'evaluated_on' if the AI model was used to evaluate or validate the 
                         data card content, or 'other' if none of the predefined relationships apply."
+                      type: dropdown
+                      options: [used_to_create, used_to_process, used_to_analyze, recorded_by, trained_on, evaluated_on, None]
                       value: __RELATIONSHIP__
     identification:
       required: true
@@ -493,6 +580,8 @@ discoverability:
             type:
               required: true
               description: doi | ark | handle | url | osti | local | other | unregistered
+              type: dropdown
+              options: [doi, ark, handle, url, osti, local, other, unregistered]
               value: "${TYPE}"
             value:
               required: true
@@ -508,6 +597,8 @@ discoverability:
             type:
               required: false
               description: "doi | ark | handle | url | osti | sand | la-ur | local | other"
+              type: dropdown
+              options: [doi, ark, handle, url, osti, sand, local, la-ur, other]
               value: __TYPE__
             value:
               required: false
@@ -522,6 +613,8 @@ discoverability:
             type:
               required: false
               description: doi | ark | handle | url | local | other
+              type: dropdown
+              options: [doi, ark, handle, url, local, other]
               value: __TYPE__
             value:
               required: false
@@ -535,6 +628,8 @@ discoverability:
             type:
               required: false
               description: doi | ark | handle | url | local | other
+              type: dropdown
+              options: [doi, ark, handle, url, local, other]
               value: __TYPE__
             value:
               required: false
@@ -557,6 +652,8 @@ discoverability:
                 type:
                   required: false
                   description: doi | ark | handle | url | local | other
+                  type: dropdown
+                  options: [doi, ark, handle, url, local, other]
                   value: __TYPE__
                 value:
                   required: false
@@ -575,6 +672,11 @@ discoverability:
             Sciences" | "Fission and Nuclear Technologies" | "Fossil Fuels" | "Geosciences"
             | "Materials" | "Mathematics and Computing" | "National Defense" | "Physics"
             | "Power Generation and Distribution" | "Renewable Energy" | "Other"'
+          type: dropdown
+          options: ["Biology and Medicine", "Chemistry", "Energy Storage, Conversion, and Utilization", "Engineering", 
+                    "Environmental Sciences", "Fission and Nuclear Technologies", "Fossil Fuels", "Geosciences",
+                    "Materials", "Mathematics and Computing", "National Defense", "Physics",
+                    "Power Generation and Distribution", "Renewable Energy", "Other"]
           value: __DOMAIN__
         dataset_summary:
           required: true
@@ -620,6 +722,8 @@ discoverability:
               required: false
               description: 'select one of: Dataset | Model | Software | AI_Agent |
                 Infrastructure | Resource | Other'
+              type: dropdown
+              options: [Dataset, Model, Software, AI_Agent, Infrastructure, Resource, Other]
               value: __TYPE__
         task_category:
           required: false
@@ -649,16 +753,19 @@ discoverability:
       description: 'Primary type of product described by this data card. Aligns with
         and extends the STI Product Types to support interoperability with STI catalogs
         and the OSTI DOE Data Explorer. Controlled vocabulary (ProductTypeEnum): Technical_Report
-        \| Paper_or_Proceedings \| Journal_Article \| Software_Manual \| Data \| Collection
-        \| Computer_Related \| Model \| Agent. Data is expected here for a data card
+        | Paper_or_Proceedings | Journal_Article | Software_Manual | Data | Collection
+        | Computer_Related | Model | Agent. Data is expected here for a data card
         describing a dataset; select the best fit if this data card describes a different
         type of product.  Primary type of product type described
         by this data card. These align with and extend the STI Product Types to support
         interoperability with STI catalogs and OSTI DOE Data Explorer. Select the
         single best-fit: Technical_Report | Paper_or_Proceedings | Journal_Article
-        | Software_Manual | Data | Collection | Computer_Related | Model | Agent Data
+        | Software_Manual | Data | Collection | Computer_Related | Model | Agent. Data
         is expected here for a data card describing a dataset, but select the best
         fit if this data card describes a different type of product.'
+      type: dropdown
+      options: [Technical_Report, Paper_or_Proceedings, Journal_Article, Software_Manual, Data, Collection, 
+                Computer_Related, Model, Agent]
       value: "${TYPE}"
     dataset_type:
       required: false
@@ -674,6 +781,10 @@ discoverability:
         AS Automated Software — scripts, analysis pipelines, workflows IP Instrumentation/Protocols
         — experimental protocols, instrument specs IG Integrated Genomic Resources
         — combined genomic databases and tools'
+      type: dropdown
+      options: ["GD: Genome/Genetic Data", "IM: Image", "ND: Numeric Data", "SM: Specialized Mix", "FP: Figure/Plot", 
+                "I: Interactive Resource", "MM: Multimedia", "MD: Model", "AS: Automated Software", 
+                "IP: Instrumentation/Protocols", "IG: Integrated Genomic Resources", "None"]
       value: __TYPE__
     release_status:
       required: true
@@ -686,6 +797,8 @@ discoverability:
         formal review Approved — review complete; cleared for release Published —
         publicly released and accessible Deprecated — superseded or retired; no longer
         recommended for use'
+      type: dropdown
+      options: [Draft, Under_Review, Approved, Published, Deprecated]
       value: "${STATUS}"
     dataset_publisher:
       required: false
@@ -722,7 +835,7 @@ discoverability:
         "Contact the ORNL data management office at data@ornl.gov." Choose a contact
         who will be reachable for the foreseeable future. For datasets with long retention
         periods, consider whether the named contact will still be associated with
-        the project in 5–10 years.  Primary point of contact
+        the project in 5-10 years.  Primary point of contact
         for questions about this DATASET.'
       value:
         agent_type:
@@ -798,17 +911,21 @@ discoverability:
         type:
           required: true
           description: person | organization
+          type: dropdown
+          options: [person, organization]
           value: "${TYPE}"
         person:
-          required: true
-          description: ""
+          required: false
+          conditional_context: "one_of_alternatives"
+          condition_discriminator: "type"
+          description: "Required when type is 'person'. Delete if using organization."
           value:
             given_name:
-              required: false
+              required: true
               description: ""
               value: "${GIVEN_NAME}"
             family_name:
-              required: false
+              required: true
               description: ""
               value: "${FAMILY_NAME}"
             orcid:
@@ -821,11 +938,11 @@ discoverability:
               description: ""
               value: __EMAIL__
             affiliation:
-              required: false
+              required: true
               description: ""
               value:
                 name:
-                  required: false
+                  required: true
                   description: ""
                   value: "${ORG_NAME}"
                 ror_id:
@@ -834,17 +951,23 @@ discoverability:
                   value: __ROR_ID__
             role:
               required: false
-              description: ' list from roles extending the CRediT taxonomy: 
-                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
-                Writing_Review_Editing | Data_Collection | Other'
+              description: ' list from roles extending the CRediT taxonomy:
+                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                Project_Administration | Resources | Software | Supervision | Validation | Visualization | 
+                Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other'
+              type: dropdown
+              options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
+                        Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                        Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
               value: __ROLE__
         organization:
-          required: true
-          description: ""
+          required: false
+          conditional_context: "one_of_alternatives"
+          condition_discriminator: "type"
+          description: "Required when type is 'organization'. Delete if using person."
           value:
             name:
-              required: false
+              required: true
               description: ""
               value: __ORG_NAME__
             ror_id:
@@ -853,10 +976,14 @@ discoverability:
               value: __ROR_ID__
             role:
               required: false
-              description: ' list from roles extending the CRediT taxonomy: 
-                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology | 
-                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft | 
+              description: ' list from roles extending the CRediT taxonomy:
+                Conceptualization | Data_Curation | Formal_Analysis | Funding_Acquisition | Investigation | Methodology |
+                Project_Administration | Resources | Software | Supervision | Validation | Visualization | Writing_Original_Draft |
                 Writing_Review_Editing | Data_Collection | Other'
+              type: dropdown
+              options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
+                        Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                        Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
               value: __ROLE__
     contributors:
       required: false
@@ -896,6 +1023,9 @@ discoverability:
           description: 'Identifies the funding source from a controlled vocabulary: 
             DOE_Program_SC | DOE_Program_NNSA | LDRD | WFO | CRADA | Other_Federal | 
             State_Government | Subcontract | Industry | Nonprofit | Internal | Other'
+          type: dropdown
+          options: [DOE_Program_SC, DOE_Program_NNSA, LDRD, WFO, CRADA, Other_Federal,
+                    State_Government, Subcontract, Industry, Nonprofit, Internal, Other]
           value: __SOURCE__
         program:
           required: false
@@ -999,16 +1129,23 @@ discoverability:
             provide the marking scheme used. use vocabulary: DOE_CUI | DOE_UCNI |
             EO13526_Classified | AEA_RD_FRD_TFNI | DOD_CUI | DHS_CUI | Legacy_OUO
             | Legacy_Site_Specific | Other_Agency | None"
+          type: dropdown
+          options: [DOE_CUI, DOE_UCNI, EO13526_Classified, AEA_RD_FRD_TFNI, DOD_CUI, DHS_CUI, Legacy_OUO, 
+                    Legacy_Site_Specific, Other_Agency, None]
           value: "${SCHEME}"
         classified_status:
           required: true
           description: ' "Yes" | "No" description: Indicates
             whether the asset is classified.'
+          type: radio
+          options: ["Yes", "No"]
           value: "${STATUS}"
         classification_level:
           required: false
           description: " For classified information,
             Top_Secret | Secret | Confidential classification level"
+          type: dropdown
+          options: [Top_Secret, Secret, Confidential, None]
           value: __LEVEL__
         classification_category:
           required: false
@@ -1027,6 +1164,8 @@ discoverability:
           required: true
           description: ' "Yes" | "No" description: Indicates
             whether the asset is CUI.'
+          type: radio
+          options: ["Yes", "No"]
           value: "${STATUS}"
         cui_basic_categories:
           required: false
@@ -1058,12 +1197,16 @@ discoverability:
           description: ' "Yes" | "No" description: Indicates
             whether the asset contains UCNI. UCNI is represented separately and should
             not be treated as an ordinary CUI category value.'
+          type: radio
+          options: ["Yes", "No"]
           value: "${STATUS}"
         uk_mda_status:
           required: false
           description: ' "Yes" | "No" | "Unknown" |
             not_applicable Indicates whether the asset is subject to UK Ministry of
             Defence Assessment (MDA) controls.'
+          type: dropdown
+          options: ["Yes", "No", "Unknown"]
           value: __STATUS__
         legacy_label_source:
           required: false
@@ -1080,6 +1223,8 @@ discoverability:
             markings. Provide as a list of unique entries if multiple control bases
             apply. Entries should use this controlled vocabulary: - Classified - CUI
             - UCNI - Public_Release_Approved - Legacy_Needs_Mapping - Other_Controlled"
+          type: dropdown
+          options: [Classified, CUI, UCNI, Public_Release_Approved, Legacy_Needs_Mapping, Other_Controlled, None]
           value: __BASIS__
     workflow:
       required: true
@@ -1103,6 +1248,8 @@ discoverability:
           description: ' "Yes" | "No" if this is an
             intermediate processing artifact rather than a final deliverable. "No"
             if this is final.'
+          type: radio
+          options: ["Yes", "No"]
           value: __Yes|No__
         pipeline_stage:
           required: false
@@ -1152,6 +1299,8 @@ accessibility:
         access_level:
           required: true
           description: " Open | Restricted | Controlled"
+          type: dropdown
+          options: [Open, Restricted, Controlled]
           value: "${LEVEL}"
         access_restrictions:
           required: false
@@ -1239,10 +1388,14 @@ accessibility:
                 institutional affiliation, registration, agreement to terms, etc.). Approval is generally automatic or administrative.
                 Controlled: Access is granted only after review and explicit authorization based on the requester, intended use, 
                 legal requirements, or security considerations. Requests may be denied."
+              type: dropdown
+              options: [Open, Restricted, Controlled]
               value: __LEVEL__
             is_primary:
               required: false
               description: ' "Yes" | "No" — only one entry should be marked "Yes"'
+              type: radio
+              options: ["Yes", "No"]
               value: __Yes|No__
             date_deposited:
               required: false
@@ -1253,7 +1406,7 @@ accessibility:
               description: 'Populate if Data Service / API endpoints exists for this dataset aligns with dcterms:DataService. 
                 If more than one data service or API endpoint exists, list them all.'
               value:
-              - name:
+                name:
                   required: false
                   description: 'e.g., "REST API" | "GraphQL endpoint'
                   value: __NAME__
@@ -1268,6 +1421,8 @@ accessibility:
                 authentication:
                   required: false
                   description: "None | API_Key | OAuth2 | SAML | Certificate | OpenID_Connect | Basic_Auth | Bearer_Token | Other"
+                  type: dropdown
+                  options: [None, API_Key, OAuth2, SAML, Certificate, OpenID_Connect, Basic_Auth, Bearer_Token, Other]
                   value: __AUTH__
                 version:
                   required: false
@@ -1290,6 +1445,8 @@ accessibility:
         record_unit:
           required: false
           description: samples | files | records | timesteps | images | tokens | other
+          type: dropdown
+          options: [samples, files, records, timesteps, images, tokens, other]
           value: __UNIT__
         compressed_bytes:
           required: false
@@ -1313,8 +1470,7 @@ interoperability:
       value:
         formats:
           required: true
-          description: ' File formats in this dataset.
-            e.g., ["CSV", "HDF5", "NetCDF4", "Parquet", "TIFF", "JSON"]'
+          description: ' File formats in this dataset. e.g., ["CSV", "HDF5", "NetCDF4", "Parquet", "TIFF", "JSON"]'
           value: []
         encoding:
           required: false
@@ -1394,7 +1550,7 @@ interoperability:
             which describe when collection occurred. Use temporal_coverage when the
             dataset describes a specific historical or projected time period that
             differs from when collection happened. e.g., "Monthly climate averages
-            1950–2020" collected in 2024: temporal_coverage.start = 1950-01-01 dates.data_collection_start
+            1950-2020" collected in 2024: temporal_coverage.start = 1950-01-01 dates.data_collection_start
             = 2024-01-01'
           value:
             start_date:
@@ -1436,6 +1592,8 @@ interoperability:
                 type:
                   required: true
                   description: "doi | ark | handle | url | local | other"
+                  type: dropdown
+                  options: [doi, ark, handle, url, local, other]
                   value: __TYPE__
                 value:
                   required: true
@@ -1444,6 +1602,8 @@ interoperability:
             relationship:
               required: true
               description: "is_derived_from | is_based_on | is_part_of | has_part | references | other"
+              type: dropdown
+              options: [is_derived_from, is_based_on, is_part_of, has_part, references, other]
               value: __REL__
         processing_steps:
           required: true
@@ -1568,7 +1728,7 @@ interoperability:
         expected elsewhere in the data card.  e.g.,
         "Accelerator Operations Metadata" | "Climate Data Variables" | "None"'
       value:
-      - name:
+        name:
           required: false
           description: ''
           value: __NAME__
@@ -1583,6 +1743,11 @@ interoperability:
             "Energy Storage, Conversion, and Utilization" | "Engineering" | "Environmental Sciences" | 
             "Fission and Nuclear Technologies" | "Fossil Fuels" | "Geosciences" | "Materials" | "Mathematics and Computing" | 
             "National Defense" | "Physics" | "Power Generation and Distribution" | "Renewable Energy" | "Other"'
+          type: dropdown
+          options: ["Biology and Medicine", "Chemistry", "Energy Storage, Conversion, and Utilization", "Engineering", 
+                    "Environmental Sciences", "Fission and Nuclear Technologies", "Fossil Fuels", "Geosciences",
+                    "Materials", "Mathematics and Computing", "National Defense", "Physics",
+                    "Power Generation and Distribution", "Renewable Energy", "Other"]
           value: __DOMAIN__
         schema_reference:
           required: false
@@ -1591,6 +1756,8 @@ interoperability:
             type:
               required: false
               description: doi | url | ark | handle | local | other
+              type: dropdown
+              options: [doi, ark, handle, url, local, other]
               value: __TYPE__
             value:
               required: false
@@ -1690,8 +1857,9 @@ reusability:
       value:
         level:
           required: false
-          description: " Select one: Project_Managed |
-            Repository_Managed | Externally_Managed | not_applicable"
+          description: " Select one: Project_Managed | Repository_Managed | Externally_Managed | not_applicable"
+          type: dropdown
+          options: [Project_Managed, Repository_Managed, Externally_Managed, not_applicable]
           value: __LEVEL__
         maintainer:
           required: false
@@ -1699,19 +1867,23 @@ reusability:
             for ongoing maintenance."
           value:
             type:
-              required: false
+              required: true
               description: person | organization
+              type: dropdown
+              options: [person, organization]
               value: __TYPE__
             person:
               required: false
-              description: " Person responsible for ongoing maintenance."
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'person'. Delete if using organization."
               value:
                 given_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __GIVEN_NAME__
                 family_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __FAMILY_NAME__
                 orcid:
@@ -1725,7 +1897,7 @@ reusability:
                   value: __EMAIL__
                 affiliation:
                   required: false
-                  description: " Organization responsible for ongoing maintenance."
+                  description: " Organization affiliation."
                   value:
                     name:
                       required: false
@@ -1737,10 +1909,12 @@ reusability:
                       value: __ROR_ID__
             organization:
               required: false
-              description: " Organization responsible for ongoing maintenance."
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'organization'. Delete if using person."
               value:
                 name:
-                  required: false
+                  required: true
                   description: ""
                   value: __ORG_NAME__
                 ror_id:
@@ -1750,6 +1924,8 @@ reusability:
         update_frequency:
           required: false
           description: "None | Ad_Hoc | Monthly | Quarterly | Annually | Continuously | Other"
+          type: dropdown
+          options: [None, Ad_Hoc, Monthly, Quarterly, Annually, Continuously, Other]
           value: __FREQ__
         retention_policy:
           required: false
@@ -1801,8 +1977,7 @@ reusability:
       value:
         report_number:
           required: false
-          description: " e.g., SAND2024-XXXXX | LAUR-XX-XXXXX
-            | ORNL/TM-2024/XXXXX"
+          description: " e.g., SAND2024-XXXXX | LAUR-XX-XXXXX | ORNL/TM-2024/XXXXX"
           value: __NUMBER__
         preferred_citation:
           required: false
@@ -1816,8 +1991,7 @@ reusability:
             title:
               required: false
               description: '[reusability_if_applicable, required if preferred_citation
-                is included] e.g., "Neutron Scattering Data from SNS Beamline 1B,
-                April 2023"'
+                is included] e.g., "Neutron Scattering Data from SNS Beamline 1B, April 2023"'
               value: __DATASET_NAME__
             year:
               required: false
@@ -1871,6 +2045,8 @@ reusability:
         checksum_available:
           required: false
           description: ' "Yes" | "No"'
+          type: radio
+          options: ["Yes", "No"]
           value: __Yes|No__
         checksum_type:
           required: false
@@ -1961,16 +2137,21 @@ governed_use:
             export_control_status:
               required: true
               description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              type: dropdown
+              options: ["Yes", "No", "Pending_Review", "Unknown"]
               value: "${EXPORT_CONTROL_STATUS}"
             export_control_basis:
               required: false
               description: '[governed_use_if_applicable, required if export_control_status
                 = "Yes"] select one from: ITAR | EAR | DOE_Nuclear_Export_Control | Other | not_applicable'
+              type: dropdown
+              options: [ITAR, EAR, DOE_Nuclear_Export_Control, Other, not_applicable]
               value: __EXPORT_CONTROL_BASIS__
             foreign_national_access_status:
               required: false
-              description: " select one from list: Allowed
-                | Restricted | Prohibited | Conditional | Unknown"
+              description: " select one from list: Allowed | Restricted | Prohibited | Conditional | Unknown"
+              type: dropdown
+              options: [Allowed, Restricted, Prohibited, Conditional, Unknown]
               value: __ACCESS_STATUS__
         privacy:
           required: true
@@ -1979,19 +2160,27 @@ governed_use:
             privacy_status:
               required: true
               description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              type: dropdown
+              options: ["Yes", "No", "Pending_Review", "Unknown"]
               value: "${PRIVACY_STATUS}"
             pii_status:
               required: true
               description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              type: dropdown
+              options: ["Yes", "No", "Pending_Review", "Unknown"]
               value: __PII_STATUS__
             phi_status:
               required: true
               description: ' select one from list: "Yes" | "No" | "Pending_Review" | "Unknown"'
+              type: dropdown
+              options: ["Yes", "No", "Pending_Review", "Unknown"]
               value: __PHI_STATUS__
             privacy_control_basis:
               required: false
               description: " select all that apply: HIPPA
                 | Privacy_Act | Human_Subjects | Other_Regulated_Privacy | Site_Specific | not_applicable"
+              type: dropdown
+              options: [HIPPA, Privacy_Act, Human_Subjects, Other_Regulated_Privacy, Site_Specific, not_applicable]
               value: []
             privacy_regime_notes:
               required: false
@@ -2007,11 +2196,16 @@ governed_use:
               description: " select one from list: Proprietary
                 | Limited_Rights | Restricted_Rights | Government_Purpose_Rights |
                 Unlimited_Rights | Third_Party_Licensed | None"
+              type: dropdown
+              options: [Proprietary, Limited_Rights, Restricted_Rights, Government_Purpose_Rights, 
+                        Unlimited_Rights, Third_Party_Licensed, None]
               value: __IP_RESTRICTION_TYPE__
             agreement_required:
               required: true
               description: ' select one from list: "Yes" |
                 "No" — Is a rights release agreement required for use of this dataset?'
+              type: radio
+              options: ["Yes", "No"]
               value: "${AGREEMENT_REQUIRED}"
             agreement_type:
               required: false
@@ -2023,11 +2217,15 @@ governed_use:
               required: true
               description: ' select one from list: "Approved"
                 | "Pending" | "Not_Approved" | "Requires_STI_Review"'
+              type: dropdown
+              options: [Approved, Pending, Not_Approved, Requires_STI_Review]
               value: "${PUBLIC_RELEASE_STATUS}"
             record_status:
               required: true
               description: ' select one from list: "Federal_Record"
                 | "Contractor_Record" | "Non_Record" | "Mixed" | "Unknown"'
+              type: dropdown
+              options: [Federal_Record, Contractor_Record, Non_Record, Mixed, Unknown]
               value: "${RECORD_STATUS}"
     compliance:
       required: true
@@ -2042,6 +2240,8 @@ governed_use:
             dataset. Use not_applicable if the dataset is not DOE-funded. 
             select one from list: "Yes" | "No" | "Unknown" | "not_applicable" — a
             DOE DMP is on file for this dataset'
+          type: dropdown
+          options: ["Yes", "No", "Unknown", "not_applicable"]
           value: "${DOE_DATA_MANAGEMENT_PLAN}"
         osti_elink2_metadata_compliant:
           required: true
@@ -2050,6 +2250,8 @@ governed_use:
             before setting to "Yes".  select one from list:
             "Yes" | "No" | "Unknown" | "not_applicable" — metadata complies with OSTI
             E-Link 2 API specs'
+          type: dropdown
+          options: ["Yes", "No", "Unknown", "not_applicable"]
           value: "${OSTI_ELINK2_METADATA_COMPLIANT}"
         irb_approved:
           required: true
@@ -2058,6 +2260,8 @@ governed_use:
             — do not use "No", which implies an IRB review was needed but not obtained.
              select one from list: "Yes" | "No" | "Unknown"
             | "not_applicable" - IRB approval is in place for this dataset, if applicable'
+          type: dropdown
+          options: ["Yes", "No", "Unknown", "not_applicable"]
           value: "${IRB_APPROVED}"
     review_provenance_companion:
       required: false
@@ -2092,17 +2296,19 @@ governed_use:
           value: __CONTACT_EMAIL__
         reviewed_by:
           required: false
-          description: 'organization. Populate only the matching sub-block (person:
-            given_name, family_name, email, ror_id; organization: name, ror_id) and
-            delete the other.'
+          description: 'Person or organization that conducted the review. Populate only the matching sub-block based on type and delete the other.'
           value:
             type:
               required: false
-              description: 'person| organization'
+              description: 'person | organization'
+              type: dropdown
+              options: [person, organization]
               value: __TYPE__
             person:
               required: false
-              description: ""
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'person'. Delete if using organization."
               value:
                 given_name:
                   required: false
@@ -2122,7 +2328,9 @@ governed_use:
                   value: __ROR_ID__
             organization:
               required: false
-              description: ""
+              conditional_context: "one_of_alternatives"
+              condition_discriminator: "type"
+              description: "Required when type is 'organization'. Delete if using person."
               value:
                 name:
                   required: false
@@ -2164,6 +2372,8 @@ ai_usability:
         training_use_status:
           required: true
           description: ' "Yes" | "No" | "Conditional"'
+          type: dropdown
+          options: ["Yes", "No", "Conditional"]
           value: "${TRAINING_USE_STATUS}"
         training_use_conditions:
           required: false
@@ -2173,6 +2383,8 @@ ai_usability:
         inference_use_status:
           required: true
           description: ' "Yes" | "No" | "Conditional"'
+          type: dropdown
+          options: ["Yes", "No", "Conditional"]
           value: "${INFERENCE_USE_STATUS}"
         inference_use_conditions:
           required: false
@@ -2182,6 +2394,8 @@ ai_usability:
         evaluation_use_status:
           required: true
           description: ' "Yes" | "No" | "Conditional"'
+          type: dropdown
+          options: ["Yes", "No", "Conditional"]
           value: "${EVALUATION_USE_STATUS}"
         evaluation_use_conditions:
           required: false
@@ -2203,4 +2417,6 @@ ai_usability:
         human_review_required:
           required: true
           description: ' "Yes" | "No"'
+          type: radio
+          options: ["Yes", "No"]
           value: "${HUMAN_REVIEW_REQUIRED}"
