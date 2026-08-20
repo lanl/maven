@@ -111,7 +111,6 @@ files_dir = curr_dir / "files_template"
 
 # GENESIS v1.2 datacard files
 GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
-GENESIS_MISSION_DATA_CARD_YAML = files_dir / "genesis_dc_v1.2_YAML.yaml"
 GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_dc_v1.2_MD.md"
 GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "genesis_dc_v1.2_reference_guide.md"
 
@@ -440,9 +439,6 @@ def get_tier1_fields():
     # creates a dict of all flattened fields whose value is if it is required or not (true/false)
     flattened_fields = flattened_tier1_fields(datacard_dict)
 
-    # YAML dict - TODO: Can maybe skip this since not using this in tier1_GenesisCard_agent.py
-    # tier1_cards["data_card_yaml"] = yaml.safe_load(GENESIS_MISSION_DATA_CARD_YAML.read_text(encoding="utf-8"))
-
     # MD str
     with open(GENESIS_MISSION_DATA_CARD_MD, "r") as f:
         tier1_cards["markdown_template"] = f.read()
@@ -676,9 +672,6 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
 
 
 def generate_tier1_datacard(qid: int, output_file: str):
-    # TODO: maybe use agent to format yaml values as per template -- but yaml is standardized so might be fine
-    # CWJ 19AUG2026 testing so far shows the yaml is formatting correctly. 
-
     tier1_tbls = get_tier1_table(qid)
     flattened_fields_dict = tier1_tbls["datacard_yaml"].iloc[0].to_dict()
     
@@ -2236,7 +2229,6 @@ elif st.session_state.screen == "tier1":
 
                                     st.write(key + field_req)
 
-                                    # TODO: decide whether to include description for each field too
                                     field_dict = datacard_dict
                                     for part in current_path[:-1]:
                                         field_dict = field_dict[part]["value"]
