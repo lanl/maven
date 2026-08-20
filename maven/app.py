@@ -107,7 +107,7 @@ except ImportError:
 from langchain.chat_models import init_chat_model
 
 curr_dir = Path(__file__).parent
-files_dir = curr_dir / "files_template"
+files_dir = curr_dir / "metadata_template"
 
 # GENESIS v1.2 datacard files
 GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
