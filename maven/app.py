@@ -131,6 +131,8 @@ PROJECTS_TABLE = "projects"
 
 DATASHEET_TABLE = "datasheet"
 FILE_POINTERS_TABLE = "metadata_file_paths"
+TIER1_YAML_TABLE = "datacard_yaml"
+TIER1_MARKDOWN_TABLE = "datacard_markdown"
 
 TIER_2_TABLE = "data_and_hpc_info"
 
@@ -673,7 +675,7 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
 
 def generate_tier1_datacard(qid: int, output_file: str):
     tier1_tbls = get_tier1_table(qid)
-    flattened_fields_dict = tier1_tbls["datacard_yaml"].iloc[0].to_dict()
+    flattened_fields_dict = tier1_tbls[TIER1_YAML_TABLE].iloc[0].to_dict()
     
     yaml_portion = {}
     for flattened_key, value in flattened_fields_dict.items():
@@ -695,7 +697,7 @@ def generate_tier1_datacard(qid: int, output_file: str):
     ).rstrip()
 
     # TODO: use agent to format markdown as per template
-    markdown_string = str(tier1_tbls["datacard_markdown"].iloc[0, 0]).strip()
+    markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
     file_content = (
         "---\n"
         f"{yaml_content}\n"
@@ -1599,6 +1601,8 @@ if "update_ai_info_screen" not in st.session_state:
     st.session_state.update_ai_info_screen = False
 if "confirm_submit_context_files" not in st.session_state:
     st.session_state.confirm_submit_context_files = False
+if "invalid_fields" not in st.session_state:
+    st.session_state.invalid_fields = []
 
 if get_maven_dir() is None:
     st.title("Welcome to the MAVEN App")
@@ -2154,185 +2158,207 @@ elif st.session_state.screen == "tier1":
         with st.form(f"tier1_metadata_form_{qid}"):
             updated_values = {}
             actual_field_reqs = {}
-            if "datacard_yaml" in curr_tables.keys():
-                tbl_name = "datacard_yaml"
-                tbl_df = curr_tables[tbl_name]
-                updated_values[tbl_name] = {}
 
-                tbl_data = tbl_df.iloc[0].to_dict()
+            tbl_data = curr_tables[TIER1_YAML_TABLE].iloc[0].to_dict()
 
-                # dont show the dsi metadata column on the form
-                dsi_key = next(iter(tbl_data))
-                updated_values[tbl_name][dsi_key] = tbl_data.pop(dsi_key)
+            # dont show the dsi metadata column on the form
+            dsi_key = next(iter(tbl_data))
+            updated_values[dsi_key] = tbl_data.pop(dsi_key)
 
-                actual_yaml_struct = rebuild_yaml_structure(tbl_data)
+            actual_yaml_struct = rebuild_yaml_structure(tbl_data)
 
-                def render_yaml_portion(data, path=(), depth=0):
+            def render_yaml_portion(data, path=(), depth=0):
 
-                    for key, value in data.items():
-                        current_path = (*path, key)
-                        widget_key = ".".join(current_path)
+                for key, value in data.items():
+                    current_path = (*path, key)
+                    widget_key = ".".join(current_path)
 
-                        # Create a blank column to indent the entire row.
-                        if depth == 0:
-                            content = st.container()
-                        else:
-                            _, content = st.columns([depth, 12])
+                    # Create a blank column to indent the entire row.
+                    if depth == 0:
+                        content = st.container()
+                    else:
+                        _, content = st.columns([depth, 12])
 
-                        if isinstance(value, dict):
-                            with content:
-                                if depth == 0:
-                                    st.write(f"### {key}")
-                                    st.caption(datacard_dict[key]["description"])
-                                st.write(f"**{key}**")
+                    if isinstance(value, dict):
+                        with content:
+                            if depth == 0:
+                                st.write(f"### {key}")
+                                st.caption(datacard_dict[key]["description"])
+                            st.write(f"**{key}**")
 
-                            render_yaml_portion(
-                                value,
-                                path=current_path,
-                                depth=depth + 1,
-                            )
-                        else:
-                            with content:
-                                if depth > 0: # actual child fields
-                                    supports_key = "supports_" + current_path[0]
-                                    field_req = ""
+                        render_yaml_portion(
+                            value,
+                            path=current_path,
+                            depth=depth + 1,
+                        )
+                    else:
+                        with content:
+                            if depth > 0: # actual child fields
+                                supports_key = "supports_" + current_path[0]
+                                field_req = ""
 
-                                    # Check if field is part of a conditional block
-                                    conditional_info = get_conditional_info(widget_key, datacard_dict)  
+                                # Check if field is part of a conditional block
+                                conditional_info = get_conditional_info(widget_key, datacard_dict)  
 
-                                    if conditional_info and conditional_info["is_conditional"]:
-                                        # Get discriminator value to see if this alternative is selected
-                                        discriminator_path = conditional_info["discriminator_path"]
-                                        discriminator_value = tbl_data.get(discriminator_path, "")
-                                        
-                                        if discriminator_value == conditional_info["alternative"]:
-                                            # This alternative IS selected - show as required if needed
-                                            if tbl_data[supports_key].lower() == "yes":
-                                                # Check the raw schema for the actual required value
-                                                # (since flattened_fields marks it as False)
-                                                if flattened_fields[widget_key]:
-                                                    field_req = " * (selected)"
-                                                    actual_field_reqs[widget_key] = True
-                                                else:
-                                                    field_req = " (selected)"
-                                                    actual_field_reqs[widget_key] = False
-                                        else:
-                                            # This alternative is NOT selected
-                                            field_req = " (not selected)"
-                                            actual_field_reqs[widget_key] = False
-
-                                    elif tbl_data[supports_key].lower() == "yes" and flattened_fields[widget_key]:
-                                        field_req = " *"
-                                        actual_field_reqs[widget_key] = True
+                                if conditional_info and conditional_info["is_conditional"]:
+                                    # Get discriminator value to see if this alternative is selected
+                                    discriminator_path = conditional_info["discriminator_path"]
+                                    discriminator_value = tbl_data.get(discriminator_path, "")
+                                    
+                                    if discriminator_value == conditional_info["alternative"]:
+                                        # This alternative IS selected - show as required if needed
+                                        if tbl_data[supports_key].lower() == "yes":
+                                            # Check the raw schema for the actual required value
+                                            # (since flattened_fields marks it as False)
+                                            if flattened_fields[widget_key]:
+                                                field_req = " * (selected)"
+                                                actual_field_reqs[widget_key] = True
+                                            else:
+                                                field_req = " (selected)"
+                                                actual_field_reqs[widget_key] = False
                                     else:
+                                        # This alternative is NOT selected
+                                        field_req = " (not selected)"
                                         actual_field_reqs[widget_key] = False
 
-                                    st.write(key + field_req)
-
-                                    field_dict = datacard_dict
-                                    for part in current_path[:-1]:
-                                        field_dict = field_dict[part]["value"]
-                                    field_dict = field_dict[key]
-                                    st.caption(field_dict["description"])
-                                    if "type" not in field_dict:
-                                        updated_values[tbl_name][widget_key] = st.text_input(
-                                            label=key,
-                                            value="" if pd.isna(value) else str(value),
-                                            key="field:" + widget_key,
-                                            label_visibility="collapsed"
-                                        )
-                                    elif field_dict["type"] == "radio":
-                                        options = field_dict["options"]
-                                        default_index = options.index(str(value).capitalize()) if str(value) in options else None
-                                        updated_values[tbl_name][widget_key] = st.radio(
-                                            "radio_label",
-                                            options,
-                                            index=default_index,
-                                            key="field:" + widget_key,
-                                            label_visibility="collapsed"
-                                        )
-                                    elif field_dict["type"] == "dropdown":
-                                        options = list(field_dict["options"])
-                                        # saved_permission = field_dict["access_permissions"].iloc[0] if not locations_tbl.empty else None
-                                        updated_values[tbl_name][widget_key] = st.selectbox(
-                                            "Enter",
-                                            options=options,
-                                            index=options.index(value) if value is not None and value in options else None,
-                                            key="field:" + widget_key,
-                                            label_visibility="collapsed"
-                                        )
-                                    else:
-                                        st.error(f"Unsupported type: {field_dict['type']}")
-                                        st.stop()
-                                else: # display "support_" keys differently
+                                elif tbl_data[supports_key].lower() == "yes" and flattened_fields[widget_key]:
+                                    field_req = " *"
                                     actual_field_reqs[widget_key] = True
-                                    st.write(f"### {key} *")
-                                    st.caption(datacard_dict[key]["description"])
+                                else:
+                                    actual_field_reqs[widget_key] = False
 
-                                    options = ["Yes", "No"]
+                                st.write(key + field_req)
+
+                                field_dict = datacard_dict
+                                for part in current_path[:-1]:
+                                    field_dict = field_dict[part]["value"]
+                                field_dict = field_dict[key]
+                                st.caption(field_dict["description"])
+                                if "type" not in field_dict:
+                                    if widget_key in st.session_state.invalid_fields:
+                                        st.markdown(
+                                            f"""
+                                            <style>
+                                            div[data-testid="stTextInput"]:has(
+                                                input[aria-label="{key}"]
+                                            ) input {{
+                                                border: 5px solid red !important;
+                                                border-radius: 8px !important;
+                                            }}
+                                            </style>
+                                            """,
+                                            unsafe_allow_html=True
+                                        )
+                                    updated_values[widget_key] = st.text_input(
+                                        label=key,
+                                        value="" if pd.isna(value) else str(value),
+                                        key="field:" + widget_key,
+                                        label_visibility="collapsed"
+                                    )
+                                elif field_dict["type"] == "radio":
+                                    if widget_key in st.session_state.invalid_fields:
+                                        st.markdown(
+                                            f"""
+                                            <style>
+                                            div[data-testid="stSelectbox"]:has(
+                                                input[aria-label="{key}"]
+                                            ) input {{
+                                                border: 5px solid red !important;
+                                                border-radius: 8px !important;
+                                            }}
+                                            </style>
+                                            """,
+                                            unsafe_allow_html=True
+                                        )
+                                    options = field_dict["options"]
                                     default_index = options.index(str(value).capitalize()) if str(value) in options else None
-                                    updated_values[tbl_name][widget_key] = st.radio(
-                                        "radio label",
+                                    updated_values[widget_key] = st.radio(
+                                        "radio_label",
                                         options,
                                         index=default_index,
                                         key="field:" + widget_key,
-                                        label_visibility="collapsed", 
-                                        )
-                render_yaml_portion(actual_yaml_struct)
-            
-            
+                                        label_visibility="collapsed"
+                                    )
+                                elif field_dict["type"] == "dropdown":
+                                    options = list(field_dict["options"])
+                                    updated_values[widget_key] = st.selectbox(
+                                        "Enter",
+                                        options=options,
+                                        index=options.index(value) if value is not None and value in options else None,
+                                        key="field:" + widget_key,
+                                        label_visibility="collapsed"
+                                    )
+                                else:
+                                    st.error(f"Unsupported type: {field_dict['type']}")
+                                    st.stop()
+
+                            else: # display "support_" keys differently
+                                actual_field_reqs[widget_key] = True
+                                st.write(f"### {key} *")
+                                st.caption(datacard_dict[key]["description"])
+
+                                options = ["Yes", "No"]
+                                default_index = options.index(str(value).capitalize()) if str(value) in options else None
+                                updated_values[widget_key] = st.radio(
+                                    "radio label",
+                                    options,
+                                    index=default_index,
+                                    key="field:" + widget_key,
+                                    label_visibility="collapsed", 
+                                    )
+            render_yaml_portion(actual_yaml_struct)
+
 
             save_col, next_col = st.columns(2)
             with save_col:
                 submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
             with next_col:
-                next_clicked = st.form_submit_button(
-                    "Continue to Findability Metadata Part 2 ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
+                next_clicked = st.form_submit_button("Continue to Findability Metadata (Markdown) ➡", key=f"next_tier1_{qid}", 
+                                                     width="stretch", type="primary")
+
+            if st.session_state.invalid_fields:
+                st.error(f"Please complete all missing required fields above")
 
             if submitted or next_clicked:
-                total_error = ""
-                if "datacard_yaml" in updated_values.keys():
-                    missing_support = []
-                    missing_fields = {}
-                    for col, val in updated_values["datacard_yaml"].items():
-                        top_key = col.split(".", 1)[0]
-                        if f"supports_{top_key}" in actual_field_reqs.keys():
-                            req_field_missing = (updated_values["datacard_yaml"][f"supports_{top_key}"].lower() == "yes" and 
-                                            actual_field_reqs[col] and not str(val).strip()
-                                            )
-                            if req_field_missing:
-                                if top_key in missing_fields.keys():
-                                    missing_fields[top_key].append(col.replace(".", " -> "))
-                                else:
-                                    missing_fields[top_key] = [col.replace(".", " -> ")]
-                        elif not str(val).strip(): # check if missing support fields
-                            missing_support.append(col)
+                invalid_fields = []
+                for col, val in updated_values.items():
+                    top_key = col.split(".", 1)[0]
+                    if f"supports_{top_key}" in actual_field_reqs.keys():
+                        req_field_missing = (updated_values[f"supports_{top_key}"].lower() == "yes" and 
+                                        actual_field_reqs[col] and not str(val).strip()
+                                        )
+                        if req_field_missing:
+                            invalid_fields.append(col)
+                    elif not str(val).strip(): # check if missing support fields
+                        invalid_fields.append(col)
 
-                    if missing_support:
-                        total_error += "\n- ".join(missing_support) + "\n\n"
-                    if missing_fields:
-                        for top_key, field_list in missing_fields.items():
-                            total_error += f"**{top_key}**:\n- " + "\n- ".join(field_list) + "\n\n"
+                st.session_state.invalid_fields = invalid_fields
 
-                if total_error != "":
-                    st.error(f"Please complete all these required metadata fields before continuing:\n\n{total_error}")
-                    st.stop()
+                if invalid_fields:
+                    st.rerun()
                 else:
-                    for tbl_name, new_values in updated_values.items():
-                        try:
-                            tier1_df = pd.DataFrame([new_values])
-                            update_tier1_table(qid, tier1_df)
-                        except Exception:
-                            tier1_db = get_tier1_db_path(qid)
-                            store = get_db(tier1_db)
-                            store.read(new_values, "Collection", tbl_name)
-                            store.close()
+                    st.session_state.invalid_fields = []
+                    try:
+                        tier1_df = pd.DataFrame([updated_values])
+                        update_tier1_table(qid, tier1_df)
+                    except Exception:
+                        tier1_db = get_tier1_db_path(qid)
+                        store = get_db(tier1_db)
+                        store.read(updated_values, "Collection", TIER1_YAML_TABLE)
+                        store.close()
 
                     if next_clicked:
-                        if "datacard_markdown" not in curr_tables:
-                            with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                                tier1_yaml_df = pd.DataFrame([updated_values["datacard_yaml"]])
-                                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
+                        if TIER1_MARKDOWN_TABLE not in curr_tables:
+                            with next_col:
+                                with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+                                    tier1_yaml_df = pd.DataFrame([updated_values])
+                                    all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
+
+                                    tier1_db_path = get_tier1_db_path(qid)
+                                    store = get_db(tier1_db_path)
+                                    for tier1_table_name, tier1_dict in all_tier1_dicts.items():
+                                        store.read(tier1_dict, "Collection", tier1_table_name)
+                                    store.close()
 
                         st.session_state.screen = "tier1"
                         st.session_state.render_t1_markdown = True
@@ -2345,8 +2371,26 @@ elif st.session_state.screen == "tier1":
                     else:
                         st.success("Findability Metadata (YAML Portion) Updated.")
 
+
     else: # Render markdown
         st.title("Findability Metadata (Markdown Portion)")
+
+        back_col, other = st.columns([1, 4], width="stretch")
+        with back_col:
+            if st.button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_top_btn"):
+                st.session_state.screen = "tier1"
+                st.session_state.section_idx = 0
+                st.session_state._scroll_to_top = True
+                st.session_state.render_t1_markdown = False
+                st.session_state.invalid_fields = []
+                st.session_state.ran_change_dialog = False
+                st.session_state.local_to_staging_moved = False
+                st.session_state.staging_to_campaign_moved = False
+                st.session_state.confirm_submit_context_files = False
+                st.session_state.render_t2_extraction = False
+                st.session_state.tier2_loc_dict = None
+                st.rerun()
+
         st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
         if not curr_tables:
@@ -2359,9 +2403,9 @@ elif st.session_state.screen == "tier1":
                 store.read(tier1_dict, "Collection", tier1_table_name)
             store.close()
             st.rerun()
-        if "datacard_markdown" not in curr_tables:
+        if TIER1_MARKDOWN_TABLE not in curr_tables:
             with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, curr_tables["datacard_yaml"], tier1_cards)
+                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, curr_tables[TIER1_YAML_TABLE], tier1_cards)
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -2372,30 +2416,39 @@ elif st.session_state.screen == "tier1":
 
         with st.form(f"tier1_metadata_form_{qid}"):
             updated_values = {}
-            if "datacard_markdown" in curr_tables.keys():
-                tbl_name = "datacard_markdown"
-                tbl_df = curr_tables[tbl_name]
-                updated_values[tbl_name] = {}
-                
-                tbl_data = tbl_df.iloc[0].to_dict()
+            
+            tbl_data = curr_tables[TIER1_MARKDOWN_TABLE].iloc[0].to_dict()
 
-                # dont show the dsi metadata column on the form
-                dsi_key = next(iter(tbl_data))
-                updated_values[tbl_name][dsi_key] = tbl_data.pop(dsi_key)
+            # dont show the dsi metadata column on the form
+            dsi_key = next(iter(tbl_data))
+            updated_values[dsi_key] = tbl_data.pop(dsi_key)
 
-                markdown_col_key = next(iter(tbl_data))
+            markdown_col_key = next(iter(tbl_data))
 
-                st.write("### Markdown portion")
-                st.caption("Carefully review model-generated text in this text block")
-                updated_values[tbl_name][markdown_col_key] = st.text_area(
-                    "enter",
-                    height = 1750,
-                    value=tbl_data[markdown_col_key],
-                    key="datacard_markdown_portion",
-                    label_visibility="collapsed"
-                )
+            st.write("#### Carefully review model-generated text in this text block")
+            updated_values[markdown_col_key] = st.text_area(
+                "enter",
+                height = 1750,
+                value=tbl_data[markdown_col_key],
+                key="datacard_markdown_portion",
+                label_visibility="collapsed"
+            )
 
-            save_col, next_col = st.columns(2)
+            back_col, save_col, next_col = st.columns(3)
+            with back_col:
+                if st.form_submit_button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_bottom_btn"):
+                    st.session_state.screen = "tier1"
+                    st.session_state.section_idx = 0
+                    st.session_state._scroll_to_top = True
+                    st.session_state.render_t1_markdown = False
+                    st.session_state.invalid_fields = []
+                    st.session_state.ran_change_dialog = False
+                    st.session_state.local_to_staging_moved = False
+                    st.session_state.staging_to_campaign_moved = False
+                    st.session_state.confirm_submit_context_files = False
+                    st.session_state.render_t2_extraction = False
+                    st.session_state.tier2_loc_dict = None
+                    st.rerun()
             with save_col:
                 submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
             with next_col:
@@ -2404,21 +2457,19 @@ elif st.session_state.screen == "tier1":
 
             if submitted or next_clicked:
                 # TODO: add better check to ensure markdown is correctly formatted
-                if "datacard_markdown" in updated_values.keys():
-                    markdown_col_key = next(iter(tbl_data))
-                    markdown_field_value = next(iter(updated_values["datacard_markdown"].values()), None)
-                    if markdown_field_value is None or not str(markdown_field_value).strip():
-                        st.error("Markdown section is incomplete. Please complete before continuing")
+                markdown_col_key = next(iter(tbl_data))
+                markdown_field_value = next(iter(updated_values.values()), None)
+                if markdown_field_value is None or not str(markdown_field_value).strip():
+                    st.error("Markdown section is incomplete. Please complete before continuing")
 
-                for tbl_name, new_values in updated_values.items():
-                    try:
-                        tier1_df = pd.DataFrame([new_values])
-                        update_tier1_table(qid, tier1_df)
-                    except Exception:
-                        tier1_db = get_tier1_db_path(qid)
-                        store = get_db(tier1_db)
-                        store.read(new_values, "Collection", tbl_name)
-                        store.close()
+                try:
+                    tier1_df = pd.DataFrame([updated_values])
+                    update_tier1_table(qid, tier1_df)
+                except Exception:
+                    tier1_db = get_tier1_db_path(qid)
+                    store = get_db(tier1_db)
+                    store.read(updated_values, "Collection", TIER1_MARKDOWN_TABLE)
+                    store.close()
 
                 if next_clicked:
                     store = get_db(get_master_db_name())
@@ -3134,6 +3185,8 @@ if st.sidebar.button("➕ New project"):
     st.session_state.draft_mode = True
     st.session_state.screen = "datasheet"
     st.session_state.ran_change_dialog = False
+    st.session_state.render_t1_markdown = False
+    st.session_state.invalid_fields = []
     st.session_state.local_to_staging_moved = False
     st.session_state.staging_to_campaign_moved = False
     st.session_state.confirm_submit_context_files = False
@@ -3158,6 +3211,8 @@ if not _committed.empty:
         st.session_state.draft_mode = False
         st.session_state.screen = "datasheet"
         st.session_state.ran_change_dialog = False
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
         st.session_state.local_to_staging_moved = False
         st.session_state.staging_to_campaign_moved = False
         st.session_state.confirm_submit_context_files = False
@@ -3200,6 +3255,8 @@ else:
             update_datasheet(qid, updates)
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
         st.session_state.ran_change_dialog = False
         st.session_state.local_to_staging_moved = False
         st.session_state.staging_to_campaign_moved = False
@@ -3227,6 +3284,8 @@ else:
                         update_datasheet(qid, updates)
                     st.session_state.section_idx = idx
                     st.session_state._scroll_to_top = True
+                    st.session_state.render_t1_markdown = False
+                    st.session_state.invalid_fields = []
                     st.session_state.ran_change_dialog = False
                     st.session_state.local_to_staging_moved = False
                     st.session_state.staging_to_campaign_moved = False
@@ -3260,6 +3319,8 @@ if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadat
     st.session_state.screen = "tier1"
     st.session_state.section_idx = 0
     st.session_state._scroll_to_top = True
+    st.session_state.render_t1_markdown = False
+    st.session_state.invalid_fields = []
     st.session_state.ran_change_dialog = False
     st.session_state.local_to_staging_moved = False
     st.session_state.staging_to_campaign_moved = False
@@ -3272,6 +3333,8 @@ if st.sidebar.button("AI-Ready Metadata", disabled=is_metadata_btn_disabled or n
     st.session_state.screen = "tier2"
     st.session_state.section_idx = 0
     st.session_state._scroll_to_top = True
+    st.session_state.render_t1_markdown = False
+    st.session_state.invalid_fields = []
     st.session_state.render_t2_extraction = False
     st.session_state.local_to_staging_moved = False
     st.session_state.staging_to_campaign_moved = False
