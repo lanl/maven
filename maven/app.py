@@ -2313,8 +2313,8 @@ elif st.session_state.screen == "tier1":
             with save_col:
                 submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
             with next_col:
-                next_clicked = st.form_submit_button(
-                    "Continue to Findability Metadata (Markdown) ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
+                next_clicked = st.form_submit_button("Continue to Findability Metadata (Markdown) ➡", key=f"next_tier1_{qid}", 
+                                                     width="stretch", type="primary")
 
             if st.session_state.invalid_fields:
                 st.error(f"Please complete all missing required fields above")
@@ -2349,9 +2349,16 @@ elif st.session_state.screen == "tier1":
 
                     if next_clicked:
                         if TIER1_MARKDOWN_TABLE not in curr_tables:
-                            with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                                tier1_yaml_df = pd.DataFrame([updated_values])
-                                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
+                            with next_col:
+                                with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+                                    tier1_yaml_df = pd.DataFrame([updated_values])
+                                    all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
+
+                                    tier1_db_path = get_tier1_db_path(qid)
+                                    store = get_db(tier1_db_path)
+                                    for tier1_table_name, tier1_dict in all_tier1_dicts.items():
+                                        store.read(tier1_dict, "Collection", tier1_table_name)
+                                    store.close()
 
                         st.session_state.screen = "tier1"
                         st.session_state.render_t1_markdown = True
@@ -2367,11 +2374,10 @@ elif st.session_state.screen == "tier1":
 
     else: # Render markdown
         st.title("Findability Metadata (Markdown Portion)")
-        st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
         back_col, other = st.columns([1, 4], width="stretch")
         with back_col:
-            if st.button("⬅ Edit YAML Findability Metadata", width="stretch"):
+            if st.button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_top_btn"):
                 st.session_state.screen = "tier1"
                 st.session_state.section_idx = 0
                 st.session_state._scroll_to_top = True
@@ -2384,6 +2390,8 @@ elif st.session_state.screen == "tier1":
                 st.session_state.render_t2_extraction = False
                 st.session_state.tier2_loc_dict = None
                 st.rerun()
+
+        st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
         if not curr_tables:
             with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
@@ -2426,7 +2434,21 @@ elif st.session_state.screen == "tier1":
                 label_visibility="collapsed"
             )
 
-            save_col, next_col = st.columns(2)
+            back_col, save_col, next_col = st.columns(3)
+            with back_col:
+                if st.form_submit_button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_bottom_btn"):
+                    st.session_state.screen = "tier1"
+                    st.session_state.section_idx = 0
+                    st.session_state._scroll_to_top = True
+                    st.session_state.render_t1_markdown = False
+                    st.session_state.invalid_fields = []
+                    st.session_state.ran_change_dialog = False
+                    st.session_state.local_to_staging_moved = False
+                    st.session_state.staging_to_campaign_moved = False
+                    st.session_state.confirm_submit_context_files = False
+                    st.session_state.render_t2_extraction = False
+                    st.session_state.tier2_loc_dict = None
+                    st.rerun()
             with save_col:
                 submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
             with next_col:
