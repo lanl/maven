@@ -36,12 +36,17 @@ It is recommended that users create a virtual environment to run MAVEN with Pyth
    ```
 
 ## Installation and Launching
-Install MAVEN and its dependencies:
-```
-git clone https://github.com/lanl/maven.git
-cd maven
-pip install .
-```
+### GitHub (Alpha version)
+   ```
+   git clone https://github.com/lanl/maven.git
+   cd maven
+   pip install .
+   ```
+
+### PyPI (Supported release)
+   ```
+   pip install maven-ai
+   ```
 
 After successful install, simply run `maven` in your terminal.
 Then, open the provided localhost URL in your preferred browser. 
