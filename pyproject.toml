@@ -8,8 +8,8 @@ license= "BSD-3-Clause"
 description="DIANA Metadata Acquisition and Validation ENgine"
 readme = "README.rst"
 authors=[
-	{name = 'Christopher W Johnson', 	email = 'cwj@lanl.gov'},
 	{name = 'Vedant Iyer', 		        email = 'iyer@lanl.gov'},
+	{name = 'Christopher W Johnson', 	email = 'cwj@lanl.gov'},
 	]
 classifiers=["Programming Language :: Python"]
 dynamic = ["dependencies","version"]
