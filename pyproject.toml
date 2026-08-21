@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name="maven-ai"
 license= "BSD-3-Clause"
-description="DIANA Metadata Acquisition and Validation ENgine"
-readme = "README.rst"
+description="Metadata Acquisition and Validation ENgine"
+readme = "README.md"
 requires-python = ">=3.12"
 authors=[
 	{name = 'Vedant Iyer', 		        email = 'iyer@lanl.gov'},

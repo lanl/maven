@@ -33,11 +33,11 @@ def main():
         print(" (Leave the new terminal running while using the app)")
 
     if os.name != "nt":
-        print(f"\nCopy \033[1;34mhttp://localhost:{PORT}\033[0m in a browser to launch Maven")
+        print(f"\nOpen \033[1;34mhttp://localhost:{PORT}\033[0m in your browser to launch MAVEN")
     else:
-        print(f"\nCopy {Fore.BLUE}{Style.BRIGHT}http://localhost:{PORT}{Style.RESET_ALL} in a browser to launch MAVEN")
-
-    print("To exit, enter [Ctrl+C] here")
+        print(f"\nOpen {Fore.BLUE}{Style.BRIGHT}http://localhost:{PORT}{Style.RESET_ALL} in your browser to launch MAVEN")
+    print(" It may take a few minutes to load the first time")
+    print("\nTo exit, press Ctrl+C here")
 
     cmd = [sys.executable, "-m", "streamlit", "run", APP, f"--server.port={PORT}", "--server.headless=true",
            "--browser.gatherUsageStats=false"]
@@ -63,7 +63,7 @@ def main():
             print(line, flush=True)
         proc.wait()
     except KeyboardInterrupt:
-        print("\n Closing the Maven App.\n")
+        print("\n Closing MAVEN\n")
         proc.terminate()
         try:
             proc.wait(timeout=3)
