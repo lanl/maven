@@ -36,14 +36,14 @@ It is recommended that users create a virtual environment to run MAVEN with Pyth
    ```
 
 ## Installation and Launching
-### GitHub (Alpha version)
+   **Option A: GitHub (Alpha version)**
    ```
    git clone https://github.com/lanl/maven.git
    cd maven
    pip install .
    ```
 
-### PyPI (Supported release)
+   **Option B: PyPI (Supported release)**
    ```
    pip install maven-ai
    ```

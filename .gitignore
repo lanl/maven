@@ -82,6 +82,7 @@ debug.log
 docs/_build
 diana_maven.egg-info/
 maven.egg-info/
+maven_ai.egg-info/
 *.egg-info/
 .DS_Store
 maven/.DS_Store
