@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name="maven-ai"
+name="maven-data"
 license= "BSD-3-Clause"
 description="Metadata Acquisition and Validation ENgine"
 readme = "README.md"
