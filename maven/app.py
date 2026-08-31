@@ -608,8 +608,7 @@ def parse_uploaded_context_files(uploaded_files) -> str:
             elif suffix == ".docx":
                 text = extract_text_from_docx(uploaded_file["path"] if is_remote else uploaded_file)
             elif suffix in [".md", ".txt"]:
-                with open(uploaded_file["path"] if is_remote else uploaded_file, "r", encoding="utf-8") as f:
-                    text = f.read()
+                text = uploaded_file.getvalue().decode("utf-8")
             elif suffix == ".pptx":
                 text = extract_text_from_pptx(uploaded_file["path"] if is_remote else uploaded_file)
             else:
@@ -673,7 +672,7 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
     doc.build(elements)
 
 
-def generate_tier1_datacard(qid: int, output_file: str):
+def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
     tier1_tbls = get_tier1_table(qid)
     flattened_fields_dict = tier1_tbls[TIER1_YAML_TABLE].iloc[0].to_dict()
     
@@ -698,8 +697,10 @@ def generate_tier1_datacard(qid: int, output_file: str):
 
     # TODO: use agent to format markdown as per template
     markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
+    resource_uri_line = f"ResourceURI: {data_pointer}\n" if data_pointer is not None else ""
     file_content = (
         "---\n"
+        f"{resource_uri_line}"
         f"{yaml_content}\n"
         "---\n\n"
         f"{markdown_string}\n"
@@ -3010,7 +3011,7 @@ elif st.session_state.screen == "tier2":
                 new_tier1_dc_loc = os.path.join(local_data, proj_name + "_genesis_datacard_v1.2.md")
                 data_folder_name = Path(local_data).name
             generate_datasheet_pdf(datasheet_df, new_datasheet_loc)
-            generate_tier1_datacard(qid, new_tier1_dc_loc)
+            generate_tier1_datacard(qid, new_tier1_dc_loc, hpc_name + ":" + os.path.join(hpc_campaign, proj_name, data_folder_name))
 
             datasheet_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_name)
             datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, proj_name + "_genesis_datacard_v1.2.md")
