@@ -134,6 +134,9 @@ FILE_POINTERS_TABLE = "metadata_file_paths"
 TIER1_YAML_TABLE = "datacard_yaml"
 TIER1_MARKDOWN_TABLE = "datacard_markdown"
 
+DATASHEET_SUFFIX = "_datasheet.pdf"
+DATACARD_SUFFIX = "_genesis_datacard_v1.2.md"
+
 TIER_2_TABLE = "data_and_hpc_info"
 
 CONFIG_DIR = Path.home() / ".maven_config"
@@ -173,7 +176,8 @@ def configure_chat_agent() -> ChatAgent:
     llm = init_chat_model(model=os.getenv("AI_MODEL"),
                           base_url=os.getenv("AI_API_URL"),
                           api_key=os.getenv("AI_API_KEY"),
-                          temperature=TEMP
+                          temperature=TEMP,
+                          max_tokens=os.getenv("AI_MODEL_MAX_TOKENS")
                           )
     # Setup workspace and thread for conversation persistence
     workspace = Path(get_maven_dir()) / "ursa_workspace"
@@ -226,7 +230,8 @@ def load_env_keys() -> None:
 
             key, value = line.split("=", 1)
             os.environ[key.strip()] = value.strip()
-        if not os.environ.get("AI_API_KEY") or not os.environ.get("AI_API_URL") or not os.environ.get("AI_MODEL"):
+        if (not os.environ.get("AI_API_KEY") or not os.environ.get("AI_API_URL") or 
+            not os.environ.get("AI_MODEL") or not os.environ.get("AI_MODEL_MAX_TOKENS")):
             return False
         return True
     return False
@@ -395,6 +400,11 @@ def delete_project(qid: int) -> None:
 
     store = get_db(get_master_db_name())
     projects_df = store.get_table(PROJECTS_TABLE, True, True)
+    full_proj_name = to_snake_case(projects_df.loc[projects_df["project_id"] == qid, "project_name"].iloc[0])
+    datasheet_path = get_maven_dir() / (full_proj_name + DATASHEET_SUFFIX)
+    datasheet_path.unlink(missing_ok=True)
+    datacard_path = get_maven_dir() / (full_proj_name + DATACARD_SUFFIX)
+    datacard_path.unlink(missing_ok=True)
 
     if len(projects_df) == 1:
         store.close()
@@ -695,7 +705,6 @@ def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
         default_flow_style=False,
     ).rstrip()
 
-    # TODO: use agent to format markdown as per template
     markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
     resource_uri_line = f"ResourceURI: {data_pointer}\n" if data_pointer is not None else ""
     file_content = (
@@ -785,6 +794,8 @@ def section_complete(section_idx: int, row: Dict[str, Any]) -> Tuple[bool, List[
             missing.append("No API base URL found with this app. Set AI_API_URL environment variable.")
         if not os.environ.get("AI_MODEL"):
             missing.append("No AI Model selected for this app. Set AI_MODEL environment variable.")
+        if not os.environ.get("AI_MODEL_MAX_TOKENS"):
+            missing.append("No AI Model Max Tokens selected for this app. Set AI_MODEL_MAX_TOKENS environment variable.")
 
     return (len(missing) == 0, missing)
 
@@ -1052,6 +1063,7 @@ def render_section(section_idx: int, row: Dict[str, Any], qid_token: str) -> Non
 
             if is_remote:
                 st.write("Enter absolute path to context files -- 1 per line")
+                st.caption("NOTE: DO NOT enclose file name in quotes if it has spaces. Example: /home/user/context file.pdf")
             else:
                 st.write(label)
 
@@ -1489,7 +1501,7 @@ def update_ai_model_dialog():
     try:
         key, url = st.session_state.api_variables
         client = OpenAI(api_key=key, base_url=url, http_client=httpx.Client(verify=False))
-        models = [model.id for model in client.models.list().data]
+        models = {model.id:int(model.model_dump().get('max_output_tokens') or 50000) for model in client.models.list().data}
     except Exception as e:
         st.error("Error finding models with the input AI API Key and Base URL")
         st.error(e)
@@ -1497,7 +1509,7 @@ def update_ai_model_dialog():
 
     st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
-    selected_model = st.selectbox("val", models, label_visibility="collapsed", index=None,
+    selected_model = st.selectbox("val", list(models.keys()), label_visibility="collapsed", index=None,
                                     key="update_ai_model_selection")
 
     if st.button("Save", type="primary", width="stretch"):
@@ -1510,6 +1522,7 @@ def update_ai_model_dialog():
                 f"AI_API_KEY={key}\n"
                 f"AI_API_URL={url}\n"
                 f"AI_MODEL=openai:{selected_model}\n"
+                f"AI_MODEL_MAX_TOKENS={models[selected_model]}\n"
             )
             st.success("Updated AI Model")
             st.session_state.api_variables = []
@@ -1533,9 +1546,48 @@ def confirm_context_files_dialog(context_files): # add :str or :list
     col1, col2 = st.columns(2)
     if col1.button("Yes", width="stretch"):
         st.session_state.confirm_submit_context_files = True
+        st.session_state._scroll_to_top = False
         st.rerun()
     if col2.button("No", width="stretch"):
+        st.session_state._scroll_to_top = False
         st.rerun()
+
+
+@st.dialog("Valid markdown confirmation", width="medium", dismissible=False)
+def confirm_markdown_valid_dialog():
+    st.warning("Have you verified that your markdown field is in the format of the template?")
+    
+    confirm_col, cancel_col = st.columns(2)
+
+    with confirm_col:
+        if st.button("Confirm", key=f"confirm_submit_markdown_btn", type="primary", width="stretch"):
+            store = get_db(get_master_db_name())
+            long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
+                                    True).iloc[0,0].strip()
+            store.close()
+
+            datacard_name = to_snake_case(long_proj_name) + DATACARD_SUFFIX
+            generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
+
+            st.session_state.screen = "tier2"
+            st.session_state.render_t1_markdown = False
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = True
+            st.session_state.render_t2_extraction = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.rerun()
+
+    with cancel_col:
+        if st.button("Cancel", key=f"cancel_confirm_markdown_btn", width="stretch"):
+            st.session_state.screen = "tier1"
+            st.session_state.render_t1_markdown = True
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = False
+            st.session_state.render_t2_extraction = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.rerun()
 
 
 @st.fragment
@@ -1631,7 +1683,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                         f"""
                                         <style>
                                         div[data-testid="stTextInput"]:has(
-                                            input[aria-label="{key}"]
+                                            input[aria-label="{widget_key}"]
                                         ) input {{
                                             border: 5px solid red !important;
                                             border-radius: 8px !important;
@@ -1641,18 +1693,28 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                         unsafe_allow_html=True
                                     )
                                 updated_values[widget_key] = st.text_input(
-                                    label=key,
+                                    label=widget_key,
                                     value="" if pd.isna(value) else str(value),
-                                    key="field:" + widget_key,
+                                    key="field_" + widget_key,
                                     label_visibility="collapsed"
                                 )
                             elif field_dict["type"] == "radio":
+                                options = field_dict["options"]
+                                default_index = options.index(str(value).capitalize()) if str(value) in options else None
+                                updated_values[widget_key] = st.radio(
+                                    "radio_label",
+                                    options,
+                                    index=default_index,
+                                    key="field_" + widget_key,
+                                    label_visibility="collapsed"
+                                )
+                            elif field_dict["type"] == "dropdown":
                                 if widget_key in st.session_state.invalid_fields:
                                     st.markdown(
                                         f"""
                                         <style>
                                         div[data-testid="stSelectbox"]:has(
-                                            input[aria-label="{key}"]
+                                            input[aria-label="{widget_key}"]
                                         ) input {{
                                             border: 5px solid red !important;
                                             border-radius: 8px !important;
@@ -1661,22 +1723,12 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                         """,
                                         unsafe_allow_html=True
                                     )
-                                options = field_dict["options"]
-                                default_index = options.index(str(value).capitalize()) if str(value) in options else None
-                                updated_values[widget_key] = st.radio(
-                                    "radio_label",
-                                    options,
-                                    index=default_index,
-                                    key="field:" + widget_key,
-                                    label_visibility="collapsed"
-                                )
-                            elif field_dict["type"] == "dropdown":
                                 options = list(field_dict["options"])
                                 updated_values[widget_key] = st.selectbox(
-                                    "Enter",
+                                    label=widget_key,
                                     options=options,
                                     index=options.index(value) if value is not None and value in options else None,
-                                    key="field:" + widget_key,
+                                    key="field_" + widget_key,
                                     label_visibility="collapsed"
                                 )
                             else:
@@ -1694,7 +1746,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                 "radio label",
                                 options,
                                 index=default_index,
-                                key="field:" + widget_key,
+                                key="field_" + widget_key,
                                 label_visibility="collapsed", 
                                 )
         render_yaml_portion(actual_yaml_struct)
@@ -1715,8 +1767,8 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
         for col, val in updated_values.items():
             top_key = col.split(".", 1)[0]
             if f"supports_{top_key}" in actual_field_reqs.keys():
-                req_field_missing = (updated_values[f"supports_{top_key}"].lower() == "yes" and 
-                                actual_field_reqs[col] and not str(val).strip()
+                req_field_missing = (updated_values[f"supports_{top_key}"].lower() == "yes" and actual_field_reqs[col] and 
+                                    (val is None or not str(val).strip() or str(val) == "NULL")
                                 )
                 if req_field_missing:
                     invalid_fields.append(col)
@@ -1928,7 +1980,7 @@ if not loaded_keys:
             try:
                 key, url = st.session_state.api_variables
                 client = OpenAI(api_key=key, base_url=url, http_client=httpx.Client(verify=False))
-                models = [model.id for model in client.models.list().data]
+                models = {model.id:int(model.model_dump().get('max_output_tokens') or 50000) for model in client.models.list().data}
             except Exception as e:
                 st.error("Error finding models with the input AI API Key and Base URL")
                 st.code(e)
@@ -1939,7 +1991,7 @@ if not loaded_keys:
 
             st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
-            selected_model = st.selectbox("val", models, label_visibility="collapsed", index=None,
+            selected_model = st.selectbox("val", list(models.keys()), label_visibility="collapsed", index=None,
                                         key="new_ai_model_selection")
             if st.button("Save"):
                 if selected_model is None:
@@ -1951,6 +2003,7 @@ if not loaded_keys:
                         f"AI_API_KEY={key}\n"
                         f"AI_API_URL={url}\n"
                         f"AI_MODEL=openai:{selected_model}\n"
+                        f"AI_MODEL_MAX_TOKENS={models[selected_model]}\n"
                     )
                     st.success("Saved model")
                     st.session_state.api_variables = []
@@ -2050,8 +2103,7 @@ if st.session_state.screen == "datasheet":
                             st.rerun()
 
                     if st.session_state.get("confirm_delete_qid") == qid:
-                        st.warning(
-                            f"Delete **{pname}**? This cannot be undone.")
+                        st.warning(f"Delete **{pname}**? This cannot be undone.")
 
                         confirm_col, cancel_col = st.columns(2)
 
@@ -2301,7 +2353,7 @@ if st.session_state.screen == "datasheet":
 
                 # go to tier 1 screen
                 else:
-                    full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + "_datasheet.pdf"
+                    full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATASHEET_SUFFIX
                     generate_datasheet_pdf(datasheet_df, str(get_maven_dir() / full_name))
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
@@ -2348,6 +2400,7 @@ elif st.session_state.screen == "tier1":
         
         st.title("Findability Metadata (YAML Portion)")
         st.subheader("Click the Save button at the bottom of the screen to apply any changes")
+        st.write("NOTE: If a section's Support field is set to *No*, all fields in that section are optional.")
 
         if not curr_tables: # no tier 1 yaml or markdown table
             if datasheet_df.empty: # no datasheet data so go home
@@ -2481,6 +2534,9 @@ elif st.session_state.screen == "tier1":
             st.rerun()
 
         with st.form(f"tier1_metadata_form_{qid}"):
+            st.write("#### Ensure the model-generated text in the second block follows the template shown in the first block.")
+            _, tier1_cards, _ = get_tier1_fields()
+            st.code(tier1_cards["markdown_template"], wrap_lines=True, height = 700)
             updated_values = {}
             
             tbl_data = curr_tables[TIER1_MARKDOWN_TABLE].iloc[0].to_dict()
@@ -2491,7 +2547,6 @@ elif st.session_state.screen == "tier1":
 
             markdown_col_key = next(iter(tbl_data))
 
-            st.write("#### Carefully review model-generated text in this text block")
             updated_values[markdown_col_key] = st.text_area(
                 "enter",
                 height = 1750,
@@ -2519,14 +2574,13 @@ elif st.session_state.screen == "tier1":
                 submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
             with next_col:
                 next_clicked = st.form_submit_button(
-                    "Continue to AI-Ready Metadata ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
+                    "Continue to Usability/AI-Ready Metadata ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
 
             if submitted or next_clicked:
-                # TODO: add better check to ensure markdown is correctly formatted
-                markdown_col_key = next(iter(tbl_data))
-                markdown_field_value = next(iter(updated_values.values()), None)
+                markdown_field_value = updated_values[markdown_col_key]
                 if markdown_field_value is None or not str(markdown_field_value).strip():
                     st.error("Markdown section is incomplete. Please complete before continuing")
+                    st.stop()
 
                 try:
                     tier1_df = pd.DataFrame([updated_values])
@@ -2538,25 +2592,10 @@ elif st.session_state.screen == "tier1":
                     store.close()
 
                 if next_clicked:
-                    store = get_db(get_master_db_name())
-                    short_proj_name = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {qid}", 
-                                            True).iloc[0,0].removesuffix("_tier1.db")
-                    store.close()
-
-                    datacard_name = short_proj_name + "_genesis_datacard_v1.2.md"
-                    generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
-
-                    st.session_state.screen = "tier2"
-                    st.session_state.render_t1_markdown = False
-                    st.session_state.section_idx = 0
-                    st.session_state._scroll_to_top = True
-                    st.session_state.render_t2_extraction = False
-                    st.session_state.local_to_staging_moved = False
-                    st.session_state.staging_to_campaign_moved = False
-                    st.rerun()
+                    confirm_markdown_valid_dialog()
                 else:
                     st.success("Findability Metadata (Markdown Portion) Updated.")
-
+                    st.session_state._scroll_to_top = False
 
 
 # -----------------------------
@@ -2564,14 +2603,14 @@ elif st.session_state.screen == "tier1":
 # -----------------------------
 elif st.session_state.screen == "tier2":
     if st.session_state.active_qid is None:
-        st.error("No project selected for extracting AI-Ready Metadata. Please choose a project on the home screen.")
+        st.error("No project selected for extracting Usability/AI-Ready Metadata. Please choose a project on the home screen.")
         st.stop()
 
     qid = int(st.session_state.active_qid)
     tier2_db_path = get_tier2_db_path(qid)
     create_tier2_db(tier2_db_path)
 
-    st.title("AI-Ready Metadata")
+    st.title("Usability/AI-Ready Metadata")
 
     show_tier2_extraction = (st.session_state.render_t2_extraction and st.session_state.tier2_loc_dict is not None)
 
@@ -2915,7 +2954,7 @@ elif st.session_state.screen == "tier2":
                 st.session_state.staging_to_campaign_moved = False
                 st.rerun()
 
-        st.subheader(f"Extracting AI-Ready metadata from: **{local_data if local_data.lower() != 'n/a' else hpc_staging }**")
+        st.subheader(f"Extracting Usability/AI-Ready metadata from: **{local_data if local_data.lower() != 'n/a' else hpc_staging }**")
         st.caption("Run scripts here to create index of files (dircrawl), extract data types, and file-level metadata unique to each dataset.")
 
         st.space()
@@ -3000,21 +3039,22 @@ elif st.session_state.screen == "tier2":
             datasheet_df = t1_store.get_table(DATASHEET_TABLE, True)
 
             # create datasheet pdf in local data loc (or hpc staging if already starting from there)
-            full_name = datasheet_df["project_name"].iloc[0].strip() + " DATASHEET.pdf"
+            full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATASHEET_SUFFIX
+            full_genesis_dc_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATACARD_SUFFIX
             if local_data.lower() == "n/a":
                 # hpc_staging is where the datasheet should be stored
                 new_datasheet_loc = os.path.join(hpc_staging, full_name)
-                new_tier1_dc_loc = os.path.join(hpc_staging, proj_name + "_genesis_datacard_v1.2.md")
+                new_tier1_dc_loc = os.path.join(hpc_staging, full_genesis_dc_name)
                 data_folder_name = Path(hpc_staging).name
             else:
                 new_datasheet_loc = os.path.join(local_data, full_name)
-                new_tier1_dc_loc = os.path.join(local_data, proj_name + "_genesis_datacard_v1.2.md")
+                new_tier1_dc_loc = os.path.join(local_data, full_genesis_dc_name)
                 data_folder_name = Path(local_data).name
             generate_datasheet_pdf(datasheet_df, new_datasheet_loc)
             generate_tier1_datacard(qid, new_tier1_dc_loc, hpc_name + ":" + os.path.join(hpc_campaign, proj_name, data_folder_name))
 
             datasheet_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_name)
-            datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, proj_name + "_genesis_datacard_v1.2.md")
+            datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_genesis_dc_name)
             if FILE_POINTERS_TABLE in t1_store.list(True):
                 t1_store.query(f"UPDATE {FILE_POINTERS_TABLE} SET datsheet_file = ?, datacard_file = ?, tier2_db_path = ?;", 
                                params=(datasheet_campaign_path, datacard_campaign_path, t2_db_campaign_path))
@@ -3394,7 +3434,7 @@ if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadat
     st.rerun()
 
 
-if st.sidebar.button("AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
+if st.sidebar.button("Usability/AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
                      help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
     st.session_state.screen = "tier2"
     st.session_state.section_idx = 0
