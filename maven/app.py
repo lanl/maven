@@ -138,6 +138,7 @@ DATASHEET_SUFFIX = "_datasheet.pdf"
 DATACARD_SUFFIX = "_genesis_datacard_v1.2.md"
 
 TIER_2_TABLE = "data_and_hpc_info"
+TIER_2_FILES_TABLE = "tier2_files"
 
 CONFIG_DIR = Path.home() / ".maven_config"
 CONFIG_FILE = CONFIG_DIR / "files_location.txt"
@@ -294,10 +295,12 @@ def create_tier1_db(db_path: str):
 
 def create_tier2_db(db_path: str):
     store = get_db(db_path)
-    tier2_dict = {"local_data_path": "", "username": "", "hpc_system": "",
+    tier2_data_dict = {"local_data_path": "", "username": "", "hpc_system": "",
                   "hpc_staging_space": "", "hpc_campaign_space": "", "user_group": "", 
                   "access_permissions": "", "diana_endpoint": "", "contact_email": ""}
-    store.read(tier2_dict, "Collection", table_name=TIER_2_TABLE)
+    store.read(tier2_data_dict, "Collection", table_name=TIER_2_TABLE)
+    tier2_files_dict = {"filepaths": ""}
+    store.read(tier2_files_dict, "Collection", table_name=TIER_2_FILES_TABLE)
     store.close()
 
 
@@ -611,16 +614,17 @@ def parse_uploaded_context_files(uploaded_files) -> str:
 
     for uploaded_file in uploaded_files:
         suffix = Path(uploaded_file["name"] if is_remote else uploaded_file.name).suffix.lower()
+        context_file = uploaded_file["path"] if is_remote else uploaded_file
 
         try:
             if suffix == ".pdf":
-                text = extract_text_from_pdf(uploaded_file["path"] if is_remote else uploaded_file)
+                text = extract_text_from_pdf(context_file)
             elif suffix == ".docx":
-                text = extract_text_from_docx(uploaded_file["path"] if is_remote else uploaded_file)
+                text = extract_text_from_docx(context_file)
             elif suffix in [".md", ".txt"]:
-                text = uploaded_file.getvalue().decode("utf-8")
+                text = context_file.getvalue().decode("utf-8")
             elif suffix == ".pptx":
-                text = extract_text_from_pptx(uploaded_file["path"] if is_remote else uploaded_file)
+                text = extract_text_from_pptx(context_file)
             else:
                 continue
 
@@ -632,6 +636,36 @@ def parse_uploaded_context_files(uploaded_files) -> str:
             st.warning(f'Could not parse {uploaded_file["name"] if is_remote else uploaded_file.name}: {e}')
 
     return "\n".join(combined).strip()
+
+
+def parse_uploaded_t2_files(uploaded_files) -> dict:
+    combined = {}
+
+    for uploaded_file in uploaded_files:
+        t2_file = uploaded_file["path"] if is_remote else uploaded_file
+        t2_file_name = uploaded_file["name"] if is_remote else uploaded_file.name
+        suffix = Path(t2_file_name).suffix.lower()
+
+        try:
+            if suffix == ".csv":
+                df = pd.read_csv(t2_file)
+            elif suffix == ".tsv":
+                df = pd.read_csv(t2_file, sep="\t")
+            elif suffix == ".xlsx":
+                with pd.ExcelFile(t2_file) as excel:
+                    if len(excel.sheet_names) != 1:
+                        st.warning(f"Skipping {t2_file_name} - expected only one sheet and found {len(excel.sheet_names)}")
+                        continue
+                    df = pd.read_excel(excel, sheet_name=0)
+            else:
+                continue
+
+            combined[t2_file_name] = df
+
+        except Exception as e:
+            st.warning(f'Could not parse {t2_file_name}: {e}')
+
+    return combined
 
 
 def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
@@ -1573,7 +1607,7 @@ def confirm_markdown_valid_dialog():
             st.session_state.render_t1_markdown = False
             st.session_state.section_idx = 0
             st.session_state._scroll_to_top = True
-            st.session_state.render_t2_extraction = False
+            st.session_state.render_hpc_move_btn = False
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
             st.rerun()
@@ -1584,7 +1618,7 @@ def confirm_markdown_valid_dialog():
             st.session_state.render_t1_markdown = True
             st.session_state.section_idx = 0
             st.session_state._scroll_to_top = False
-            st.session_state.render_t2_extraction = False
+            st.session_state.render_hpc_move_btn = False
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
             st.rerun()
@@ -1814,7 +1848,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                 st.session_state.render_t1_markdown = True
                 st.session_state.section_idx = 0
                 st.session_state._scroll_to_top = True
-                st.session_state.render_t2_extraction = False
+                st.session_state.render_hpc_move_btn = False
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
                 st.rerun(scope="app")
@@ -1864,8 +1898,8 @@ if "confirm_delete_qid" not in st.session_state:
     st.session_state.confirm_delete_qid = None
 if "render_t1_markdown" not in st.session_state:
     st.session_state.render_t1_markdown = False
-if "render_t2_extraction" not in st.session_state:
-    st.session_state.render_t2_extraction = False
+if "render_hpc_move_btn" not in st.session_state:
+    st.session_state.render_hpc_move_btn = False
 if "tier2_loc_dict" not in st.session_state:
     st.session_state.tier2_loc_dict = None
 if "change_short_proj_title" not in st.session_state:
@@ -1888,6 +1922,8 @@ if "confirm_submit_context_files" not in st.session_state:
     st.session_state.confirm_submit_context_files = False
 if "invalid_fields" not in st.session_state:
     st.session_state.invalid_fields = []
+if "t2_uploader_version" not in st.session_state:
+    st.session_state.t2_uploader_version = 0
 
 if get_maven_dir() is None:
     st.title("Welcome to the MAVEN App")
@@ -2020,6 +2056,11 @@ if st.session_state.update_ai_info_screen:
 
 create_master_db()
 CHAT_AGENT = configure_chat_agent()
+
+
+if st.session_state.active_qid is not None or st.session_state.draft_mode:
+    pass
+
 
 if st.session_state.screen == "datasheet":
     # -----------------------------
@@ -2492,7 +2533,7 @@ elif st.session_state.screen == "tier1":
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
                 st.session_state.confirm_submit_context_files = False
-                st.session_state.render_t2_extraction = False
+                st.session_state.render_hpc_move_btn = False
                 st.session_state.tier2_loc_dict = None
                 st.rerun()
 
@@ -2567,7 +2608,7 @@ elif st.session_state.screen == "tier1":
                     st.session_state.local_to_staging_moved = False
                     st.session_state.staging_to_campaign_moved = False
                     st.session_state.confirm_submit_context_files = False
-                    st.session_state.render_t2_extraction = False
+                    st.session_state.render_hpc_move_btn = False
                     st.session_state.tier2_loc_dict = None
                     st.rerun()
             with save_col:
@@ -2599,7 +2640,7 @@ elif st.session_state.screen == "tier1":
 
 
 # -----------------------------
-# TIER 2 + DSI MOVE Screen
+# TIER 2 Screen
 # -----------------------------
 elif st.session_state.screen == "tier2":
     if st.session_state.active_qid is None:
@@ -2612,10 +2653,79 @@ elif st.session_state.screen == "tier2":
 
     st.title("Usability/AI-Ready Metadata")
 
-    show_tier2_extraction = (st.session_state.render_t2_extraction and st.session_state.tier2_loc_dict is not None)
+    tier2_store = get_db(tier2_db_path)
+    files_tbl = tier2_store.get_table(TIER_2_FILES_TABLE, True)
+    tier2_store.close()
+
+    if not files_tbl.empty:
+        prev_uploaded_t2_files = files_tbl.iloc[:, 0].tolist()
+        if prev_uploaded_t2_files:
+            st.info("Previously uploaded file(s): " + ", ".join(prev_uploaded_t2_files))
+
+    uploader_key = f"t2_files_uploader_{st.session_state.t2_uploader_version}"
+    if is_remote:
+        st.write("Enter absolute path to metadata file(s) -- 1 per line")
+        st.caption("NOTE: DO NOT enclose file name in quotes if it has spaces. Example: /home/user/metadata file.csv")
+        t2_uploaded_files = st.text_area("enter", key=uploader_key, height=100, label_visibility="collapsed")
+        t2_uploaded_files = [{"path": p, "name": p.name, "size": p.stat().st_size} for line in t2_uploaded_files.splitlines() 
+                        if (line1 := line.strip()) if (p := Path(line1)).is_file()]
+    else:
+        st.write("Drop or upload metadata file(s) here")
+        t2_uploaded_files = st.file_uploader("Enter", type=["csv", "tsv", "xlsx"], label_visibility="collapsed",
+                                            accept_multiple_files=True, key=uploader_key)
+
+    st.space()
+    save_col, next_col = st.columns(2)
+    with save_col:
+        submitted = st.button("Save Usability/AI-Ready Metadata", key=f"save_tier2_{qid}", width="stretch")
+    with next_col:
+        next_clicked = st.button("Save and Continue to HPC Move ➡", key=f"next_tier2_{qid}", 
+                                             width="stretch", type="primary")
+
+    if submitted or next_clicked:
+        combined_t2_files = parse_uploaded_t2_files(t2_uploaded_files)
+        if combined_t2_files:
+            tier2_store = get_db(tier2_db_path)
+            tier2_store.read({"filepaths":list(combined_t2_files.keys())}, "Collection", TIER_2_FILES_TABLE)
+            for filename, t2_file_df in combined_t2_files.items():
+                tier2_store.read(t2_file_df, "Collection", filename)
+            tier2_store.close()
+
+        st.session_state.t2_uploader_version += 1
+
+        if next_clicked:
+            st.session_state.screen = "hpc_move"
+            st.session_state.render_t1_markdown = False
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = True
+            st.session_state.render_hpc_move_btn = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.render_hpc_move_btn = False
+            st.session_state.staging_to_campaign_moved = False
+            st.rerun()
+        else:
+            st.success("Usability/AI-Ready Metadata Updated")
+            st.session_state._scroll_to_top = False
+            st.rerun()
+
+
+# -----------------------------
+# HPC MOVE Screen
+# -----------------------------
+elif st.session_state.screen == "hpc_move":
+    if st.session_state.active_qid is None:
+        st.error("No project selected for extracting Usability/AI-Ready Metadata. Please choose a project on the home screen.")
+        st.stop()
+
+    qid = int(st.session_state.active_qid)
+    tier2_db_path = get_tier2_db_path(qid)
+
+    st.title("Move Data and Metadata to HPC")
+
+    show_tier2_extraction = (st.session_state.render_hpc_move_btn and st.session_state.tier2_loc_dict is not None)
 
     if not show_tier2_extraction:
-        st.subheader("Enter data locations and HPC information to enable data extraction and movement")
+        st.subheader("Enter data locations and HPC information to enable data movement")
 
         tier2_store = get_db(tier2_db_path)
         locations_tbl = tier2_store.get_table(TIER_2_TABLE, True)
@@ -2737,7 +2847,7 @@ elif st.session_state.screen == "tier2":
                                 label_visibility="collapsed")
 
 
-        if st.button("Save & Extract Metadata ➡", key=f"save_tier2_{qid}", width="stretch", type="primary"):
+        if st.button("Validate Data and HPC Fields", key=f"save_tier2_{qid}", width="stretch", type="primary"):
             missing_fields = [col for col, value in updated_tier2_dict.items() 
                               if not str(value).strip() and col not in ["user_group", "access_permissions"]]
             if missing_fields:
@@ -2800,7 +2910,7 @@ elif st.session_state.screen == "tier2":
             if not locations_tbl.empty:
                 existing_loc_dict = locations_tbl.iloc[0].to_dict()
                 if all(str(existing_loc_dict[k]).strip() == str(updated_tier2_dict[k]).strip() for k in updated_tier2_dict.keys()):
-                    st.session_state.render_t2_extraction = True
+                    st.session_state.render_hpc_move_btn = True
                     st.session_state.tier2_loc_dict = existing_loc_dict
                     st.rerun()
 
@@ -2921,12 +3031,11 @@ elif st.session_state.screen == "tier2":
                 store.query(query, params=new_values)
             store.close()
 
-            st.session_state.render_t2_extraction = True
+            st.session_state.render_hpc_move_btn = True
             st.session_state.tier2_loc_dict = updated_tier2_dict
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
             st.rerun()
-
 
 
 
@@ -2946,25 +3055,20 @@ elif st.session_state.screen == "tier2":
 
         back_col, other = st.columns([1, 4], width="stretch")
         with back_col:
-            if st.button("⬅ Edit HPC Info", width="stretch"):
-                st.session_state.render_t2_extraction = False
+            if st.button("⬅ Edit Data & HPC Info", width="stretch"):
+                st.session_state.render_hpc_move_btn = False
                 st.session_state.tier2_loc_dict = None
                 st.session_state.ran_change_dialog = False
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
                 st.rerun()
 
-        st.subheader(f"Extracting Usability/AI-Ready metadata from: **{local_data if local_data.lower() != 'n/a' else hpc_staging }**")
-        st.caption("Run scripts here to create index of files (dircrawl), extract data types, and file-level metadata unique to each dataset.")
-
-        st.space()
-
         if local_data.lower() == "n/a":
-            st.subheader("Click the button to move data from staging space -> campaign space.")
+            st.subheader("Move data from HPC Staging ➡ Campaign space.")
         else:
-            st.subheader("Click the button to move data from local space -> HPC staging -> HPC campaign")
+            st.subheader("Move data from Local Machine ➡ HPC staging ➡ HPC campaign")
         st.space()
-        dsi_move_btn = st.button("DSI Move", key=f"dsi_move_{qid}", width="stretch", type="primary")
+        dsi_move_btn = st.button("Move to HPC", key=f"dsi_move_{qid}", width="stretch", type="primary")
 
         if dsi_move_btn:
             temp_master_store = get_db(get_master_db_name())
@@ -3068,7 +3172,7 @@ elif st.session_state.screen == "tier2":
             skip_index = st.session_state.unchanged_data
 
             # diana federation endpoint entry for this project
-            fed_line = f"HPC,{hpc_name},{os.path.join(hpc_campaign, t1_db_name)},data,{username},{contact_email},{datetime.now(UTC).time()}"
+            fed_line = f"HPC,{hpc_name},{os.path.join(hpc_campaign, proj_name, t1_db_name)},data,{username},{contact_email},{datetime.now(UTC).time()}"
 
             if local_data.lower() == "n/a":
                 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
@@ -3246,11 +3350,12 @@ elif st.session_state.screen == "tier2":
                         cmd = ["ssh", f"{username}@{hpc_name}",
                             f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                    print(" \nGo back to app")
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
                         st.stop()
+
+            print(" \nGo back to app")
 
             # after move, delete the temp t1 & t2 dbs that were actually moved
             os.remove(temp_t2_db_name)
@@ -3271,8 +3376,6 @@ elif st.session_state.screen == "tier2":
 # -----------------------------
 # Sidebar
 # -----------------------------
-st.sidebar.title("Actions")
-
 if st.sidebar.button("➕ New project"):
     # Save current progress
     if st.session_state.active_qid is not None:
@@ -3441,7 +3544,22 @@ if st.sidebar.button("Usability/AI-Ready Metadata", disabled=is_metadata_btn_dis
     st.session_state._scroll_to_top = True
     st.session_state.render_t1_markdown = False
     st.session_state.invalid_fields = []
-    st.session_state.render_t2_extraction = False
+    st.session_state.render_hpc_move_btn = False
+    st.session_state.local_to_staging_moved = False
+    st.session_state.staging_to_campaign_moved = False
+    st.session_state.confirm_submit_context_files = False
+    st.rerun()
+
+st.sidebar.space()
+
+if st.sidebar.button("Data Movement", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
+                     help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+    st.session_state.screen = "hpc_move"
+    st.session_state.section_idx = 0
+    st.session_state._scroll_to_top = True
+    st.session_state.render_t1_markdown = False
+    st.session_state.invalid_fields = []
+    st.session_state.render_hpc_move_btn = False
     st.session_state.local_to_staging_moved = False
     st.session_state.staging_to_campaign_moved = False
     st.session_state.confirm_submit_context_files = False
