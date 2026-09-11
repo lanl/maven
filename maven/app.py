@@ -461,12 +461,10 @@ def get_tier1_fields():
     flattened_fields = flattened_tier1_fields(datacard_dict)
 
     # MD str
-    with open(GENESIS_MISSION_DATA_CARD_MD, "r") as f:
-        tier1_cards["markdown_template"] = f.read()
+    tier1_cards["markdown_template"] = GENESIS_MISSION_DATA_CARD_MD.read_text(encoding="utf-8")
 
     # Reference guide str
-    with open(GENESIS_MISSION_DATA_CARD_REFERENCE, 'r') as f:
-        tier1_cards["card_reference"] = f.read()
+    tier1_cards["card_reference"] = GENESIS_MISSION_DATA_CARD_REFERENCE.read_text(encoding="utf-8")
 
     return flattened_fields, tier1_cards, datacard_dict
 
@@ -1841,7 +1839,8 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                 if "connection error" in str(e).lower():
                                     st.error("Ensure you are on the correct network to access the AI Model")
                                 else:
-                                    st.error("Error connecting to AI Model:", str(e))
+                                    st.error("Error connecting to AI Model:")
+                                    st.exception(e)
                                 st.stop()
 
                             tier1_db_path = get_tier1_db_path(qid)
@@ -2517,7 +2516,8 @@ if st.session_state.screen == "datasheet":
                         if "connection error" in str(e).lower():
                             st.error("Ensure you are on the correct network to access the AI Model")
                         else:
-                            st.error("Error connecting to AI Model:", str(e))
+                            st.error("Error connecting to AI Model:")
+                            st.exception(e)
                         st.stop()
                 st.session_state.active_qid = new_id
                 meta = load_agent_meta(row_after_autofill)
@@ -2548,7 +2548,8 @@ if st.session_state.screen == "datasheet":
                         if "connection error" in str(e).lower():
                             st.error("Ensure you are on the correct network to access the AI Model")
                         else:
-                            st.error("Error connecting to AI Model:", str(e))
+                            st.error("Error connecting to AI Model:")
+                            st.exception(e)
                         st.stop()
                 st.session_state.section_idx = route_after_autofill(row_after_followup)
                 st.session_state._scroll_to_top = True
@@ -2600,7 +2601,8 @@ if st.session_state.screen == "datasheet":
                                 if "connection error" in str(e).lower():
                                     st.error("Ensure you are on the correct network to access the AI Model")
                                 else:
-                                    st.error("Error connecting to AI Model:", str(e))
+                                    st.error("Error connecting to AI Model:")
+                                    st.exception(e)
                                 st.stop()
 
                         tier1_db_path = get_tier1_db_path(qid)
@@ -2654,7 +2656,8 @@ elif st.session_state.screen == "tier1":
                         if "connection error" in str(e).lower():
                             st.error("Ensure you are on the correct network to access the AI Model")
                         else:
-                            st.error("Error connecting to AI Model:", str(e))
+                            st.error("Error connecting to AI Model:")
+                            st.exception(e)
                         st.stop()
 
                 tier1_db_path = get_tier1_db_path(qid)
@@ -2741,7 +2744,8 @@ elif st.session_state.screen == "tier1":
                     if "connection error" in str(e).lower():
                         st.error("Ensure you are on the correct network to access the AI Model")
                     else:
-                        st.error("Error connecting to AI Model:", str(e))
+                        st.error("Error connecting to AI Model:")
+                        st.exception(e)
                     st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
@@ -2758,7 +2762,8 @@ elif st.session_state.screen == "tier1":
                     if "connection error" in str(e).lower():
                         st.error("Ensure you are on the correct network to access the AI Model")
                     else:
-                        st.error("Error connecting to AI Model:", str(e))
+                        st.error("Error connecting to AI Model:")
+                        st.exception(e)
                     st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
