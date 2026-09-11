@@ -403,7 +403,13 @@ def delete_project(qid: int) -> None:
 
     store = get_db(get_master_db_name())
     projects_df = store.get_table(PROJECTS_TABLE, True, True)
-    full_proj_name = to_snake_case(projects_df.loc[projects_df["project_id"] == qid, "project_name"].iloc[0])
+
+    matching_name = projects_df.loc[projects_df["project_id"] == str(qid), "project_name"]
+    if not matching_name.empty:
+        matching_name = matching_name.iloc[0]
+    else:
+        matching_name = projects_df.loc[projects_df["project_id"] == int(qid), "project_name"].iloc[0]
+    full_proj_name = to_snake_case(matching_name)
     datasheet_path = get_maven_dir() / (full_proj_name + DATASHEET_SUFFIX)
     datasheet_path.unlink(missing_ok=True)
     datacard_path = get_maven_dir() / (full_proj_name + DATACARD_SUFFIX)
@@ -2062,6 +2068,30 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
     # -----------------------------
     # Sidebar
     # -----------------------------
+    if st.sidebar.button("🏠 Home"):
+            # Save current progress
+            if st.session_state.active_qid is not None:
+                qid = int(st.session_state.active_qid)
+                token = _qid_token(qid)
+                sec = int(st.session_state.section_idx)
+                if sec in ALL_SECTION_IDXS:
+                    updates = apply_section_updates(sec, token)
+                    update_datasheet(qid, updates)
+    
+            st.session_state.active_qid = None
+            st.session_state.section_idx = 0
+            st.session_state.draft_answers = {}
+            st.session_state.draft_mode = False
+            st.session_state.screen = "datasheet"
+            st.session_state.ran_change_dialog = False
+            st.session_state.render_t1_markdown = False
+            st.session_state.invalid_fields = []
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.session_state.confirm_submit_context_files = False
+            st.rerun()
+
+
     if st.sidebar.button("➕ New project"):
         # Save current progress
         if st.session_state.active_qid is not None:
@@ -2086,32 +2116,6 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.session_state.staging_to_campaign_moved = False
         st.session_state.confirm_submit_context_files = False
         st.rerun()
-
-    # Button only visible if there is at least one committed project
-    _committed = list_projects()
-    if not _committed.empty:
-        if st.sidebar.button("📂 Select existing project"):
-            # Save current progress
-            if st.session_state.active_qid is not None:
-                qid = int(st.session_state.active_qid)
-                token = _qid_token(qid)
-                sec = int(st.session_state.section_idx)
-                if sec in ALL_SECTION_IDXS:
-                    updates = apply_section_updates(sec, token)
-                    update_datasheet(qid, updates)
-
-            st.session_state.active_qid = None
-            st.session_state.section_idx = 0
-            st.session_state.draft_answers = {}
-            st.session_state.draft_mode = False
-            st.session_state.screen = "datasheet"
-            st.session_state.ran_change_dialog = False
-            st.session_state.render_t1_markdown = False
-            st.session_state.invalid_fields = []
-            st.session_state.local_to_staging_moved = False
-            st.session_state.staging_to_campaign_moved = False
-            st.session_state.confirm_submit_context_files = False
-            st.rerun()
 
     st.sidebar.divider()
     st.sidebar.write("### Project Setup")
