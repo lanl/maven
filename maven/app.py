@@ -695,14 +695,14 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
             answer = row[qid]
 
             if pd.isna(answer) or str(answer).strip() == "":
-                continue
+                answer = "Not provided"
 
             question_label = html.escape(str(q["label"]))
             question_style = ParagraphStyle("QuestionStyle", parent=styles["BodyText"], fontSize=12, leading=15)
             answer_text = html.escape(str(answer))
 
             if section["section_idx"] != 0:
-                elements.append(Paragraph(f"<b>{question_label}</b>", question_style))
+                elements.append(Paragraph(f"<b>{qid[1:]}. {question_label}</b>", question_style))
                 elements.append(Paragraph(answer_text, styles["BodyText"]))
             else:
                 if qid == "classification" and pd.notna(row["ROSY_ID"]) and pd.notna(row["ROSY_Z_NUMBER"]):
@@ -1419,7 +1419,7 @@ def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
 def confirm_unchanged_data_dialog(qid: int, local_data: str):
     st.subheader(f"The data at '{local_data}' was recently moved")
 
-    st.write("Has the data at the local path changed since the last move?")
+    st.write("Has the local data changed since the last move?")
 
     yes_col, no_col = st.columns(2)
     with yes_col:
@@ -1595,7 +1595,7 @@ def confirm_context_files_dialog(context_files): # add :str or :list
 
 @st.dialog("Valid markdown confirmation", width="medium", dismissible=False)
 def confirm_markdown_valid_dialog():
-    st.warning("Have you verified that your markdown field is in the format of the template?")
+    st.warning("Have you confirmed that the Markdown section follows the provided template?")
     
     confirm_col, cancel_col = st.columns(2)
 
@@ -3385,19 +3385,21 @@ elif st.session_state.screen == "hpc_move":
                     st.error("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                     st.stop()
 
-                # delete data in t2 locations table on scratch before moving to campaign
-                store = get_db(temp_t2_db_name)
-                df = store.get_table(TIER_2_TABLE, True, True)
-                df.iloc[0, 1:] = None # delete all col data except the dsi_table_name col
-                store.update(df)
-                store.close()
-
                 scratch_move_error = None
                 with st.spinner(f"Moving data to HPC campaign with `{copy_tool}`"):
                     try:
                         # TODO: Turn verbose off after done testing
                         s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
                         s.index(hpc_staging, hpc_campaign)
+                        shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
+
+                        # delete data in t2 locations table on scratch before moving to campaign
+                        store = get_db(temp_t2_db_name)
+                        df = store.get_table(TIER_2_TABLE, True, True)
+                        df.iloc[0, 1:] = None # delete all col data except the dsi_table_name col
+                        store.update(df)
+                        store.close()
+
                         s.copy(copy_tool)
                     except Exception as e:
                         scratch_move_error = e
@@ -3440,11 +3442,12 @@ elif st.session_state.screen == "hpc_move":
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
                             s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
+                            shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
                             s.copy("rsync")
                         except Exception as e:
                             local_move_error = e
                             print(" \nGo back to app")
-                    
+
                     if local_move_error is not None:
                         st.error("Local Data to HPC Staging Move Error:")
                         st.code(str(local_move_error))
@@ -3478,6 +3481,8 @@ elif st.session_state.screen == "hpc_move":
                                 st.code("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                             elif "conduit get" in output and ("no credentials" in output or "failed" in output):
                                 st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
+                            elif "SyntaxWarning: invalid escape sequence" in output:
+                                st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                             else:
                                 st.code(remote_run.stderr)
                         st.stop()
@@ -3496,6 +3501,8 @@ elif st.session_state.screen == "hpc_move":
                         output = remote_run.stdout.lower()
                         if "conduit get" in output and ("no credentials" in output or "failed" in output):
                             st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
+                        elif "SyntaxWarning: invalid escape sequence" in output:
+                            st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                         else:
                             st.code(remote_run.stdout[idx + len(marker):])
                         st.stop()
@@ -3521,7 +3528,14 @@ elif st.session_state.screen == "hpc_move":
                         if "Only testing on this HPC for now" in remote_endpoint_run.stdout:
                             st.code("Cannot register this project on this HPC system. Ensure you are on a transfer node, not head node.")
                         elif "Endpoint error" in remote_endpoint_run.stdout:
-                            st.code(remote_endpoint_run.stdout.split("Endpoint error", 1)[1])
+                            if "SyntaxWarning: invalid escape sequence" in remote_endpoint_run.stdout:
+                                st.code(f"Unable to register '{proj_name}' in {diana_endpoint}. Verify you have write permissions.")
+                            else:
+                                st.code(remote_endpoint_run.stdout.split("Endpoint error", 1)[1])
+                        else:
+                            st.code(remote_endpoint_run.stderr)
+                            st.code(output)
+                        print(" \nGo back to app")
                     st.stop()                
 
             # set user group and access permissions after move
@@ -3535,6 +3549,7 @@ elif st.session_state.screen == "hpc_move":
                         st.error("Error setting user group for data on Campaign")
                         st.code(result.stderr)
                         st.stop()
+                        print(" \nGo back to app")
 
                 if access_permissions_code:
                     with st.spinner("Updating data access permissions on Campaign"):
@@ -3544,6 +3559,7 @@ elif st.session_state.screen == "hpc_move":
                         st.error("Error setting access permissions for data on Campaign")
                         st.code(result.stderr)
                         st.stop()
+                        print(" \nGo back to app")
             else:
                 if user_group and access_permissions_code:
                     print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
@@ -3555,6 +3571,7 @@ elif st.session_state.screen == "hpc_move":
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
                         st.stop()
+                        print(" \nGo back to app")
 
             print(" \nGo back to app")
 
