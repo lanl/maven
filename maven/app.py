@@ -2059,7 +2059,197 @@ CHAT_AGENT = configure_chat_agent()
 
 
 if st.session_state.active_qid is not None or st.session_state.draft_mode:
-    pass
+    # -----------------------------
+    # Sidebar
+    # -----------------------------
+    if st.sidebar.button("➕ New project"):
+        # Save current progress
+        if st.session_state.active_qid is not None:
+            qid = int(st.session_state.active_qid)
+            token = _qid_token(qid)
+            sec = int(st.session_state.section_idx)
+            if sec in ALL_SECTION_IDXS:
+                updates = apply_section_updates(sec, token)
+                update_datasheet(qid, updates)
+            clear_context_file_state(token)
+        clear_context_file_state("draft")
+
+        st.session_state.active_qid = None
+        st.session_state.section_idx = 0
+        st.session_state.draft_answers = {}
+        st.session_state.draft_mode = True
+        st.session_state.screen = "datasheet"
+        st.session_state.ran_change_dialog = False
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
+
+    # Button only visible if there is at least one committed project
+    _committed = list_projects()
+    if not _committed.empty:
+        if st.sidebar.button("📂 Select existing project"):
+            # Save current progress
+            if st.session_state.active_qid is not None:
+                qid = int(st.session_state.active_qid)
+                token = _qid_token(qid)
+                sec = int(st.session_state.section_idx)
+                if sec in ALL_SECTION_IDXS:
+                    updates = apply_section_updates(sec, token)
+                    update_datasheet(qid, updates)
+
+            st.session_state.active_qid = None
+            st.session_state.section_idx = 0
+            st.session_state.draft_answers = {}
+            st.session_state.draft_mode = False
+            st.session_state.screen = "datasheet"
+            st.session_state.ran_change_dialog = False
+            st.session_state.render_t1_markdown = False
+            st.session_state.invalid_fields = []
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.session_state.confirm_submit_context_files = False
+            st.rerun()
+
+    st.sidebar.divider()
+    st.sidebar.write("### Project Setup")
+
+    if st.session_state.active_qid is None:
+        label = f"{SECTION_BY_IDX[0]['title']}"
+        st.sidebar.button(label, disabled=False,
+                        key="nav_draft_0", width="stretch")
+
+        st.sidebar.space()
+        st.sidebar.write("### Datasheet Sections")
+
+        for idx in ALL_SECTION_IDXS:
+            if idx == 0:
+                continue
+            label = f"{idx}: {SECTION_BY_IDX[idx]['title']}"
+            st.sidebar.button(label, disabled=True,
+                            key=f"nav_draft_{idx}", width="stretch")
+
+    else:
+        qid = int(st.session_state.active_qid)
+        token = _qid_token(qid)
+        row_latest = get_datasheet(qid)
+        max_unlocked = accessed_section_idx(row_latest, "max")
+
+        # Section 0 separated
+        is_complete, _ = section_complete(0, row_latest)
+        label_prefix = "✅ " if is_complete else "⬜ "
+        label = f"{label_prefix} {SECTION_BY_IDX[0]['title']}"
+
+        if st.sidebar.button(label, key=f"nav_{qid}_0", width="stretch"):
+            st.session_state.screen = "datasheet"
+            if st.session_state.section_idx in ALL_SECTION_IDXS:
+                updates = apply_section_updates(
+                    st.session_state.section_idx, token)
+                update_datasheet(qid, updates)
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = True
+            st.session_state.render_t1_markdown = False
+            st.session_state.invalid_fields = []
+            st.session_state.ran_change_dialog = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.session_state.confirm_submit_context_files = False
+            st.rerun()
+
+        st.sidebar.space()
+        st.sidebar.write("### Datasheet Sections")
+
+        with st.sidebar:
+            with st.container(key="section_btns"):
+                for idx in ALL_SECTION_IDXS:
+                    if idx == 0:
+                        continue
+
+                    is_complete, _ = section_complete(idx, row_latest)
+                    label_prefix = "✅ " if is_complete else "⬜ "
+                    label = f"{label_prefix}{idx}: {SECTION_BY_IDX[idx]['title']}"
+                    disabled = idx > max_unlocked
+                    if st.button(label, key=f"nav_{qid}_{idx}", disabled=disabled, width="stretch"):
+                        st.session_state.screen = "datasheet"
+                        if st.session_state.section_idx in ALL_SECTION_IDXS:
+                            updates = apply_section_updates(
+                                st.session_state.section_idx, token)
+                            update_datasheet(qid, updates)
+                        st.session_state.section_idx = idx
+                        st.session_state._scroll_to_top = True
+                        st.session_state.render_t1_markdown = False
+                        st.session_state.invalid_fields = []
+                        st.session_state.ran_change_dialog = False
+                        st.session_state.local_to_staging_moved = False
+                        st.session_state.staging_to_campaign_moved = False
+                        st.session_state.confirm_submit_context_files = False
+                        st.rerun()
+
+    st.sidebar.space()
+    st.sidebar.write("### Metadata Levels")
+
+    is_metadata_btn_disabled = False
+
+    if st.session_state.active_qid is None:
+        is_metadata_btn_disabled = True
+    else:
+        all_data = get_datasheet(qid)
+        if any(not section_complete(idx, all_data)[0] for idx in ALL_SECTION_IDXS):
+            is_metadata_btn_disabled = True
+        else:
+            qid = int(st.session_state.active_qid)
+            if not get_tier1_table(qid, check_exists=True):
+                is_metadata_btn_disabled = True
+
+    if st.session_state.active_qid is None:
+        t2_exists = False
+    else:
+        t2_exists = Path(get_tier2_db_path(qid)).is_file()
+
+    t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists or len(get_tier1_table(qid)) != 2 else "✅ "
+    if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
+                        help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
+        st.session_state.screen = "tier1"
+        st.session_state.section_idx = 0
+        st.session_state._scroll_to_top = True
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.ran_change_dialog = False
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
+
+
+    if st.sidebar.button("Usability/AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
+                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+        st.session_state.screen = "tier2"
+        st.session_state.section_idx = 0
+        st.session_state._scroll_to_top = True
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.render_hpc_move_btn = False
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
+
+    st.sidebar.space()
+
+    if st.sidebar.button("Data Movement", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
+                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+        st.session_state.screen = "hpc_move"
+        st.session_state.section_idx = 0
+        st.session_state._scroll_to_top = True
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.render_hpc_move_btn = False
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
 
 
 if st.session_state.screen == "datasheet":
@@ -3372,195 +3562,3 @@ elif st.session_state.screen == "hpc_move":
             st.session_state.staging_to_campaign_moved = False
 
             st.success(f"Successfully moved data with DSI to HPC campaign: {os.path.join(hpc_campaign, proj_name)}/")
-
-# -----------------------------
-# Sidebar
-# -----------------------------
-if st.sidebar.button("➕ New project"):
-    # Save current progress
-    if st.session_state.active_qid is not None:
-        qid = int(st.session_state.active_qid)
-        token = _qid_token(qid)
-        sec = int(st.session_state.section_idx)
-        if sec in ALL_SECTION_IDXS:
-            updates = apply_section_updates(sec, token)
-            update_datasheet(qid, updates)
-        clear_context_file_state(token)
-    clear_context_file_state("draft")
-
-    st.session_state.active_qid = None
-    st.session_state.section_idx = 0
-    st.session_state.draft_answers = {}
-    st.session_state.draft_mode = True
-    st.session_state.screen = "datasheet"
-    st.session_state.ran_change_dialog = False
-    st.session_state.render_t1_markdown = False
-    st.session_state.invalid_fields = []
-    st.session_state.local_to_staging_moved = False
-    st.session_state.staging_to_campaign_moved = False
-    st.session_state.confirm_submit_context_files = False
-    st.rerun()
-
-# Button only visible if there is at least one committed project
-_committed = list_projects()
-if not _committed.empty:
-    if st.sidebar.button("📂 Select existing project"):
-        # Save current progress
-        if st.session_state.active_qid is not None:
-            qid = int(st.session_state.active_qid)
-            token = _qid_token(qid)
-            sec = int(st.session_state.section_idx)
-            if sec in ALL_SECTION_IDXS:
-                updates = apply_section_updates(sec, token)
-                update_datasheet(qid, updates)
-
-        st.session_state.active_qid = None
-        st.session_state.section_idx = 0
-        st.session_state.draft_answers = {}
-        st.session_state.draft_mode = False
-        st.session_state.screen = "datasheet"
-        st.session_state.ran_change_dialog = False
-        st.session_state.render_t1_markdown = False
-        st.session_state.invalid_fields = []
-        st.session_state.local_to_staging_moved = False
-        st.session_state.staging_to_campaign_moved = False
-        st.session_state.confirm_submit_context_files = False
-        st.rerun()
-
-st.sidebar.divider()
-st.sidebar.write("### Project Setup")
-
-if st.session_state.active_qid is None:
-    label = f"{SECTION_BY_IDX[0]['title']}"
-    st.sidebar.button(label, disabled=False,
-                      key="nav_draft_0", width="stretch")
-
-    st.sidebar.space()
-    st.sidebar.write("### Datasheet Sections")
-
-    for idx in ALL_SECTION_IDXS:
-        if idx == 0:
-            continue
-        label = f"{idx}: {SECTION_BY_IDX[idx]['title']}"
-        st.sidebar.button(label, disabled=True,
-                          key=f"nav_draft_{idx}", width="stretch")
-
-else:
-    qid = int(st.session_state.active_qid)
-    token = _qid_token(qid)
-    row_latest = get_datasheet(qid)
-    max_unlocked = accessed_section_idx(row_latest, "max")
-
-    # Section 0 separated
-    is_complete, _ = section_complete(0, row_latest)
-    label_prefix = "✅ " if is_complete else "⬜ "
-    label = f"{label_prefix} {SECTION_BY_IDX[0]['title']}"
-
-    if st.sidebar.button(label, key=f"nav_{qid}_0", width="stretch"):
-        st.session_state.screen = "datasheet"
-        if st.session_state.section_idx in ALL_SECTION_IDXS:
-            updates = apply_section_updates(
-                st.session_state.section_idx, token)
-            update_datasheet(qid, updates)
-        st.session_state.section_idx = 0
-        st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
-        st.session_state.invalid_fields = []
-        st.session_state.ran_change_dialog = False
-        st.session_state.local_to_staging_moved = False
-        st.session_state.staging_to_campaign_moved = False
-        st.session_state.confirm_submit_context_files = False
-        st.rerun()
-
-    st.sidebar.space()
-    st.sidebar.write("### Datasheet Sections")
-
-    with st.sidebar:
-        with st.container(key="section_btns"):
-            for idx in ALL_SECTION_IDXS:
-                if idx == 0:
-                    continue
-
-                is_complete, _ = section_complete(idx, row_latest)
-                label_prefix = "✅ " if is_complete else "⬜ "
-                label = f"{label_prefix}{idx}: {SECTION_BY_IDX[idx]['title']}"
-                disabled = idx > max_unlocked
-                if st.button(label, key=f"nav_{qid}_{idx}", disabled=disabled, width="stretch"):
-                    st.session_state.screen = "datasheet"
-                    if st.session_state.section_idx in ALL_SECTION_IDXS:
-                        updates = apply_section_updates(
-                            st.session_state.section_idx, token)
-                        update_datasheet(qid, updates)
-                    st.session_state.section_idx = idx
-                    st.session_state._scroll_to_top = True
-                    st.session_state.render_t1_markdown = False
-                    st.session_state.invalid_fields = []
-                    st.session_state.ran_change_dialog = False
-                    st.session_state.local_to_staging_moved = False
-                    st.session_state.staging_to_campaign_moved = False
-                    st.session_state.confirm_submit_context_files = False
-                    st.rerun()
-
-st.sidebar.space()
-st.sidebar.write("### Metadata Levels")
-
-is_metadata_btn_disabled = False
-
-if st.session_state.active_qid is None:
-    is_metadata_btn_disabled = True
-else:
-    all_data = get_datasheet(qid)
-    if any(not section_complete(idx, all_data)[0] for idx in ALL_SECTION_IDXS):
-        is_metadata_btn_disabled = True
-    else:
-        qid = int(st.session_state.active_qid)
-        if not get_tier1_table(qid, check_exists=True):
-            is_metadata_btn_disabled = True
-
-if st.session_state.active_qid is None:
-    t2_exists = False
-else:
-    t2_exists = Path(get_tier2_db_path(qid)).is_file()
-
-t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists or len(get_tier1_table(qid)) != 2 else "✅ "
-if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
-                     help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
-    st.session_state.screen = "tier1"
-    st.session_state.section_idx = 0
-    st.session_state._scroll_to_top = True
-    st.session_state.render_t1_markdown = False
-    st.session_state.invalid_fields = []
-    st.session_state.ran_change_dialog = False
-    st.session_state.local_to_staging_moved = False
-    st.session_state.staging_to_campaign_moved = False
-    st.session_state.confirm_submit_context_files = False
-    st.rerun()
-
-
-if st.sidebar.button("Usability/AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
-                     help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
-    st.session_state.screen = "tier2"
-    st.session_state.section_idx = 0
-    st.session_state._scroll_to_top = True
-    st.session_state.render_t1_markdown = False
-    st.session_state.invalid_fields = []
-    st.session_state.render_hpc_move_btn = False
-    st.session_state.local_to_staging_moved = False
-    st.session_state.staging_to_campaign_moved = False
-    st.session_state.confirm_submit_context_files = False
-    st.rerun()
-
-st.sidebar.space()
-
-if st.sidebar.button("Data Movement", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
-                     help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
-    st.session_state.screen = "hpc_move"
-    st.session_state.section_idx = 0
-    st.session_state._scroll_to_top = True
-    st.session_state.render_t1_markdown = False
-    st.session_state.invalid_fields = []
-    st.session_state.render_hpc_move_btn = False
-    st.session_state.local_to_staging_moved = False
-    st.session_state.staging_to_campaign_moved = False
-    st.session_state.confirm_submit_context_files = False
-    st.rerun()
