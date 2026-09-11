@@ -1244,7 +1244,9 @@ def render_autofill_review(row: Dict[str, Any]) -> None:
 
     if summary["filled"]:
         st.write("#### Autofilled fields")
-        st.write("##### Note: Users can edit autofilled fields after answering clarification questions")
+        st.write("##### Note: You can edit all autofilled fields after answering the clarification questions. " \
+                "Some responses may be shortened in this preview, but the complete text will appear in the editable fields."
+            )
 
         for item in summary["filled"][:12]:
             st.write(f"- **`{item['qid'][1:]}`** {item['label']}")
@@ -1560,7 +1562,7 @@ def update_ai_model_dialog():
                 f"AI_API_KEY={key}\n"
                 f"AI_API_URL={url}\n"
                 f"AI_MODEL=openai:{selected_model}\n"
-                f"AI_MODEL_MAX_TOKENS={models[selected_model]}\n"
+                f"AI_MODEL_MAX_TOKENS={models[selected_model]-1}\n"
             )
             st.success("Updated AI Model")
             st.session_state.api_variables = []
@@ -2044,7 +2046,7 @@ if not loaded_keys:
                         f"AI_API_KEY={key}\n"
                         f"AI_API_URL={url}\n"
                         f"AI_MODEL=openai:{selected_model}\n"
-                        f"AI_MODEL_MAX_TOKENS={models[selected_model]}\n"
+                        f"AI_MODEL_MAX_TOKENS={models[selected_model]-1}\n"
                     )
                     st.success("Saved model")
                     st.session_state.api_variables = []
