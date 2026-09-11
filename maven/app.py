@@ -1598,7 +1598,7 @@ def confirm_markdown_valid_dialog():
     confirm_col, cancel_col = st.columns(2)
 
     with confirm_col:
-        if st.button("Confirm", key=f"confirm_submit_markdown_btn", type="primary", width="stretch"):
+        if st.button("Confirm", key="confirm_submit_markdown_btn", type="primary", width="stretch"):
             store = get_db(get_master_db_name())
             long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
                                     True).iloc[0,0].strip()
@@ -1617,7 +1617,7 @@ def confirm_markdown_valid_dialog():
             st.rerun()
 
     with cancel_col:
-        if st.button("Cancel", key=f"cancel_confirm_markdown_btn", width="stretch"):
+        if st.button("Cancel", key="cancel_confirm_markdown_btn", width="stretch"):
             st.session_state.screen = "tier1"
             st.session_state.render_t1_markdown = True
             st.session_state.section_idx = 0
@@ -1798,7 +1798,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                                     width="stretch", type="primary")
 
     if st.session_state.invalid_fields:
-        st.error(f"Please complete all missing required fields above")
+        st.error("Please complete all missing required fields above")
 
     if submitted or next_clicked:
         invalid_fields = []
