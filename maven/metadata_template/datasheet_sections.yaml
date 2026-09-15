@@ -98,7 +98,7 @@
       label: Name and contact information for the cognizant data steward
 
     - id: s1.5
-      label: Version of the Datasheet template
+      label: Version of the Datasheet
       caption: Complete at least one row to continue.
       type: table
 
@@ -166,7 +166,7 @@
       label: "Are there any known errors, sources of noise, or redundancies in the dataset? If so, please provide a description. These could be provided as validation assertions on individual items or descriptions that affect all entities."
 
     - id: s3.10
-      label: "Is the dataset self-contained, or does it link to or otherwise rely on external resources (e.g., websites, tweets, other datasets)? If it links to or relies on external resources, a) are there guarantees that they will exist, and remain constant, over time; b) are there official archival versions of the complete dataset (i.e., including the external resources as they existed at the time the dataset was created); c) are there any restrictions (e.g., licenses, fees) associated with any of the external resources that might apply to a dataset consumer? Please provide descriptions of all external resources and any restrictions associated with them, as well as links or other access points, as appropriate."
+      label: "Is the dataset self-contained, or does it link to or otherwise rely on external resources (e.g., websites, tweets, other datasets)? If it links to or relies on external resources, \n\na) are there guarantees that they will exist, and remain constant, over time; \n\nb) are there official archival versions of the complete dataset (i.e., including the external resources as they existed at the time the dataset was created); \n\nc) are there any restrictions (e.g., licenses, fees) associated with any of the external resources that might apply to a dataset consumer? Please provide descriptions of all external resources and any restrictions associated with them, as well as links or other access points, as appropriate."
 
     - id: s3.11
       label: "Has the dataset been reviewed for presence of material that might be considered confidential (e.g., data that is protected by legal privilege or by doctor-patient confidentiality, data that includes the content of individuals' non-public communications)? Does the dataset contain data for which access must be controlled? (e.g. proprietary information, pre-publication data) If so, please provide a description."

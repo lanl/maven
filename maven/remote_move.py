@@ -1,6 +1,7 @@
 try:
     from dsi.dsi import DSI
     from dsi.sync import Sync
+    from dsi.core import Terminal
 except Exception:
     print("Add the DSI HPC module to your shell config file")
 
@@ -36,10 +37,22 @@ store.update(df)
 full_data_path = os.path.join(staging_folder, data_folder, "")
 # can skip index as data has not changed from local -> scratch -> campaign
 fed_df = store.get_table("federated", True, True)
+fed_remote, fed_local = fed_df.loc[0, ["remote_location", "local_location"]]
 fed_df["local_location"] = full_data_path
 fed_df["remote_location"] = os.path.join(campaign_path, t2_db.removesuffix(".db"))
 store.update(fed_df)
 store.close()
+
+t = Terminal()
+backend_name = t.identify_backend(t2_db)
+t.load_module('backend', backend_name, 'back-write', filename=t2_db)
+filesystem_df = t.get_table("filesystem")
+filesystem_df["file_remote"] = filesystem_df["file_remote"].str.replace(fed_remote, os.path.join(campaign_path, t2_db.removesuffix(".db")), regex=False)
+
+t.dsi_tables.remove("filesystem")
+t.overwrite_table("filesystem", filesystem_df)
+t.dsi_tables.append("filesystem")
+t.close()
 
 try:
     s = Sync(t2_db, isVerbose=True, skip_index=True, add_dbs=[t1_db])

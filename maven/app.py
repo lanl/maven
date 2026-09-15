@@ -134,7 +134,11 @@ FILE_POINTERS_TABLE = "metadata_file_paths"
 TIER1_YAML_TABLE = "datacard_yaml"
 TIER1_MARKDOWN_TABLE = "datacard_markdown"
 
+DATASHEET_SUFFIX = "_datasheet.pdf"
+DATACARD_SUFFIX = "_genesis_datacard_v1.2.md"
+
 TIER_2_TABLE = "data_and_hpc_info"
+TIER_2_FILES_TABLE = "tier2_files"
 
 CONFIG_DIR = Path.home() / ".maven_config"
 CONFIG_FILE = CONFIG_DIR / "files_location.txt"
@@ -173,7 +177,8 @@ def configure_chat_agent() -> ChatAgent:
     llm = init_chat_model(model=os.getenv("AI_MODEL"),
                           base_url=os.getenv("AI_API_URL"),
                           api_key=os.getenv("AI_API_KEY"),
-                          temperature=TEMP
+                          temperature=TEMP,
+                          max_tokens=os.getenv("AI_MODEL_MAX_TOKENS")
                           )
     # Setup workspace and thread for conversation persistence
     workspace = Path(get_maven_dir()) / "ursa_workspace"
@@ -226,7 +231,8 @@ def load_env_keys() -> None:
 
             key, value = line.split("=", 1)
             os.environ[key.strip()] = value.strip()
-        if not os.environ.get("AI_API_KEY") or not os.environ.get("AI_API_URL") or not os.environ.get("AI_MODEL"):
+        if (not os.environ.get("AI_API_KEY") or not os.environ.get("AI_API_URL") or 
+            not os.environ.get("AI_MODEL") or not os.environ.get("AI_MODEL_MAX_TOKENS")):
             return False
         return True
     return False
@@ -289,10 +295,12 @@ def create_tier1_db(db_path: str):
 
 def create_tier2_db(db_path: str):
     store = get_db(db_path)
-    tier2_dict = {"local_data_path": "", "username": "", "hpc_system": "",
+    tier2_data_dict = {"local_data_path": "", "username": "", "hpc_system": "",
                   "hpc_staging_space": "", "hpc_campaign_space": "", "user_group": "", 
                   "access_permissions": "", "diana_endpoint": "", "contact_email": ""}
-    store.read(tier2_dict, "Collection", table_name=TIER_2_TABLE)
+    store.read(tier2_data_dict, "Collection", table_name=TIER_2_TABLE)
+    tier2_files_dict = {"filepaths": ""}
+    store.read(tier2_files_dict, "Collection", table_name=TIER_2_FILES_TABLE)
     store.close()
 
 
@@ -396,6 +404,17 @@ def delete_project(qid: int) -> None:
     store = get_db(get_master_db_name())
     projects_df = store.get_table(PROJECTS_TABLE, True, True)
 
+    matching_name = projects_df.loc[projects_df["project_id"] == str(qid), "project_name"]
+    if not matching_name.empty:
+        matching_name = matching_name.iloc[0]
+    else:
+        matching_name = projects_df.loc[projects_df["project_id"] == int(qid), "project_name"].iloc[0]
+    full_proj_name = to_snake_case(matching_name)
+    datasheet_path = get_maven_dir() / (full_proj_name + DATASHEET_SUFFIX)
+    datasheet_path.unlink(missing_ok=True)
+    datacard_path = get_maven_dir() / (full_proj_name + DATACARD_SUFFIX)
+    datacard_path.unlink(missing_ok=True)
+
     if len(projects_df) == 1:
         store.close()
         os.remove(get_master_db_name())
@@ -442,12 +461,10 @@ def get_tier1_fields():
     flattened_fields = flattened_tier1_fields(datacard_dict)
 
     # MD str
-    with open(GENESIS_MISSION_DATA_CARD_MD, "r") as f:
-        tier1_cards["markdown_template"] = f.read()
+    tier1_cards["markdown_template"] = GENESIS_MISSION_DATA_CARD_MD.read_text(encoding="utf-8")
 
     # Reference guide str
-    with open(GENESIS_MISSION_DATA_CARD_REFERENCE, 'r') as f:
-        tier1_cards["card_reference"] = f.read()
+    tier1_cards["card_reference"] = GENESIS_MISSION_DATA_CARD_REFERENCE.read_text(encoding="utf-8")
 
     return flattened_fields, tier1_cards, datacard_dict
 
@@ -601,16 +618,17 @@ def parse_uploaded_context_files(uploaded_files) -> str:
 
     for uploaded_file in uploaded_files:
         suffix = Path(uploaded_file["name"] if is_remote else uploaded_file.name).suffix.lower()
+        context_file = uploaded_file["path"] if is_remote else uploaded_file
 
         try:
             if suffix == ".pdf":
-                text = extract_text_from_pdf(uploaded_file["path"] if is_remote else uploaded_file)
+                text = extract_text_from_pdf(context_file)
             elif suffix == ".docx":
-                text = extract_text_from_docx(uploaded_file["path"] if is_remote else uploaded_file)
+                text = extract_text_from_docx(context_file)
             elif suffix in [".md", ".txt"]:
-                text = uploaded_file.getvalue().decode("utf-8")
+                text = context_file.getvalue().decode("utf-8")
             elif suffix == ".pptx":
-                text = extract_text_from_pptx(uploaded_file["path"] if is_remote else uploaded_file)
+                text = extract_text_from_pptx(context_file)
             else:
                 continue
 
@@ -622,6 +640,36 @@ def parse_uploaded_context_files(uploaded_files) -> str:
             st.warning(f'Could not parse {uploaded_file["name"] if is_remote else uploaded_file.name}: {e}')
 
     return "\n".join(combined).strip()
+
+
+def parse_uploaded_t2_files(uploaded_files) -> dict:
+    combined = {}
+
+    for uploaded_file in uploaded_files:
+        t2_file = uploaded_file["path"] if is_remote else uploaded_file
+        t2_file_name = uploaded_file["name"] if is_remote else uploaded_file.name
+        suffix = Path(t2_file_name).suffix.lower()
+
+        try:
+            if suffix == ".csv":
+                df = pd.read_csv(t2_file)
+            elif suffix == ".tsv":
+                df = pd.read_csv(t2_file, sep="\t")
+            elif suffix == ".xlsx":
+                with pd.ExcelFile(t2_file) as excel:
+                    if len(excel.sheet_names) != 1:
+                        st.warning(f"Skipping {t2_file_name} - expected only one sheet and found {len(excel.sheet_names)}")
+                        continue
+                    df = pd.read_excel(excel, sheet_name=0)
+            else:
+                continue
+
+            combined[t2_file_name] = df
+
+        except Exception as e:
+            st.warning(f'Could not parse {t2_file_name}: {e}')
+
+    return combined
 
 
 def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
@@ -647,14 +695,14 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
             answer = row[qid]
 
             if pd.isna(answer) or str(answer).strip() == "":
-                continue
+                answer = "Not provided"
 
             question_label = html.escape(str(q["label"]))
             question_style = ParagraphStyle("QuestionStyle", parent=styles["BodyText"], fontSize=12, leading=15)
             answer_text = html.escape(str(answer))
 
             if section["section_idx"] != 0:
-                elements.append(Paragraph(f"<b>{question_label}</b>", question_style))
+                elements.append(Paragraph(f"<b>{qid[1:]}. {question_label}</b>", question_style))
                 elements.append(Paragraph(answer_text, styles["BodyText"]))
             else:
                 if qid == "classification" and pd.notna(row["ROSY_ID"]) and pd.notna(row["ROSY_Z_NUMBER"]):
@@ -695,7 +743,6 @@ def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
         default_flow_style=False,
     ).rstrip()
 
-    # TODO: use agent to format markdown as per template
     markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
     resource_uri_line = f"ResourceURI: {data_pointer}\n" if data_pointer is not None else ""
     file_content = (
@@ -785,6 +832,8 @@ def section_complete(section_idx: int, row: Dict[str, Any]) -> Tuple[bool, List[
             missing.append("No API base URL found with this app. Set AI_API_URL environment variable.")
         if not os.environ.get("AI_MODEL"):
             missing.append("No AI Model selected for this app. Set AI_MODEL environment variable.")
+        if not os.environ.get("AI_MODEL_MAX_TOKENS"):
+            missing.append("No AI Model Max Tokens selected for this app. Set AI_MODEL_MAX_TOKENS environment variable.")
 
     return (len(missing) == 0, missing)
 
@@ -1052,6 +1101,7 @@ def render_section(section_idx: int, row: Dict[str, Any], qid_token: str) -> Non
 
             if is_remote:
                 st.write("Enter absolute path to context files -- 1 per line")
+                st.caption("NOTE: DO NOT enclose file name in quotes if it has spaces. Example: /home/user/context file.pdf")
             else:
                 st.write(label)
 
@@ -1194,7 +1244,9 @@ def render_autofill_review(row: Dict[str, Any]) -> None:
 
     if summary["filled"]:
         st.write("#### Autofilled fields")
-        st.write("##### Note: Users can edit autofilled fields after answering clarification questions")
+        st.write("##### Note: You can edit all autofilled fields after answering the clarification questions. " \
+                "Some responses may be shortened in this preview, but the complete text will appear in the editable fields."
+            )
 
         for item in summary["filled"][:12]:
             st.write(f"- **`{item['qid'][1:]}`** {item['label']}")
@@ -1367,7 +1419,7 @@ def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
 def confirm_unchanged_data_dialog(qid: int, local_data: str):
     st.subheader(f"The data at '{local_data}' was recently moved")
 
-    st.write("Has the data at the local path changed since the last move?")
+    st.write("Has the local data changed since the last move?")
 
     yes_col, no_col = st.columns(2)
     with yes_col:
@@ -1489,7 +1541,7 @@ def update_ai_model_dialog():
     try:
         key, url = st.session_state.api_variables
         client = OpenAI(api_key=key, base_url=url, http_client=httpx.Client(verify=False))
-        models = [model.id for model in client.models.list().data]
+        models = {model.id:int(model.model_dump().get('max_output_tokens') or 50000) for model in client.models.list().data}
     except Exception as e:
         st.error("Error finding models with the input AI API Key and Base URL")
         st.error(e)
@@ -1497,7 +1549,7 @@ def update_ai_model_dialog():
 
     st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
-    selected_model = st.selectbox("val", models, label_visibility="collapsed", index=None,
+    selected_model = st.selectbox("val", list(models.keys()), label_visibility="collapsed", index=None,
                                     key="update_ai_model_selection")
 
     if st.button("Save", type="primary", width="stretch"):
@@ -1510,6 +1562,7 @@ def update_ai_model_dialog():
                 f"AI_API_KEY={key}\n"
                 f"AI_API_URL={url}\n"
                 f"AI_MODEL=openai:{selected_model}\n"
+                f"AI_MODEL_MAX_TOKENS={models[selected_model]-1}\n"
             )
             st.success("Updated AI Model")
             st.session_state.api_variables = []
@@ -1533,9 +1586,48 @@ def confirm_context_files_dialog(context_files): # add :str or :list
     col1, col2 = st.columns(2)
     if col1.button("Yes", width="stretch"):
         st.session_state.confirm_submit_context_files = True
+        st.session_state._scroll_to_top = False
         st.rerun()
     if col2.button("No", width="stretch"):
+        st.session_state._scroll_to_top = False
         st.rerun()
+
+
+@st.dialog("Valid markdown confirmation", width="medium", dismissible=False)
+def confirm_markdown_valid_dialog():
+    st.warning("Have you confirmed that the Markdown section follows the provided template?")
+    
+    confirm_col, cancel_col = st.columns(2)
+
+    with confirm_col:
+        if st.button("Confirm", key="confirm_submit_markdown_btn", type="primary", width="stretch"):
+            store = get_db(get_master_db_name())
+            long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
+                                    True).iloc[0,0].strip()
+            store.close()
+
+            datacard_name = to_snake_case(long_proj_name) + DATACARD_SUFFIX
+            generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
+
+            st.session_state.screen = "tier2"
+            st.session_state.render_t1_markdown = False
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = True
+            st.session_state.render_hpc_move_btn = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.rerun()
+
+    with cancel_col:
+        if st.button("Cancel", key="cancel_confirm_markdown_btn", width="stretch"):
+            st.session_state.screen = "tier1"
+            st.session_state.render_t1_markdown = True
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = False
+            st.session_state.render_hpc_move_btn = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.rerun()
 
 
 @st.fragment
@@ -1631,7 +1723,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                         f"""
                                         <style>
                                         div[data-testid="stTextInput"]:has(
-                                            input[aria-label="{key}"]
+                                            input[aria-label="{widget_key}"]
                                         ) input {{
                                             border: 5px solid red !important;
                                             border-radius: 8px !important;
@@ -1641,18 +1733,28 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                         unsafe_allow_html=True
                                     )
                                 updated_values[widget_key] = st.text_input(
-                                    label=key,
+                                    label=widget_key,
                                     value="" if pd.isna(value) else str(value),
-                                    key="field:" + widget_key,
+                                    key="field_" + widget_key,
                                     label_visibility="collapsed"
                                 )
                             elif field_dict["type"] == "radio":
+                                options = field_dict["options"]
+                                default_index = options.index(str(value).capitalize()) if str(value) in options else None
+                                updated_values[widget_key] = st.radio(
+                                    "radio_label",
+                                    options,
+                                    index=default_index,
+                                    key="field_" + widget_key,
+                                    label_visibility="collapsed"
+                                )
+                            elif field_dict["type"] == "dropdown":
                                 if widget_key in st.session_state.invalid_fields:
                                     st.markdown(
                                         f"""
                                         <style>
                                         div[data-testid="stSelectbox"]:has(
-                                            input[aria-label="{key}"]
+                                            input[aria-label="{widget_key}"]
                                         ) input {{
                                             border: 5px solid red !important;
                                             border-radius: 8px !important;
@@ -1661,22 +1763,12 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                         """,
                                         unsafe_allow_html=True
                                     )
-                                options = field_dict["options"]
-                                default_index = options.index(str(value).capitalize()) if str(value) in options else None
-                                updated_values[widget_key] = st.radio(
-                                    "radio_label",
-                                    options,
-                                    index=default_index,
-                                    key="field:" + widget_key,
-                                    label_visibility="collapsed"
-                                )
-                            elif field_dict["type"] == "dropdown":
                                 options = list(field_dict["options"])
                                 updated_values[widget_key] = st.selectbox(
-                                    "Enter",
+                                    label=widget_key,
                                     options=options,
                                     index=options.index(value) if value is not None and value in options else None,
-                                    key="field:" + widget_key,
+                                    key="field_" + widget_key,
                                     label_visibility="collapsed"
                                 )
                             else:
@@ -1694,7 +1786,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                 "radio label",
                                 options,
                                 index=default_index,
-                                key="field:" + widget_key,
+                                key="field_" + widget_key,
                                 label_visibility="collapsed", 
                                 )
         render_yaml_portion(actual_yaml_struct)
@@ -1708,15 +1800,15 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                                     width="stretch", type="primary")
 
     if st.session_state.invalid_fields:
-        st.error(f"Please complete all missing required fields above")
+        st.error("Please complete all missing required fields above")
 
     if submitted or next_clicked:
         invalid_fields = []
         for col, val in updated_values.items():
             top_key = col.split(".", 1)[0]
             if f"supports_{top_key}" in actual_field_reqs.keys():
-                req_field_missing = (updated_values[f"supports_{top_key}"].lower() == "yes" and 
-                                actual_field_reqs[col] and not str(val).strip()
+                req_field_missing = (updated_values[f"supports_{top_key}"].lower() == "yes" and actual_field_reqs[col] and 
+                                    (val is None or not str(val).strip() or str(val) == "NULL")
                                 )
                 if req_field_missing:
                     invalid_fields.append(col)
@@ -1749,7 +1841,8 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                 if "connection error" in str(e).lower():
                                     st.error("Ensure you are on the correct network to access the AI Model")
                                 else:
-                                    st.error("Error connecting to AI Model:", str(e))
+                                    st.error("Error connecting to AI Model:")
+                                    st.exception(e)
                                 st.stop()
 
                             tier1_db_path = get_tier1_db_path(qid)
@@ -1762,7 +1855,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                 st.session_state.render_t1_markdown = True
                 st.session_state.section_idx = 0
                 st.session_state._scroll_to_top = True
-                st.session_state.render_t2_extraction = False
+                st.session_state.render_hpc_move_btn = False
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
                 st.rerun(scope="app")
@@ -1812,8 +1905,8 @@ if "confirm_delete_qid" not in st.session_state:
     st.session_state.confirm_delete_qid = None
 if "render_t1_markdown" not in st.session_state:
     st.session_state.render_t1_markdown = False
-if "render_t2_extraction" not in st.session_state:
-    st.session_state.render_t2_extraction = False
+if "render_hpc_move_btn" not in st.session_state:
+    st.session_state.render_hpc_move_btn = False
 if "tier2_loc_dict" not in st.session_state:
     st.session_state.tier2_loc_dict = None
 if "change_short_proj_title" not in st.session_state:
@@ -1836,6 +1929,8 @@ if "confirm_submit_context_files" not in st.session_state:
     st.session_state.confirm_submit_context_files = False
 if "invalid_fields" not in st.session_state:
     st.session_state.invalid_fields = []
+if "t2_uploader_version" not in st.session_state:
+    st.session_state.t2_uploader_version = 0
 
 if get_maven_dir() is None:
     st.title("Welcome to the MAVEN App")
@@ -1928,7 +2023,7 @@ if not loaded_keys:
             try:
                 key, url = st.session_state.api_variables
                 client = OpenAI(api_key=key, base_url=url, http_client=httpx.Client(verify=False))
-                models = [model.id for model in client.models.list().data]
+                models = {model.id:int(model.model_dump().get('max_output_tokens') or 50000) for model in client.models.list().data}
             except Exception as e:
                 st.error("Error finding models with the input AI API Key and Base URL")
                 st.code(e)
@@ -1939,7 +2034,7 @@ if not loaded_keys:
 
             st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
-            selected_model = st.selectbox("val", models, label_visibility="collapsed", index=None,
+            selected_model = st.selectbox("val", list(models.keys()), label_visibility="collapsed", index=None,
                                         key="new_ai_model_selection")
             if st.button("Save"):
                 if selected_model is None:
@@ -1951,6 +2046,7 @@ if not loaded_keys:
                         f"AI_API_KEY={key}\n"
                         f"AI_API_URL={url}\n"
                         f"AI_MODEL=openai:{selected_model}\n"
+                        f"AI_MODEL_MAX_TOKENS={models[selected_model]-1}\n"
                     )
                     st.success("Saved model")
                     st.session_state.api_variables = []
@@ -1967,6 +2063,199 @@ if st.session_state.update_ai_info_screen:
 
 create_master_db()
 CHAT_AGENT = configure_chat_agent()
+
+
+if st.session_state.active_qid is not None or st.session_state.draft_mode:
+    # -----------------------------
+    # Sidebar
+    # -----------------------------
+    if st.sidebar.button("🏠 Home"):
+            # Save current progress
+            if st.session_state.active_qid is not None:
+                qid = int(st.session_state.active_qid)
+                token = _qid_token(qid)
+                sec = int(st.session_state.section_idx)
+                if sec in ALL_SECTION_IDXS:
+                    updates = apply_section_updates(sec, token)
+                    update_datasheet(qid, updates)
+    
+            st.session_state.active_qid = None
+            st.session_state.section_idx = 0
+            st.session_state.draft_answers = {}
+            st.session_state.draft_mode = False
+            st.session_state.screen = "datasheet"
+            st.session_state.ran_change_dialog = False
+            st.session_state.render_t1_markdown = False
+            st.session_state.invalid_fields = []
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.session_state.confirm_submit_context_files = False
+            st.rerun()
+
+
+    if st.sidebar.button("➕ New project"):
+        # Save current progress
+        if st.session_state.active_qid is not None:
+            qid = int(st.session_state.active_qid)
+            token = _qid_token(qid)
+            sec = int(st.session_state.section_idx)
+            if sec in ALL_SECTION_IDXS:
+                updates = apply_section_updates(sec, token)
+                update_datasheet(qid, updates)
+            clear_context_file_state(token)
+        clear_context_file_state("draft")
+
+        st.session_state.active_qid = None
+        st.session_state.section_idx = 0
+        st.session_state.draft_answers = {}
+        st.session_state.draft_mode = True
+        st.session_state.screen = "datasheet"
+        st.session_state.ran_change_dialog = False
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
+
+    st.sidebar.divider()
+    st.sidebar.write("### Project Setup")
+
+    if st.session_state.active_qid is None:
+        label = f"{SECTION_BY_IDX[0]['title']}"
+        st.sidebar.button(label, disabled=False,
+                        key="nav_draft_0", width="stretch")
+
+        st.sidebar.space()
+        st.sidebar.write("### Datasheet Sections")
+
+        for idx in ALL_SECTION_IDXS:
+            if idx == 0:
+                continue
+            label = f"{idx}: {SECTION_BY_IDX[idx]['title']}"
+            st.sidebar.button(label, disabled=True,
+                            key=f"nav_draft_{idx}", width="stretch")
+
+    else:
+        qid = int(st.session_state.active_qid)
+        token = _qid_token(qid)
+        row_latest = get_datasheet(qid)
+        max_unlocked = accessed_section_idx(row_latest, "max")
+
+        # Section 0 separated
+        is_complete, _ = section_complete(0, row_latest)
+        label_prefix = "✅ " if is_complete else "⬜ "
+        label = f"{label_prefix} {SECTION_BY_IDX[0]['title']}"
+
+        if st.sidebar.button(label, key=f"nav_{qid}_0", width="stretch"):
+            st.session_state.screen = "datasheet"
+            if st.session_state.section_idx in ALL_SECTION_IDXS:
+                updates = apply_section_updates(
+                    st.session_state.section_idx, token)
+                update_datasheet(qid, updates)
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = True
+            st.session_state.render_t1_markdown = False
+            st.session_state.invalid_fields = []
+            st.session_state.ran_change_dialog = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.session_state.confirm_submit_context_files = False
+            st.rerun()
+
+        st.sidebar.space()
+        st.sidebar.write("### Datasheet Sections")
+
+        with st.sidebar:
+            with st.container(key="section_btns"):
+                for idx in ALL_SECTION_IDXS:
+                    if idx == 0:
+                        continue
+
+                    is_complete, _ = section_complete(idx, row_latest)
+                    label_prefix = "✅ " if is_complete else "⬜ "
+                    label = f"{label_prefix}{idx}: {SECTION_BY_IDX[idx]['title']}"
+                    disabled = idx > max_unlocked
+                    if st.button(label, key=f"nav_{qid}_{idx}", disabled=disabled, width="stretch"):
+                        st.session_state.screen = "datasheet"
+                        if st.session_state.section_idx in ALL_SECTION_IDXS:
+                            updates = apply_section_updates(
+                                st.session_state.section_idx, token)
+                            update_datasheet(qid, updates)
+                        st.session_state.section_idx = idx
+                        st.session_state._scroll_to_top = True
+                        st.session_state.render_t1_markdown = False
+                        st.session_state.invalid_fields = []
+                        st.session_state.ran_change_dialog = False
+                        st.session_state.local_to_staging_moved = False
+                        st.session_state.staging_to_campaign_moved = False
+                        st.session_state.confirm_submit_context_files = False
+                        st.rerun()
+
+    st.sidebar.space()
+    st.sidebar.write("### Metadata Levels")
+
+    is_metadata_btn_disabled = False
+
+    if st.session_state.active_qid is None:
+        is_metadata_btn_disabled = True
+    else:
+        all_data = get_datasheet(qid)
+        if any(not section_complete(idx, all_data)[0] for idx in ALL_SECTION_IDXS):
+            is_metadata_btn_disabled = True
+        else:
+            qid = int(st.session_state.active_qid)
+            if not get_tier1_table(qid, check_exists=True):
+                is_metadata_btn_disabled = True
+
+    if st.session_state.active_qid is None:
+        t2_exists = False
+    else:
+        t2_exists = Path(get_tier2_db_path(qid)).is_file()
+
+    t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists or len(get_tier1_table(qid)) != 2 else "✅ "
+    if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
+                        help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
+        st.session_state.screen = "tier1"
+        st.session_state.section_idx = 0
+        st.session_state._scroll_to_top = True
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.ran_change_dialog = False
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
+
+
+    if st.sidebar.button("Usability/AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
+                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+        st.session_state.screen = "tier2"
+        st.session_state.section_idx = 0
+        st.session_state._scroll_to_top = True
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.render_hpc_move_btn = False
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
+
+    st.sidebar.space()
+
+    if st.sidebar.button("Data Movement", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
+                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+        st.session_state.screen = "hpc_move"
+        st.session_state.section_idx = 0
+        st.session_state._scroll_to_top = True
+        st.session_state.render_t1_markdown = False
+        st.session_state.invalid_fields = []
+        st.session_state.render_hpc_move_btn = False
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
+
 
 if st.session_state.screen == "datasheet":
     # -----------------------------
@@ -2050,8 +2339,7 @@ if st.session_state.screen == "datasheet":
                             st.rerun()
 
                     if st.session_state.get("confirm_delete_qid") == qid:
-                        st.warning(
-                            f"Delete **{pname}**? This cannot be undone.")
+                        st.warning(f"Delete **{pname}**? This cannot be undone.")
 
                         confirm_col, cancel_col = st.columns(2)
 
@@ -2230,7 +2518,8 @@ if st.session_state.screen == "datasheet":
                         if "connection error" in str(e).lower():
                             st.error("Ensure you are on the correct network to access the AI Model")
                         else:
-                            st.error("Error connecting to AI Model:", str(e))
+                            st.error("Error connecting to AI Model:")
+                            st.exception(e)
                         st.stop()
                 st.session_state.active_qid = new_id
                 meta = load_agent_meta(row_after_autofill)
@@ -2261,7 +2550,8 @@ if st.session_state.screen == "datasheet":
                         if "connection error" in str(e).lower():
                             st.error("Ensure you are on the correct network to access the AI Model")
                         else:
-                            st.error("Error connecting to AI Model:", str(e))
+                            st.error("Error connecting to AI Model:")
+                            st.exception(e)
                         st.stop()
                 st.session_state.section_idx = route_after_autofill(row_after_followup)
                 st.session_state._scroll_to_top = True
@@ -2301,7 +2591,7 @@ if st.session_state.screen == "datasheet":
 
                 # go to tier 1 screen
                 else:
-                    full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + "_datasheet.pdf"
+                    full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATASHEET_SUFFIX
                     generate_datasheet_pdf(datasheet_df, str(get_maven_dir() / full_name))
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
@@ -2313,7 +2603,8 @@ if st.session_state.screen == "datasheet":
                                 if "connection error" in str(e).lower():
                                     st.error("Ensure you are on the correct network to access the AI Model")
                                 else:
-                                    st.error("Error connecting to AI Model:", str(e))
+                                    st.error("Error connecting to AI Model:")
+                                    st.exception(e)
                                 st.stop()
 
                         tier1_db_path = get_tier1_db_path(qid)
@@ -2348,6 +2639,7 @@ elif st.session_state.screen == "tier1":
         
         st.title("Findability Metadata (YAML Portion)")
         st.subheader("Click the Save button at the bottom of the screen to apply any changes")
+        st.write("NOTE: If a section's Support field is set to *No*, all fields in that section are optional.")
 
         if not curr_tables: # no tier 1 yaml or markdown table
             if datasheet_df.empty: # no datasheet data so go home
@@ -2366,7 +2658,8 @@ elif st.session_state.screen == "tier1":
                         if "connection error" in str(e).lower():
                             st.error("Ensure you are on the correct network to access the AI Model")
                         else:
-                            st.error("Error connecting to AI Model:", str(e))
+                            st.error("Error connecting to AI Model:")
+                            st.exception(e)
                         st.stop()
 
                 tier1_db_path = get_tier1_db_path(qid)
@@ -2439,7 +2732,7 @@ elif st.session_state.screen == "tier1":
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
                 st.session_state.confirm_submit_context_files = False
-                st.session_state.render_t2_extraction = False
+                st.session_state.render_hpc_move_btn = False
                 st.session_state.tier2_loc_dict = None
                 st.rerun()
 
@@ -2453,7 +2746,8 @@ elif st.session_state.screen == "tier1":
                     if "connection error" in str(e).lower():
                         st.error("Ensure you are on the correct network to access the AI Model")
                     else:
-                        st.error("Error connecting to AI Model:", str(e))
+                        st.error("Error connecting to AI Model:")
+                        st.exception(e)
                     st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
@@ -2470,7 +2764,8 @@ elif st.session_state.screen == "tier1":
                     if "connection error" in str(e).lower():
                         st.error("Ensure you are on the correct network to access the AI Model")
                     else:
-                        st.error("Error connecting to AI Model:", str(e))
+                        st.error("Error connecting to AI Model:")
+                        st.exception(e)
                     st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
@@ -2481,6 +2776,9 @@ elif st.session_state.screen == "tier1":
             st.rerun()
 
         with st.form(f"tier1_metadata_form_{qid}"):
+            st.write("#### Ensure the model-generated text in the second block follows the template shown in the first block.")
+            _, tier1_cards, _ = get_tier1_fields()
+            st.code(tier1_cards["markdown_template"], wrap_lines=True, height = 700)
             updated_values = {}
             
             tbl_data = curr_tables[TIER1_MARKDOWN_TABLE].iloc[0].to_dict()
@@ -2491,7 +2789,6 @@ elif st.session_state.screen == "tier1":
 
             markdown_col_key = next(iter(tbl_data))
 
-            st.write("#### Carefully review model-generated text in this text block")
             updated_values[markdown_col_key] = st.text_area(
                 "enter",
                 height = 1750,
@@ -2512,21 +2809,20 @@ elif st.session_state.screen == "tier1":
                     st.session_state.local_to_staging_moved = False
                     st.session_state.staging_to_campaign_moved = False
                     st.session_state.confirm_submit_context_files = False
-                    st.session_state.render_t2_extraction = False
+                    st.session_state.render_hpc_move_btn = False
                     st.session_state.tier2_loc_dict = None
                     st.rerun()
             with save_col:
                 submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
             with next_col:
                 next_clicked = st.form_submit_button(
-                    "Continue to AI-Ready Metadata ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
+                    "Continue to Usability/AI-Ready Metadata ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
 
             if submitted or next_clicked:
-                # TODO: add better check to ensure markdown is correctly formatted
-                markdown_col_key = next(iter(tbl_data))
-                markdown_field_value = next(iter(updated_values.values()), None)
+                markdown_field_value = updated_values[markdown_col_key]
                 if markdown_field_value is None or not str(markdown_field_value).strip():
                     st.error("Markdown section is incomplete. Please complete before continuing")
+                    st.stop()
 
                 try:
                     tier1_df = pd.DataFrame([updated_values])
@@ -2538,45 +2834,99 @@ elif st.session_state.screen == "tier1":
                     store.close()
 
                 if next_clicked:
-                    store = get_db(get_master_db_name())
-                    short_proj_name = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {qid}", 
-                                            True).iloc[0,0].removesuffix("_tier1.db")
-                    store.close()
-
-                    datacard_name = short_proj_name + "_genesis_datacard_v1.2.md"
-                    generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
-
-                    st.session_state.screen = "tier2"
-                    st.session_state.render_t1_markdown = False
-                    st.session_state.section_idx = 0
-                    st.session_state._scroll_to_top = True
-                    st.session_state.render_t2_extraction = False
-                    st.session_state.local_to_staging_moved = False
-                    st.session_state.staging_to_campaign_moved = False
-                    st.rerun()
+                    confirm_markdown_valid_dialog()
                 else:
                     st.success("Findability Metadata (Markdown Portion) Updated.")
-
+                    st.session_state._scroll_to_top = False
 
 
 # -----------------------------
-# TIER 2 + DSI MOVE Screen
+# TIER 2 Screen
 # -----------------------------
 elif st.session_state.screen == "tier2":
     if st.session_state.active_qid is None:
-        st.error("No project selected for extracting AI-Ready Metadata. Please choose a project on the home screen.")
+        st.error("No project selected for extracting Usability/AI-Ready Metadata. Please choose a project on the home screen.")
         st.stop()
 
     qid = int(st.session_state.active_qid)
     tier2_db_path = get_tier2_db_path(qid)
     create_tier2_db(tier2_db_path)
 
-    st.title("AI-Ready Metadata")
+    st.title("Usability/AI-Ready Metadata")
 
-    show_tier2_extraction = (st.session_state.render_t2_extraction and st.session_state.tier2_loc_dict is not None)
+    tier2_store = get_db(tier2_db_path)
+    files_tbl = tier2_store.get_table(TIER_2_FILES_TABLE, True)
+    tier2_store.close()
+
+    if not files_tbl.empty:
+        prev_uploaded_t2_files = files_tbl.iloc[:, 0].tolist()
+        if prev_uploaded_t2_files:
+            st.info("Previously uploaded file(s): " + ", ".join(prev_uploaded_t2_files))
+
+    uploader_key = f"t2_files_uploader_{st.session_state.t2_uploader_version}"
+    if is_remote:
+        st.write("Enter absolute path to metadata file(s) -- 1 per line")
+        st.caption("NOTE: DO NOT enclose file name in quotes if it has spaces. Example: /home/user/metadata file.csv")
+        t2_uploaded_files = st.text_area("enter", key=uploader_key, height=100, label_visibility="collapsed")
+        t2_uploaded_files = [{"path": p, "name": p.name, "size": p.stat().st_size} for line in t2_uploaded_files.splitlines() 
+                        if (line1 := line.strip()) if (p := Path(line1)).is_file()]
+    else:
+        st.write("Drop or upload metadata file(s) here")
+        t2_uploaded_files = st.file_uploader("Enter", type=["csv", "tsv", "xlsx"], label_visibility="collapsed",
+                                            accept_multiple_files=True, key=uploader_key)
+
+    st.space()
+    save_col, next_col = st.columns(2)
+    with save_col:
+        submitted = st.button("Save Usability/AI-Ready Metadata", key=f"save_tier2_{qid}", width="stretch")
+    with next_col:
+        next_clicked = st.button("Save and Continue to HPC Move ➡", key=f"next_tier2_{qid}", 
+                                             width="stretch", type="primary")
+
+    if submitted or next_clicked:
+        combined_t2_files = parse_uploaded_t2_files(t2_uploaded_files)
+        if combined_t2_files:
+            tier2_store = get_db(tier2_db_path)
+            tier2_store.read({"filepaths":list(combined_t2_files.keys())}, "Collection", TIER_2_FILES_TABLE)
+            for filename, t2_file_df in combined_t2_files.items():
+                tier2_store.read(t2_file_df, "Collection", filename)
+            tier2_store.close()
+
+        st.session_state.t2_uploader_version += 1
+
+        if next_clicked:
+            st.session_state.screen = "hpc_move"
+            st.session_state.render_t1_markdown = False
+            st.session_state.section_idx = 0
+            st.session_state._scroll_to_top = True
+            st.session_state.render_hpc_move_btn = False
+            st.session_state.local_to_staging_moved = False
+            st.session_state.render_hpc_move_btn = False
+            st.session_state.staging_to_campaign_moved = False
+            st.rerun()
+        else:
+            st.success("Usability/AI-Ready Metadata Updated")
+            st.session_state._scroll_to_top = False
+            st.rerun()
+
+
+# -----------------------------
+# HPC MOVE Screen
+# -----------------------------
+elif st.session_state.screen == "hpc_move":
+    if st.session_state.active_qid is None:
+        st.error("No project selected for extracting Usability/AI-Ready Metadata. Please choose a project on the home screen.")
+        st.stop()
+
+    qid = int(st.session_state.active_qid)
+    tier2_db_path = get_tier2_db_path(qid)
+
+    st.title("Move Data and Metadata to HPC")
+
+    show_tier2_extraction = (st.session_state.render_hpc_move_btn and st.session_state.tier2_loc_dict is not None)
 
     if not show_tier2_extraction:
-        st.subheader("Enter data locations and HPC information to enable data extraction and movement")
+        st.subheader("Enter data locations and HPC information to enable data movement")
 
         tier2_store = get_db(tier2_db_path)
         locations_tbl = tier2_store.get_table(TIER_2_TABLE, True)
@@ -2698,7 +3048,7 @@ elif st.session_state.screen == "tier2":
                                 label_visibility="collapsed")
 
 
-        if st.button("Save & Extract Metadata ➡", key=f"save_tier2_{qid}", width="stretch", type="primary"):
+        if st.button("Validate Data and HPC Fields", key=f"save_tier2_{qid}", width="stretch", type="primary"):
             missing_fields = [col for col, value in updated_tier2_dict.items() 
                               if not str(value).strip() and col not in ["user_group", "access_permissions"]]
             if missing_fields:
@@ -2761,7 +3111,7 @@ elif st.session_state.screen == "tier2":
             if not locations_tbl.empty:
                 existing_loc_dict = locations_tbl.iloc[0].to_dict()
                 if all(str(existing_loc_dict[k]).strip() == str(updated_tier2_dict[k]).strip() for k in updated_tier2_dict.keys()):
-                    st.session_state.render_t2_extraction = True
+                    st.session_state.render_hpc_move_btn = True
                     st.session_state.tier2_loc_dict = existing_loc_dict
                     st.rerun()
 
@@ -2882,12 +3232,11 @@ elif st.session_state.screen == "tier2":
                 store.query(query, params=new_values)
             store.close()
 
-            st.session_state.render_t2_extraction = True
+            st.session_state.render_hpc_move_btn = True
             st.session_state.tier2_loc_dict = updated_tier2_dict
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
             st.rerun()
-
 
 
 
@@ -2907,25 +3256,20 @@ elif st.session_state.screen == "tier2":
 
         back_col, other = st.columns([1, 4], width="stretch")
         with back_col:
-            if st.button("⬅ Edit HPC Info", width="stretch"):
-                st.session_state.render_t2_extraction = False
+            if st.button("⬅ Edit Data & HPC Info", width="stretch"):
+                st.session_state.render_hpc_move_btn = False
                 st.session_state.tier2_loc_dict = None
                 st.session_state.ran_change_dialog = False
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
                 st.rerun()
 
-        st.subheader(f"Extracting AI-Ready metadata from: **{local_data if local_data.lower() != 'n/a' else hpc_staging }**")
-        st.caption("Run scripts here to create index of files (dircrawl), extract data types, and file-level metadata unique to each dataset.")
-
-        st.space()
-
         if local_data.lower() == "n/a":
-            st.subheader("Click the button to move data from staging space -> campaign space.")
+            st.subheader("Move data from HPC Staging ➡ Campaign space.")
         else:
-            st.subheader("Click the button to move data from local space -> HPC staging -> HPC campaign")
+            st.subheader("Move data from Local Machine ➡ HPC staging ➡ HPC campaign")
         st.space()
-        dsi_move_btn = st.button("DSI Move", key=f"dsi_move_{qid}", width="stretch", type="primary")
+        dsi_move_btn = st.button("Move to HPC", key=f"dsi_move_{qid}", width="stretch", type="primary")
 
         if dsi_move_btn:
             temp_master_store = get_db(get_master_db_name())
@@ -3000,21 +3344,22 @@ elif st.session_state.screen == "tier2":
             datasheet_df = t1_store.get_table(DATASHEET_TABLE, True)
 
             # create datasheet pdf in local data loc (or hpc staging if already starting from there)
-            full_name = datasheet_df["project_name"].iloc[0].strip() + " DATASHEET.pdf"
+            full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATASHEET_SUFFIX
+            full_genesis_dc_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATACARD_SUFFIX
             if local_data.lower() == "n/a":
                 # hpc_staging is where the datasheet should be stored
                 new_datasheet_loc = os.path.join(hpc_staging, full_name)
-                new_tier1_dc_loc = os.path.join(hpc_staging, proj_name + "_genesis_datacard_v1.2.md")
+                new_tier1_dc_loc = os.path.join(hpc_staging, full_genesis_dc_name)
                 data_folder_name = Path(hpc_staging).name
             else:
                 new_datasheet_loc = os.path.join(local_data, full_name)
-                new_tier1_dc_loc = os.path.join(local_data, proj_name + "_genesis_datacard_v1.2.md")
+                new_tier1_dc_loc = os.path.join(local_data, full_genesis_dc_name)
                 data_folder_name = Path(local_data).name
             generate_datasheet_pdf(datasheet_df, new_datasheet_loc)
             generate_tier1_datacard(qid, new_tier1_dc_loc, hpc_name + ":" + os.path.join(hpc_campaign, proj_name, data_folder_name))
 
             datasheet_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_name)
-            datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, proj_name + "_genesis_datacard_v1.2.md")
+            datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_genesis_dc_name)
             if FILE_POINTERS_TABLE in t1_store.list(True):
                 t1_store.query(f"UPDATE {FILE_POINTERS_TABLE} SET datsheet_file = ?, datacard_file = ?, tier2_db_path = ?;", 
                                params=(datasheet_campaign_path, datacard_campaign_path, t2_db_campaign_path))
@@ -3028,7 +3373,7 @@ elif st.session_state.screen == "tier2":
             skip_index = st.session_state.unchanged_data
 
             # diana federation endpoint entry for this project
-            fed_line = f"HPC,{hpc_name},{os.path.join(hpc_campaign, t1_db_name)},data,{username},{contact_email},{datetime.now(UTC).time()}"
+            fed_line = f"HPC,{hpc_name},{os.path.join(hpc_campaign, proj_name, t1_db_name)},data,{username},{contact_email},{datetime.now(UTC).time()}"
 
             if local_data.lower() == "n/a":
                 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
@@ -3040,19 +3385,21 @@ elif st.session_state.screen == "tier2":
                     st.error("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                     st.stop()
 
-                # delete data in t2 locations table on scratch before moving to campaign
-                store = get_db(temp_t2_db_name)
-                df = store.get_table(TIER_2_TABLE, True, True)
-                df.iloc[0, 1:] = None # delete all col data except the dsi_table_name col
-                store.update(df)
-                store.close()
-
                 scratch_move_error = None
                 with st.spinner(f"Moving data to HPC campaign with `{copy_tool}`"):
                     try:
                         # TODO: Turn verbose off after done testing
                         s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
                         s.index(hpc_staging, hpc_campaign)
+                        shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
+
+                        # delete data in t2 locations table on scratch before moving to campaign
+                        store = get_db(temp_t2_db_name)
+                        df = store.get_table(TIER_2_TABLE, True, True)
+                        df.iloc[0, 1:] = None # delete all col data except the dsi_table_name col
+                        store.update(df)
+                        store.close()
+
                         s.copy(copy_tool)
                     except Exception as e:
                         scratch_move_error = e
@@ -3095,11 +3442,12 @@ elif st.session_state.screen == "tier2":
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
                             s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
+                            shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
                             s.copy("rsync")
                         except Exception as e:
                             local_move_error = e
                             print(" \nGo back to app")
-                    
+
                     if local_move_error is not None:
                         st.error("Local Data to HPC Staging Move Error:")
                         st.code(str(local_move_error))
@@ -3133,6 +3481,8 @@ elif st.session_state.screen == "tier2":
                                 st.code("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                             elif "conduit get" in output and ("no credentials" in output or "failed" in output):
                                 st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
+                            elif "SyntaxWarning: invalid escape sequence" in output:
+                                st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                             else:
                                 st.code(remote_run.stderr)
                         st.stop()
@@ -3151,6 +3501,8 @@ elif st.session_state.screen == "tier2":
                         output = remote_run.stdout.lower()
                         if "conduit get" in output and ("no credentials" in output or "failed" in output):
                             st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
+                        elif "SyntaxWarning: invalid escape sequence" in output:
+                            st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                         else:
                             st.code(remote_run.stdout[idx + len(marker):])
                         st.stop()
@@ -3176,7 +3528,14 @@ elif st.session_state.screen == "tier2":
                         if "Only testing on this HPC for now" in remote_endpoint_run.stdout:
                             st.code("Cannot register this project on this HPC system. Ensure you are on a transfer node, not head node.")
                         elif "Endpoint error" in remote_endpoint_run.stdout:
-                            st.code(remote_endpoint_run.stdout.split("Endpoint error", 1)[1])
+                            if "SyntaxWarning: invalid escape sequence" in remote_endpoint_run.stdout:
+                                st.code(f"Unable to register '{proj_name}' in {diana_endpoint}. Verify you have write permissions.")
+                            else:
+                                st.code(remote_endpoint_run.stdout.split("Endpoint error", 1)[1])
+                        else:
+                            st.code(remote_endpoint_run.stderr)
+                            st.code(output)
+                        print(" \nGo back to app")
                     st.stop()                
 
             # set user group and access permissions after move
@@ -3190,6 +3549,7 @@ elif st.session_state.screen == "tier2":
                         st.error("Error setting user group for data on Campaign")
                         st.code(result.stderr)
                         st.stop()
+                        print(" \nGo back to app")
 
                 if access_permissions_code:
                     with st.spinner("Updating data access permissions on Campaign"):
@@ -3199,6 +3559,7 @@ elif st.session_state.screen == "tier2":
                         st.error("Error setting access permissions for data on Campaign")
                         st.code(result.stderr)
                         st.stop()
+                        print(" \nGo back to app")
             else:
                 if user_group and access_permissions_code:
                     print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
@@ -3206,11 +3567,13 @@ elif st.session_state.screen == "tier2":
                         cmd = ["ssh", f"{username}@{hpc_name}",
                             f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                    print(" \nGo back to app")
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
                         st.stop()
+                        print(" \nGo back to app")
+
+            print(" \nGo back to app")
 
             # after move, delete the temp t1 & t2 dbs that were actually moved
             os.remove(temp_t2_db_name)
@@ -3227,182 +3590,3 @@ elif st.session_state.screen == "tier2":
             st.session_state.staging_to_campaign_moved = False
 
             st.success(f"Successfully moved data with DSI to HPC campaign: {os.path.join(hpc_campaign, proj_name)}/")
-
-# -----------------------------
-# Sidebar
-# -----------------------------
-st.sidebar.title("Actions")
-
-if st.sidebar.button("➕ New project"):
-    # Save current progress
-    if st.session_state.active_qid is not None:
-        qid = int(st.session_state.active_qid)
-        token = _qid_token(qid)
-        sec = int(st.session_state.section_idx)
-        if sec in ALL_SECTION_IDXS:
-            updates = apply_section_updates(sec, token)
-            update_datasheet(qid, updates)
-        clear_context_file_state(token)
-    clear_context_file_state("draft")
-
-    st.session_state.active_qid = None
-    st.session_state.section_idx = 0
-    st.session_state.draft_answers = {}
-    st.session_state.draft_mode = True
-    st.session_state.screen = "datasheet"
-    st.session_state.ran_change_dialog = False
-    st.session_state.render_t1_markdown = False
-    st.session_state.invalid_fields = []
-    st.session_state.local_to_staging_moved = False
-    st.session_state.staging_to_campaign_moved = False
-    st.session_state.confirm_submit_context_files = False
-    st.rerun()
-
-# Button only visible if there is at least one committed project
-_committed = list_projects()
-if not _committed.empty:
-    if st.sidebar.button("📂 Select existing project"):
-        # Save current progress
-        if st.session_state.active_qid is not None:
-            qid = int(st.session_state.active_qid)
-            token = _qid_token(qid)
-            sec = int(st.session_state.section_idx)
-            if sec in ALL_SECTION_IDXS:
-                updates = apply_section_updates(sec, token)
-                update_datasheet(qid, updates)
-
-        st.session_state.active_qid = None
-        st.session_state.section_idx = 0
-        st.session_state.draft_answers = {}
-        st.session_state.draft_mode = False
-        st.session_state.screen = "datasheet"
-        st.session_state.ran_change_dialog = False
-        st.session_state.render_t1_markdown = False
-        st.session_state.invalid_fields = []
-        st.session_state.local_to_staging_moved = False
-        st.session_state.staging_to_campaign_moved = False
-        st.session_state.confirm_submit_context_files = False
-        st.rerun()
-
-st.sidebar.divider()
-st.sidebar.write("### Project Setup")
-
-if st.session_state.active_qid is None:
-    label = f"{SECTION_BY_IDX[0]['title']}"
-    st.sidebar.button(label, disabled=False,
-                      key="nav_draft_0", width="stretch")
-
-    st.sidebar.space()
-    st.sidebar.write("### Datasheet Sections")
-
-    for idx in ALL_SECTION_IDXS:
-        if idx == 0:
-            continue
-        label = f"{idx}: {SECTION_BY_IDX[idx]['title']}"
-        st.sidebar.button(label, disabled=True,
-                          key=f"nav_draft_{idx}", width="stretch")
-
-else:
-    qid = int(st.session_state.active_qid)
-    token = _qid_token(qid)
-    row_latest = get_datasheet(qid)
-    max_unlocked = accessed_section_idx(row_latest, "max")
-
-    # Section 0 separated
-    is_complete, _ = section_complete(0, row_latest)
-    label_prefix = "✅ " if is_complete else "⬜ "
-    label = f"{label_prefix} {SECTION_BY_IDX[0]['title']}"
-
-    if st.sidebar.button(label, key=f"nav_{qid}_0", width="stretch"):
-        st.session_state.screen = "datasheet"
-        if st.session_state.section_idx in ALL_SECTION_IDXS:
-            updates = apply_section_updates(
-                st.session_state.section_idx, token)
-            update_datasheet(qid, updates)
-        st.session_state.section_idx = 0
-        st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
-        st.session_state.invalid_fields = []
-        st.session_state.ran_change_dialog = False
-        st.session_state.local_to_staging_moved = False
-        st.session_state.staging_to_campaign_moved = False
-        st.session_state.confirm_submit_context_files = False
-        st.rerun()
-
-    st.sidebar.space()
-    st.sidebar.write("### Datasheet Sections")
-
-    with st.sidebar:
-        with st.container(key="section_btns"):
-            for idx in ALL_SECTION_IDXS:
-                if idx == 0:
-                    continue
-
-                is_complete, _ = section_complete(idx, row_latest)
-                label_prefix = "✅ " if is_complete else "⬜ "
-                label = f"{label_prefix}{idx}: {SECTION_BY_IDX[idx]['title']}"
-                disabled = idx > max_unlocked
-                if st.button(label, key=f"nav_{qid}_{idx}", disabled=disabled, width="stretch"):
-                    st.session_state.screen = "datasheet"
-                    if st.session_state.section_idx in ALL_SECTION_IDXS:
-                        updates = apply_section_updates(
-                            st.session_state.section_idx, token)
-                        update_datasheet(qid, updates)
-                    st.session_state.section_idx = idx
-                    st.session_state._scroll_to_top = True
-                    st.session_state.render_t1_markdown = False
-                    st.session_state.invalid_fields = []
-                    st.session_state.ran_change_dialog = False
-                    st.session_state.local_to_staging_moved = False
-                    st.session_state.staging_to_campaign_moved = False
-                    st.session_state.confirm_submit_context_files = False
-                    st.rerun()
-
-st.sidebar.space()
-st.sidebar.write("### Metadata Levels")
-
-is_metadata_btn_disabled = False
-
-if st.session_state.active_qid is None:
-    is_metadata_btn_disabled = True
-else:
-    all_data = get_datasheet(qid)
-    if any(not section_complete(idx, all_data)[0] for idx in ALL_SECTION_IDXS):
-        is_metadata_btn_disabled = True
-    else:
-        qid = int(st.session_state.active_qid)
-        if not get_tier1_table(qid, check_exists=True):
-            is_metadata_btn_disabled = True
-
-if st.session_state.active_qid is None:
-    t2_exists = False
-else:
-    t2_exists = Path(get_tier2_db_path(qid)).is_file()
-
-t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists or len(get_tier1_table(qid)) != 2 else "✅ "
-if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
-                     help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
-    st.session_state.screen = "tier1"
-    st.session_state.section_idx = 0
-    st.session_state._scroll_to_top = True
-    st.session_state.render_t1_markdown = False
-    st.session_state.invalid_fields = []
-    st.session_state.ran_change_dialog = False
-    st.session_state.local_to_staging_moved = False
-    st.session_state.staging_to_campaign_moved = False
-    st.session_state.confirm_submit_context_files = False
-    st.rerun()
-
-
-if st.sidebar.button("AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
-                     help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
-    st.session_state.screen = "tier2"
-    st.session_state.section_idx = 0
-    st.session_state._scroll_to_top = True
-    st.session_state.render_t1_markdown = False
-    st.session_state.invalid_fields = []
-    st.session_state.render_t2_extraction = False
-    st.session_state.local_to_staging_moved = False
-    st.session_state.staging_to_campaign_moved = False
-    st.session_state.confirm_submit_context_files = False
-    st.rerun()
