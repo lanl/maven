@@ -3430,7 +3430,10 @@ elif st.session_state.screen == "hpc_move":
                 stdout, stderr = process.communicate()
                 if process.returncode != 0:
                     st.error("Registering this project in the DIANA catalog failed")
-                    st.code(stderr)
+                    if "SyntaxWarning: invalid escape sequence" in stdout:
+                        st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
+                    else:
+                        st.code(stderr)
                     st.stop()
 
             else:
