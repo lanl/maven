@@ -2609,6 +2609,12 @@ if st.session_state.screen == "datasheet":
                                     st.exception(e)
                                 st.stop()
 
+                        if not isinstance(all_tier1_dicts, dict):
+                            if isinstance(all_tier1_dicts, None):
+                                st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
+                            else:
+                                st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
+                            st.stop()
                         tier1_db_path = get_tier1_db_path(qid)
                         store = get_db(tier1_db_path)
 
@@ -2664,6 +2670,12 @@ elif st.session_state.screen == "tier1":
                             st.exception(e)
                         st.stop()
 
+                if not isinstance(all_tier1_dicts, dict):
+                    if isinstance(all_tier1_dicts, None):
+                        st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
+                    else:
+                        st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
+                    st.stop()
                 tier1_db_path = get_tier1_db_path(qid)
                 store = get_db(tier1_db_path)
                 for tier1_table_name, tier1_dict in all_tier1_dicts.items():
