@@ -1550,7 +1550,7 @@ def update_ai_model_dialog():
     st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
     selected_model = st.selectbox("val", list(models.keys()), label_visibility="collapsed",
-                    index=list(models).index(os.environ.get("AI_MODEL")[7:]) if os.environ.get("AI_MODEL") and os.environ.get("AI_MODEL") in models.keys() else None,
+                    index=list(models).index(os.environ.get("AI_MODEL")[7:]) if os.environ.get("AI_MODEL") and os.environ.get("AI_MODEL")[7:] in models.keys() else None,
                                     key="update_ai_model_selection")
 
     if st.button("Save", type="primary", width="stretch"):
@@ -2036,7 +2036,7 @@ if not loaded_keys:
             st.write(f"##### Please review security guidelines and Rules of Use at your input base URL: {url}")
 
             selected_model = st.selectbox("val", list(models.keys()), label_visibility="collapsed",
-                              index=list(models).index(os.environ.get("AI_MODEL")[7:]) if os.environ.get("AI_MODEL") and os.environ.get("AI_MODEL") in models.keys() else None,
+                              index=list(models).index(os.environ.get("AI_MODEL")[7:]) if os.environ.get("AI_MODEL") and os.environ.get("AI_MODEL")[7:] in models.keys() else None,
                                         key="new_ai_model_selection")
             if st.button("Save"):
                 if selected_model is None:
