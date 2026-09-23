@@ -736,18 +736,19 @@ def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
 
     output_path = Path(output_file).with_suffix(".md")
 
-    yaml_content = yaml.safe_dump(
-        yaml_portion,
-        sort_keys=False,
-        allow_unicode=True,
-        default_flow_style=False,
-    ).rstrip()
+    front_matter = {
+        **({"ResourceURI": data_pointer} if data_pointer is not None else {}),
+        **yaml_portion,
+    }
+
+    yaml_content = "\n\n".join(
+            yaml.safe_dump({key: value}, sort_keys=False, allow_unicode=True, default_flow_style=False,).rstrip()
+            for key, value in front_matter.items()
+        )
 
     markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
-    resource_uri_line = f"ResourceURI: {data_pointer}\n" if data_pointer is not None else ""
     file_content = (
         "---\n"
-        f"{resource_uri_line}"
         f"{yaml_content}\n"
         "---\n\n"
         f"{markdown_string}\n"
@@ -1077,6 +1078,8 @@ def render_section(section_idx: int, row: Dict[str, Any], qid_token: str) -> Non
         for s in section["description"]:
             st.markdown(f"##### {s}")
 
+    st.markdown("##### Please answer all questions with as much detail as possible. Even if a question does not apply, explain why")
+
     q_counter = 1
     for q in section["questions"]:
         qtype = q.get("type", "text")
@@ -1094,7 +1097,7 @@ def render_section(section_idx: int, row: Dict[str, Any], qid_token: str) -> Non
                 for i in q["intro"]:
                     if is_remote:
                         i = i.replace("Upload", "Input absolute path to")
-                    st.markdown(f"##### {i}")
+                    st.markdown(f'<h5 style="color: #ff0000;">{i}</h5>', unsafe_allow_html=True)
 
             widget_key = f"{col}_widget__{qid_token}"
             key = f"{col}_uploader__{qid_token}"
