@@ -56,7 +56,7 @@ Vedant Iyer (iyer@lanl.gov)
 import json
 import yaml
 from typing import Any, Dict, List, Tuple
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import os
 import streamlit as st
 import pypdf
@@ -2950,7 +2950,7 @@ elif st.session_state.screen == "hpc_move":
         tier2_store.close()
 
         updated_tier2_dict = {}
-        if is_remote:
+        if is_remote and "lanl.gov" in socket.getfqdn().lower():
             updated_tier2_dict["local_data_path"] = "N/A"
             updated_tier2_dict["username"] = "N/A"
             updated_tier2_dict["hpc_system"] = "N/A"
@@ -2977,7 +2977,7 @@ elif st.session_state.screen == "hpc_move":
 
         l2, r2 = st.columns(2)
         with l2:
-            if is_remote:
+            if is_remote and "lanl.gov" in socket.getfqdn().lower():
                 st.write("Staging Location")
                 st.caption("Absolute path to directory where data is currently staged")
             else:
@@ -2987,7 +2987,7 @@ elif st.session_state.screen == "hpc_move":
                                 value=locations_tbl["hpc_staging_space"].iloc[0] if not locations_tbl.empty else "",
                                 label_visibility="collapsed")
         with r2:
-            if is_remote:
+            if is_remote and "lanl.gov" in socket.getfqdn().lower():
                 st.write("Campaign Location")
                 st.caption("Absolute path to directory where data and metadata will be permanently stored")
             else:
@@ -3089,19 +3089,28 @@ elif st.session_state.screen == "hpc_move":
             if "scratch" not in hpc_staging_input.lower():
                 st.error("HPC Staging Location must be in the 'scratch' cluster.")
                 st.stop()
-            hpc_staging_path = Path(hpc_staging_input)
+            if os.name != "nt":
+                hpc_staging_path = Path(hpc_staging_input)
+            else:
+                hpc_staging_path = PurePosixPath(hpc_staging_input)
 
             hpc_campaign_input = updated_tier2_dict["hpc_campaign_space"].strip()
             if "campaign" not in hpc_campaign_input.lower():
                 st.error("HPC Campaign Location must be in the 'campaign' cluster.")
                 st.stop()
-            hpc_campaign_path = Path(hpc_campaign_input)
+            if os.name != "nt":
+                hpc_campaign_path = Path(hpc_campaign_input)
+            else:
+                hpc_campaign_path = PurePosixPath(hpc_campaign_input)
 
             diana_endpoint_input = updated_tier2_dict["diana_endpoint"].strip()
             if "campaign" not in diana_endpoint_input.lower():
                 st.error("DIANA Endpoint must be in the 'campaign' cluster.")
                 st.stop()
-            diana_endpoint_path = Path(diana_endpoint_input)
+            if os.name != "nt":
+                diana_endpoint_path = Path(diana_endpoint_input)
+            else:
+                diana_endpoint_path = PurePosixPath(diana_endpoint_input)
 
             username_input = updated_tier2_dict["username"].strip()
             hpc_system_input = updated_tier2_dict["hpc_system"].strip()
