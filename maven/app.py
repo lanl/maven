@@ -56,7 +56,7 @@ Vedant Iyer (iyer@lanl.gov)
 import json
 import yaml
 from typing import Any, Dict, List, Tuple
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import os
 import streamlit as st
 import pypdf
@@ -736,18 +736,19 @@ def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
 
     output_path = Path(output_file).with_suffix(".md")
 
-    yaml_content = yaml.safe_dump(
-        yaml_portion,
-        sort_keys=False,
-        allow_unicode=True,
-        default_flow_style=False,
-    ).rstrip()
+    front_matter = {
+        **({"ResourceURI": data_pointer} if data_pointer is not None else {}),
+        **yaml_portion,
+    }
+
+    yaml_content = "\n\n".join(
+            yaml.safe_dump({key: value}, sort_keys=False, allow_unicode=True, default_flow_style=False,).rstrip()
+            for key, value in front_matter.items()
+        )
 
     markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
-    resource_uri_line = f"ResourceURI: {data_pointer}\n" if data_pointer is not None else ""
     file_content = (
         "---\n"
-        f"{resource_uri_line}"
         f"{yaml_content}\n"
         "---\n\n"
         f"{markdown_string}\n"
@@ -1077,6 +1078,8 @@ def render_section(section_idx: int, row: Dict[str, Any], qid_token: str) -> Non
         for s in section["description"]:
             st.markdown(f"##### {s}")
 
+    st.markdown("##### Please answer all questions with as much detail as possible. Even if a question does not apply, explain why")
+
     q_counter = 1
     for q in section["questions"]:
         qtype = q.get("type", "text")
@@ -1094,7 +1097,7 @@ def render_section(section_idx: int, row: Dict[str, Any], qid_token: str) -> Non
                 for i in q["intro"]:
                     if is_remote:
                         i = i.replace("Upload", "Input absolute path to")
-                    st.markdown(f"##### {i}")
+                    st.markdown(f'<h5 style="color: #ff0000;">{i}</h5>', unsafe_allow_html=True)
 
             widget_key = f"{col}_widget__{qid_token}"
             key = f"{col}_uploader__{qid_token}"
@@ -2947,7 +2950,7 @@ elif st.session_state.screen == "hpc_move":
         tier2_store.close()
 
         updated_tier2_dict = {}
-        if is_remote:
+        if is_remote and "lanl.gov" in socket.getfqdn().lower():
             updated_tier2_dict["local_data_path"] = "N/A"
             updated_tier2_dict["username"] = "N/A"
             updated_tier2_dict["hpc_system"] = "N/A"
@@ -2974,7 +2977,7 @@ elif st.session_state.screen == "hpc_move":
 
         l2, r2 = st.columns(2)
         with l2:
-            if is_remote:
+            if is_remote and "lanl.gov" in socket.getfqdn().lower():
                 st.write("Staging Location")
                 st.caption("Absolute path to directory where data is currently staged")
             else:
@@ -2984,7 +2987,7 @@ elif st.session_state.screen == "hpc_move":
                                 value=locations_tbl["hpc_staging_space"].iloc[0] if not locations_tbl.empty else "",
                                 label_visibility="collapsed")
         with r2:
-            if is_remote:
+            if is_remote and "lanl.gov" in socket.getfqdn().lower():
                 st.write("Campaign Location")
                 st.caption("Absolute path to directory where data and metadata will be permanently stored")
             else:
@@ -3086,19 +3089,28 @@ elif st.session_state.screen == "hpc_move":
             if "scratch" not in hpc_staging_input.lower():
                 st.error("HPC Staging Location must be in the 'scratch' cluster.")
                 st.stop()
-            hpc_staging_path = Path(hpc_staging_input)
+            if os.name != "nt":
+                hpc_staging_path = Path(hpc_staging_input)
+            else:
+                hpc_staging_path = PurePosixPath(hpc_staging_input)
 
             hpc_campaign_input = updated_tier2_dict["hpc_campaign_space"].strip()
             if "campaign" not in hpc_campaign_input.lower():
                 st.error("HPC Campaign Location must be in the 'campaign' cluster.")
                 st.stop()
-            hpc_campaign_path = Path(hpc_campaign_input)
+            if os.name != "nt":
+                hpc_campaign_path = Path(hpc_campaign_input)
+            else:
+                hpc_campaign_path = PurePosixPath(hpc_campaign_input)
 
             diana_endpoint_input = updated_tier2_dict["diana_endpoint"].strip()
             if "campaign" not in diana_endpoint_input.lower():
                 st.error("DIANA Endpoint must be in the 'campaign' cluster.")
                 st.stop()
-            diana_endpoint_path = Path(diana_endpoint_input)
+            if os.name != "nt":
+                diana_endpoint_path = Path(diana_endpoint_input)
+            else:
+                diana_endpoint_path = PurePosixPath(diana_endpoint_input)
 
             username_input = updated_tier2_dict["username"].strip()
             hpc_system_input = updated_tier2_dict["hpc_system"].strip()
