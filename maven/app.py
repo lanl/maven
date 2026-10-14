@@ -1839,22 +1839,24 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                 if TIER1_MARKDOWN_TABLE not in curr_tables:
                     with next_col:
                         with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+                            ai_model_error_msg = None
                             tier1_yaml_df = pd.DataFrame([updated_values])
                             try:
                                 all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
+                                tier1_db_path = get_tier1_db_path(qid)
+                                store = get_db(tier1_db_path)
+                                for tier1_table_name, tier1_dict in all_tier1_dicts.items():
+                                    store.read(tier1_dict, "Collection", tier1_table_name)
+                                store.close()
                             except Exception as e:
-                                if "connection error" in str(e).lower():
-                                    st.error("Ensure you are on the correct network to access the AI Model")
-                                else:
-                                    st.error("Error connecting to AI Model:")
-                                    st.exception(e)
-                                st.stop()
-
-                            tier1_db_path = get_tier1_db_path(qid)
-                            store = get_db(tier1_db_path)
-                            for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                                store.read(tier1_dict, "Collection", tier1_table_name)
-                            store.close()
+                                ai_model_error_msg = str(e)
+                        if ai_model_error_msg is not None:
+                            if "connection error" in ai_model_error_msg.lower():
+                                st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                            else:
+                                st.error("Error connecting to AI Model:")
+                                st.exception(e)
+                            st.stop()
 
                 st.session_state.screen = "tier1"
                 st.session_state.render_t1_markdown = True
@@ -2518,15 +2520,19 @@ if st.session_state.screen == "datasheet":
 
                 new_id = commit_section0_and_create_row(st.session_state.draft_answers)
                 with st.spinner("Running URSA-assisted autofill. May take a few minutes..."):
+                    ai_model_error_msg = None
                     try:
                         row_after_autofill = run_initial_autofill_for_project(CHAT_AGENT, new_id)
                     except Exception as e:
-                        if "connection error" in str(e).lower():
-                            st.error("Ensure you are on the correct network to access the AI Model")
-                        else:
-                            st.error("Error connecting to AI Model:")
-                            st.exception(e)
-                        st.stop()
+                        ai_model_error_msg = str(e)
+                if ai_model_error_msg is not None:
+                    if "connection error" in ai_model_error_msg.lower():
+                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                    else:
+                        st.error("Error connecting to AI Model:")
+                        st.exception(e)
+                    st.stop()
+
                 st.session_state.active_qid = new_id
                 meta = load_agent_meta(row_after_autofill)
                 st.session_state.section_idx = (
@@ -2550,15 +2556,18 @@ if st.session_state.screen == "datasheet":
                 questions = load_agent_meta(row).get("followup_questions", [])
                 clarifications = collect_followup_answers(qid, questions)
                 with st.spinner("Applying clarifications. May take a few minutes..."):
+                    ai_model_error_msg = None
                     try:
                         row_after_followup = run_followup_autofill_for_project(CHAT_AGENT, qid, clarifications)
                     except Exception as e:
-                        if "connection error" in str(e).lower():
-                            st.error("Ensure you are on the correct network to access the AI Model")
-                        else:
-                            st.error("Error connecting to AI Model:")
-                            st.exception(e)
-                        st.stop()
+                        ai_model_error_msg = str(e)
+                if ai_model_error_msg is not None:
+                    if "connection error" in ai_model_error_msg.lower():
+                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                    else:
+                        st.error("Error connecting to AI Model:")
+                        st.exception(e)
+                    st.stop()
                 st.session_state.section_idx = route_after_autofill(row_after_followup)
                 st.session_state._scroll_to_top = True
                 st.rerun()
@@ -2603,15 +2612,18 @@ if st.session_state.screen == "datasheet":
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
                         flattened_fields, tier1_cards, datacard_dict = get_tier1_fields()
                         with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+                            ai_model_error_msg = None
                             try:
                                 all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
                             except Exception as e:
-                                if "connection error" in str(e).lower():
-                                    st.error("Ensure you are on the correct network to access the AI Model")
-                                else:
-                                    st.error("Error connecting to AI Model:")
-                                    st.exception(e)
-                                st.stop()
+                                ai_model_error_msg = str(e)
+                        if ai_model_error_msg is not None:
+                            if "connection error" in ai_model_error_msg.lower():
+                                st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                            else:
+                                st.error("Error connecting to AI Model:")
+                                st.exception(e)
+                            st.stop()
 
                         if not isinstance(all_tier1_dicts, dict):
                             if isinstance(all_tier1_dicts, None):
@@ -2664,15 +2676,18 @@ elif st.session_state.screen == "tier1":
                 st.rerun()
             else: # run t1 agent
                 with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+                    ai_model_error_msg = None
                     try:
                         all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
                     except Exception as e:
-                        if "connection error" in str(e).lower():
-                            st.error("Ensure you are on the correct network to access the AI Model")
-                        else:
-                            st.error("Error connecting to AI Model:")
-                            st.exception(e)
-                        st.stop()
+                        ai_model_error_msg = str(e)
+                if ai_model_error_msg is not None:
+                    if "connection error" in ai_model_error_msg.lower():
+                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                    else:
+                        st.error("Error connecting to AI Model:")
+                        st.exception(e)
+                    st.stop()
 
                 if not isinstance(all_tier1_dicts, dict):
                     if isinstance(all_tier1_dicts, None):
@@ -2758,15 +2773,18 @@ elif st.session_state.screen == "tier1":
 
         if not curr_tables:
             with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+                ai_model_error_msg = None
                 try:
                     all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
                 except Exception as e:
-                    if "connection error" in str(e).lower():
-                        st.error("Ensure you are on the correct network to access the AI Model")
-                    else:
-                        st.error("Error connecting to AI Model:")
-                        st.exception(e)
-                    st.stop()
+                    ai_model_error_msg = str(e)
+            if ai_model_error_msg is not None:
+                if "connection error" in ai_model_error_msg.lower():
+                    st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                else:
+                    st.error("Error connecting to AI Model:")
+                    st.exception(e)
+                st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -2776,15 +2794,18 @@ elif st.session_state.screen == "tier1":
             st.rerun()
         if TIER1_MARKDOWN_TABLE not in curr_tables:
             with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+                ai_model_error_msg = None
                 try:
                     all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, curr_tables[TIER1_YAML_TABLE], tier1_cards)
                 except Exception as e:
-                    if "connection error" in str(e).lower():
-                        st.error("Ensure you are on the correct network to access the AI Model")
-                    else:
-                        st.error("Error connecting to AI Model:")
-                        st.exception(e)
-                    st.stop()
+                    ai_model_error_msg = str(e)
+            if ai_model_error_msg is not None:
+                if "connection error" in ai_model_error_msg.lower():
+                    st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                else:
+                    st.error("Error connecting to AI Model:")
+                    st.exception(e)
+                st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -2955,7 +2976,7 @@ elif st.session_state.screen == "hpc_move":
             using_ssh = locations_tbl["using_ssh"].iloc[0] if not locations_tbl.empty else ""
             default_index = options.index(str(using_ssh)) if str(using_ssh) in options else None
             st.write("Are you using SSH or PuTTY to connect to HPC?")
-            st.caption("If unsure, contact maven-help@lanl.gov. To download PuTTY, follow instructions [here](https://www.puttyssh.org/)")
+            st.caption("If unsure, contact maven-help@lanl.gov. Download PuTTY from your software center or [here](https://www.puttyssh.org/)")
             new_using_ssh_value = st.radio("radio_label", options, index=default_index, key="windows_using_ssh_btn", 
                     label_visibility="collapsed", horizontal=True)
             if new_using_ssh_value is not None:
@@ -3007,7 +3028,7 @@ elif st.session_state.screen == "hpc_move":
                 updated_tier2_dict["username"] = "N/A"
                 st.write("PuTTY Session Name")
                 st.caption("Name of the PuTTY session to use to access HPC. Choose the session for a HPC transfer node.")
-                st.caption("PuTTY Session's Hostname must include username. Ex: my_username@hpc_transfer_node")
+                st.caption("PuTTY Session's Host Name must include username. Ex: my_username@hpc_transfer_node")
                 updated_tier2_dict["hpc_system"] = st.text_input("Enter", key=f"hpc_system_{qid}",
                                     value=locations_tbl["hpc_system"].iloc[0] if not locations_tbl.empty else "", label_visibility="collapsed")
             else:
@@ -3249,11 +3270,42 @@ elif st.session_state.screen == "hpc_move":
                 num_prompts = 5 if user_group_input else 4
                 print(f" \nPassword prompt 1/{num_prompts}: validating HPC access")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
+                    putty_error = None
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
-                        cmd = ["plink", "-no-antispoof", "-load", hpc_system_input, "echo", "test"]
+                        cmd = ["plink", "-v", "-no-antispoof", "-load", hpc_system_input, "echo", "test"]
+                        try:
+                            result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=15)
+                        except subprocess.TimeoutExpired as exc:
+                            def as_text(value):
+                                if value is None:
+                                    return ""
+                                if isinstance(value, bytes):
+                                    return value.decode(errors="replace")
+                                return value
+                            stdout = as_text(exc.stdout)
+                            stderr = as_text(exc.stderr)
+                            if "GSSAPI authentication initialisation failed" in stderr:
+                                putty_error = "Capi cert not loaded. must add to default sessions"
+                            if "Using username" not in stderr:
+                                putty_error = "The PuTTY session's Host Name must be 'username@hpc_name'. Update the Host Name field in the PuTTY app"
+                            if "The host key is not cached for this server":
+                                putty_error = "If first connection to this HPC, you must first click 'Open' in the PuTTY app to trust the host"
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", "echo", "test"]
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                    if putty_error is not None:
+                        st.error(putty_error)
+                        st.stop()
+                    if "Host does not exist" in result.stderr:
+                        st.error("The PuTTY session or Host Name does not exist. Please check spelling and that the session is saved in the PuTTY app")
+                        st.stop()
+                    if "Using username" not in result.stderr:
+                        st.error("The PuTTY session's Host Name must be 'username@hpc_name'. Update the Host Name field in the PuTTY app")
+                        st.stop()
+                    if any(msg in (result.stdout + result.stderr) for msg in ("Connection abandoned.", "User aborted at host key verification")):
+                        st.error("On first connection to this HPC, you must enter 'y' to trust the host. Try again.")
+                        st.stop()
                 if result.returncode != 0:
                     print("View error on app")
                     st.error("Invalid HPC username or system name")
@@ -3528,7 +3580,7 @@ elif st.session_state.screen == "hpc_move":
                 stdout, stderr = process.communicate()
                 if process.returncode != 0:
                     st.error("Registering this project in the DIANA catalog failed")
-                    if "SyntaxWarning: invalid escape sequence" in stdout:
+                    if any("SyntaxWarning: invalid escape sequence" in text for text in (stdout, stderr)):
                         st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                     else:
                         st.code(stderr)
@@ -3591,7 +3643,7 @@ elif st.session_state.screen == "hpc_move":
                                 st.code("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                             elif "conduit get" in output and ("no credentials" in output or "failed" in output):
                                 st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
-                            elif "SyntaxWarning: invalid escape sequence" in output:
+                            elif any("SyntaxWarning: invalid escape sequence" in text for text in (remote_run.stdout, remote_run.stderr)):
                                 st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                             else:
                                 st.code(remote_run.stderr)
