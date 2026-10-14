@@ -2962,13 +2962,13 @@ elif st.session_state.screen == "hpc_move":
 
     st.title("Move Data and Metadata to HPC")
 
+    plink = shutil.which("plink.exe") or shutil.which("plink")
+    pscp = shutil.which("pscp.exe") or shutil.which("pscp")
+
     show_tier2_extraction = (st.session_state.render_hpc_move_btn and st.session_state.tier2_loc_dict is not None)
 
     if not show_tier2_extraction:
         st.subheader("Enter data locations and HPC information to enable data movement")
-
-        plink = shutil.which("plink.exe") or shutil.which("plink")
-        pscp = shutil.which("pscp.exe") or shutil.which("pscp")
 
         if os.name == "nt":
             tier2_store = get_db(tier2_db_path)
