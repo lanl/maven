@@ -2967,6 +2967,9 @@ elif st.session_state.screen == "hpc_move":
     if not show_tier2_extraction:
         st.subheader("Enter data locations and HPC information to enable data movement")
 
+        plink = shutil.which("plink.exe") or shutil.which("plink")
+        pscp = shutil.which("pscp.exe") or shutil.which("pscp")
+
         if os.name == "nt":
             tier2_store = get_db(tier2_db_path)
             locations_tbl = tier2_store.get_table(TIER_2_TABLE, True)
@@ -2991,11 +2994,8 @@ elif st.session_state.screen == "hpc_move":
             else:
                 st.warning("Please select a HPC connection type")
                 st.stop()
-            if new_using_ssh_value.lower() == "putty":
-                plink = shutil.which("plink.exe") or shutil.which("plink")
-                pscp = shutil.which("pscp.exe") or shutil.which("pscp")
 
-                if not plink or not pscp:
+            if new_using_ssh_value.lower() == "putty" and (not plink or not pscp):
                     st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
                     st.stop()
         
@@ -3272,7 +3272,7 @@ elif st.session_state.screen == "hpc_move":
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
                     putty_error = None
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
-                        cmd = ["plink", "-v", "-no-antispoof", "-load", hpc_system_input, "echo", "test"]
+                        cmd = [plink, "-v", "-no-antispoof", "-load", hpc_system_input, "echo", "test"]
                         try:
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=15)
                         except subprocess.TimeoutExpired as exc:
@@ -3325,7 +3325,7 @@ elif st.session_state.screen == "hpc_move":
                 print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging location")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
-                        cmd = ["plink", "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_staging_input}" && pwd && ls']
+                        cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_staging_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -3338,7 +3338,7 @@ elif st.session_state.screen == "hpc_move":
                 print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign location")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
-                        cmd = ["plink", "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_campaign_input}" && pwd && ls']
+                        cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_campaign_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -3351,7 +3351,7 @@ elif st.session_state.screen == "hpc_move":
                 print(f" \nPassword prompt 4/{num_prompts}: validating DIANA endpoint")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
-                        cmd = ["plink", "-no-antispoof", "-load", hpc_system_input, f'cd "{diana_endpoint_input}" && pwd && ls']
+                        cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{diana_endpoint_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -3365,7 +3365,7 @@ elif st.session_state.screen == "hpc_move":
                     print(f" \nPassword prompt 5/{num_prompts}: validating user group is valid")
                     with st.spinner("Validating user group input — check the terminal for 4/{num_prompts} password prompts..."):
                         if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
-                            cmd = ["plink", "-no-antispoof", "-load", hpc_system_input, shlex.join(["getent", "group", user_group_input])]
+                            cmd = [plink, "-no-antispoof", "-load", hpc_system_input, shlex.join(["getent", "group", user_group_input])]
                         else:
                             cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -3461,8 +3461,12 @@ elif st.session_state.screen == "hpc_move":
                     else:
                         print(" \nPassword prompt 1/1: checking existing folders on campaign")
                         with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
-                            cmd = ["ssh", f"{username}@{hpc_name}",
-                                f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
+                            if using_ssh.lower() == "putty":
+                                cmd = [plink, "-no-antispoof", "-load", hpc_name, 
+                                       f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
+                            else:
+                                cmd = ["ssh", f"{username}@{hpc_name}",
+                                        f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                         print(" \nGo back to app")
                         if result.returncode != 0:
@@ -3638,7 +3642,7 @@ elif st.session_state.screen == "hpc_move":
                     with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
                         print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
                         if using_ssh.lower() == "putty":
-                            cmd = ["plink", "-no-antispoof", "-load", hpc_name, "python3", "-"]
+                            cmd = [plink, "-no-antispoof", "-load", hpc_name, "python3", "-"]
                         else:
                             cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
                         remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
@@ -3691,7 +3695,7 @@ elif st.session_state.screen == "hpc_move":
                 with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
                     print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
                     if using_ssh.lower() == "putty":
-                        cmd = ["plink", "-no-antispoof", "-load", hpc_name, "python3", "-"]
+                        cmd = [plink, "-no-antispoof", "-load", hpc_name, "python3", "-"]
                     else:
                         cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
                     remote_endpoint_run = subprocess.run(cmd, input=endpoint_script, text=True, capture_output=True, check=False)
@@ -3740,7 +3744,7 @@ elif st.session_state.screen == "hpc_move":
                     print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
                     with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
                         if using_ssh.lower() == "putty":
-                            cmd = ["plink", "-load", hpc_name,
+                            cmd = [plink, "-load", hpc_name,
                                 f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
                         else:
                             cmd = ["ssh", f"{username}@{hpc_name}",
