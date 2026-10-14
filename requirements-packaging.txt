@@ -1,0 +1,4 @@
+pyinstaller
+pywebview
+truststore
+packaging
