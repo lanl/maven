@@ -106,8 +106,10 @@ except ImportError:
     raise ImportError("Ensure you have ursa-ai>=0.15.8 downloaded from pypi")
 from langchain.chat_models import init_chat_model
 
-curr_dir = Path(__file__).parent
-files_dir = curr_dir / "metadata_template"
+from maven.desktop.paths import resource_path
+
+curr_dir = resource_path()
+files_dir = resource_path("metadata_template")
 
 # GENESIS v1.2 datacard files
 GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
@@ -146,10 +148,10 @@ API_KEYS_FILE = CONFIG_DIR / "ai_api_keys.txt"
 
 MAVEN_FOLDER = "maven_files"
 
-remote_script = curr_dir / "remote_move.py"
+remote_script = resource_path("remote_move.py")
 REMOTE_MOVE_SCRIPT = remote_script.read_text(encoding="utf-8")
 
-remote_endpoint_script = curr_dir / "remote_register_endpoint.py"
+remote_endpoint_script = resource_path("remote_register_endpoint.py")
 REMOTE_REGISTER_ENDPOINT_SCRIPT = remote_endpoint_script.read_text(encoding="utf-8")
 
 is_remote = any(os.environ.get(x) for x in ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"])
