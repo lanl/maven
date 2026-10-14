@@ -1,0 +1,151 @@
+name: Build and release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            asset_name: maven-windows.exe
+            pyinstaller_name: maven-windows
+          - os: macos-latest
+            asset_name: maven-macos
+            pyinstaller_name: maven-macos
+          - os: ubuntu-latest
+            asset_name: maven-linux
+            pyinstaller_name: maven-linux
+    runs-on: ${{ matrix.os }}
+    env:
+      APP_VERSION: ${{ github.ref_name }}
+      MAVEN_PYINSTALLER_NAME: ${{ matrix.pyinstaller_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt -r requirements-packaging.txt
+
+      - name: Install WebKitGTK runtime (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1 python3-tk
+
+      - name: Stamp version
+        shell: python
+        run: |
+          import os
+
+          version = os.environ["APP_VERSION"].lstrip("v")
+          with open("maven/_version.py", "w") as f:
+              f.write(f'__version__ = "{version}"\n')
+
+      - name: Build with PyInstaller
+        run: pyinstaller packaging/maven.spec
+
+      - name: Rename output to final asset name
+        shell: bash
+        run: |
+          mkdir -p release
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "dist/${{ matrix.pyinstaller_name }}.exe" "release/${{ matrix.asset_name }}"
+          else
+            cp "dist/${{ matrix.pyinstaller_name }}" "release/${{ matrix.asset_name }}"
+          fi
+
+      - name: Build Windows installer
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        env:
+          MSYS_NO_PATHCONV: "1"
+        run: |
+          choco install nsis --no-progress -y
+          pip install -q pillow
+          python -c "from PIL import Image; Image.open('packaging/icon.png').save('packaging/icon.ico', format='ICO')"
+          exe_path="$(pwd -W)/release/${{ matrix.asset_name }}"
+          out_dir="$(pwd -W)/release"
+          exe_path="${exe_path//\//\\}"
+          out_dir="${out_dir//\//\\}"
+          "/c/Program Files (x86)/NSIS/makensis.exe" \
+            /NOCD \
+            "/DVERSION=${APP_VERSION#v}" \
+            "/DEXE_PATH=$exe_path" \
+            "/DOUT_DIR=$out_dir" \
+            packaging/windows/installer.nsi
+
+      - name: Build macOS .dmg
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          version="${APP_VERSION#v}"
+          app_dir="release/MAVEN.app"
+          mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+          cp "release/${{ matrix.asset_name }}" "$app_dir/Contents/MacOS/${{ matrix.asset_name }}"
+          chmod +x "$app_dir/Contents/MacOS/${{ matrix.asset_name }}"
+          sed "s/__VERSION__/$version/g" packaging/macos/Info.plist.template > "$app_dir/Contents/Info.plist"
+
+          mkdir -p icon.iconset
+          sips -z 512 512 packaging/icon.png --out icon.iconset/icon_512x512.png
+          sips -z 256 256 packaging/icon.png --out icon.iconset/icon_256x256.png
+          sips -z 128 128 packaging/icon.png --out icon.iconset/icon_128x128.png
+          sips -z 32 32 packaging/icon.png --out icon.iconset/icon_32x32.png
+          sips -z 16 16 packaging/icon.png --out icon.iconset/icon_16x16.png
+          iconutil -c icns icon.iconset -o "$app_dir/Contents/Resources/icon.icns"
+
+          codesign --force --deep -s - "$app_dir"
+
+          hdiutil create -volname MAVEN -srcfolder "$app_dir" -ov -format UDZO \
+            "release/maven-macos-installer.dmg"
+          rm -rf "$app_dir" icon.iconset
+
+      - name: Build Linux AppImage
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          version="${APP_VERSION#v}"
+          appdir="release/AppDir"
+          mkdir -p "$appdir/usr/bin"
+          cp "release/${{ matrix.asset_name }}" "$appdir/usr/bin/${{ matrix.asset_name }}"
+          chmod +x "$appdir/usr/bin/${{ matrix.asset_name }}"
+          cp packaging/icon.png "$appdir/maven.png"
+          sed "s/__VERSION__/$version/g" packaging/linux/maven.desktop.template > "$appdir/maven.desktop"
+          cat > "$appdir/AppRun" <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/maven-linux" "$@"
+          EOF
+          chmod +x "$appdir/AppRun"
+
+          curl -L -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run "$appdir" \
+            "release/maven-linux-installer.AppImage"
+          rm -rf "$appdir" appimagetool
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}
+          path: release/
+          include-hidden-files: false
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: artifacts/*
