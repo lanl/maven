@@ -10,3 +10,4 @@ pyyaml>=6.0.3
 reportlab>=4.4.6
 linkml-runtime>=1.11.1
 python-pptx>=1.0.2
+requests
