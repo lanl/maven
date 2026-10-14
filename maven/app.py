@@ -84,6 +84,7 @@ from datetime import UTC, datetime
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from textwrap import dedent
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
@@ -3285,7 +3286,15 @@ elif st.session_state.screen == "hpc_move":
                             stdout = as_text(exc.stdout)
                             stderr = as_text(exc.stderr)
                             if "GSSAPI authentication initialisation failed" in stderr:
-                                putty_error = "Capi cert not loaded. must add to default sessions"
+                                putty_error = dedent("""Need to set CAPI Cert for all sessions in PuTTY app:
+
+                                1. Open PuTTY app, select a session, click **Load**
+                                2. On the left bar, go to **Connection -> SSH -> Certificate** screen
+                                3. Select **Set CAPI Cert** and follow on screen steps
+                                4. On the left bar, go to **Session**
+                                5. Select **Save** to apply the settings for that session
+                                6. Select **Cancel** to close the app and save CAPI Cert for all sessions
+                                """).strip()
                             if "Using username" not in stderr:
                                 putty_error = "The PuTTY session's Host Name must be 'username@hpc_name'. Update the Host Name field in the PuTTY app"
                             if "The host key is not cached for this server":
