@@ -11,10 +11,26 @@ to give up the main thread. pywebview wins (it's an OS-level constraint, not
 a convenience), so Streamlit's signal handler setup is disabled here: it's
 only used for graceful shutdown on SIGTERM/SIGINT, and this app's shutdown
 path is "pywebview window closes -> process exits" instead.
+
+The desktop build must be loopback-only with no network exposure: unlike
+`streamlit run`, which binds the wildcard address (0.0.0.0/::) whenever
+server.address is left unset, this always passes server.address=127.0.0.1
+explicitly. The port is also chosen dynamically (OS-assigned free port)
+rather than a fixed constant, so a second MAVEN instance -- or any other
+process -- squatting on a hardcoded port can't block startup or get
+confused with a stale server.
 """
+import socket
+
 from maven.desktop.paths import resource_path
 
-PORT = 8505
+LOOPBACK_ADDRESS = "127.0.0.1"
+
+
+def _pick_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind((LOOPBACK_ADDRESS, 0))
+        return probe.getsockname()[1]
 
 
 def start_streamlit_background():
@@ -25,8 +41,10 @@ def start_streamlit_background():
     bootstrap._set_up_signal_handler = lambda server: None
 
     app_path = str(resource_path("app.py"))
+    port = _pick_free_port()
     flag_options = {
-        "server.port": PORT,
+        "server.address": LOOPBACK_ADDRESS,
+        "server.port": port,
         "server.headless": True,
         "browser.gatherUsageStats": False,
         "global.developmentMode": False,
@@ -38,4 +56,4 @@ def start_streamlit_background():
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
-    return thread
+    return thread, port

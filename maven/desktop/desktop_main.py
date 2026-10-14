@@ -1,6 +1,6 @@
 from maven._version import __version__
 from maven.desktop import gui
-from maven.desktop.streamlit_runner import PORT, start_streamlit_background
+from maven.desktop.streamlit_runner import start_streamlit_background
 from maven.desktop.updater import check_and_apply_update
 from maven.desktop.wrapper_log import get_logger
 
@@ -9,8 +9,8 @@ logger = get_logger("main")
 
 def run():
     print(f"MAVEN {__version__}")
-    start_streamlit_background()
-    gui.run_gui(PORT)
+    _thread, port = start_streamlit_background()
+    gui.run_gui(port)
 
 
 def main():
