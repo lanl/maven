@@ -98,6 +98,7 @@ from maven.ursa_autofill import (
 )
 
 from maven.tier1_genesis_dc_agent import run_tier1_yaml, run_tier1_markdown
+from maven import migrations
 from ursa.agents.chat_agent import ChatAgent
 try:
     from ursa.util.http import inject_truststore_into_ssl
@@ -241,7 +242,9 @@ def load_env_keys() -> None:
 
 
 def get_db(db_path: str) -> DSI:
-    return DSI(db_path, check_same_thread=False, silence_messages=True)
+    store = DSI(db_path, check_same_thread=False, silence_messages=True)
+    migrations.ensure_schema_current(store.main_backend_obj.con, db_path)
+    return store
 
 
 def all_question_columns() -> List[str]:
@@ -283,6 +286,7 @@ def create_master_db():
     master_dict = {"project_id": "", "project_name": "", "tier1_db_path": "",
                    "tier2_db_path": "", "has_moved": ""}
     store.read(master_dict, "Collection", table_name=PROJECTS_TABLE)
+    migrations.stamp_current_version(store.main_backend_obj.con, "master")
     store.close()
 
 
@@ -292,17 +296,19 @@ def create_tier1_db(db_path: str):
 
     store = get_db(db_path)
     store.read(project_dict, "Collection", DATASHEET_TABLE)
+    migrations.stamp_current_version(store.main_backend_obj.con, "tier1")
     store.close()
 
 
 def create_tier2_db(db_path: str):
     store = get_db(db_path)
     tier2_data_dict = {"local_data_path": "", "username": "", "hpc_system": "",
-                  "hpc_staging_space": "", "hpc_campaign_space": "", "user_group": "", 
+                  "hpc_staging_space": "", "hpc_campaign_space": "", "user_group": "",
                   "access_permissions": "", "diana_endpoint": "", "contact_email": ""}
     store.read(tier2_data_dict, "Collection", table_name=TIER_2_TABLE)
     tier2_files_dict = {"filepaths": ""}
     store.read(tier2_files_dict, "Collection", table_name=TIER_2_FILES_TABLE)
+    migrations.stamp_current_version(store.main_backend_obj.con, "tier2")
     store.close()
 
 
