@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=MAVEN
+Comment=MAVEN __VERSION__
+Exec=maven-linux
+Icon=maven
+Type=Application
+Categories=Utility;
+Terminal=false
+StartupWMClass=MAVEN
