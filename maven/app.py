@@ -72,7 +72,6 @@ from reportlab.lib.styles import ParagraphStyle
 import html
 import subprocess
 import shlex
-from pathlib import PurePosixPath
 import getpass
 import socket
 import re
@@ -3297,8 +3296,10 @@ elif st.session_state.screen == "hpc_move":
                                 """).strip()
                             if "Using username" not in stderr:
                                 putty_error = "The PuTTY session's Host Name must be 'username@hpc_name'. Update the Host Name field in the PuTTY app"
-                            if "The host key is not cached for this server":
+                            elif any("The host key is not cached for this server" in text for text in (stdout, stderr)):
                                 putty_error = "If first connection to this HPC, you must first click 'Open' in the PuTTY app to trust the host"
+                            else:
+                                putty_error = "Timed out in accessing HPC. Try again."
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", "echo", "test"]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
