@@ -3608,7 +3608,10 @@ elif st.session_state.screen == "hpc_move":
                         try:
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
-                            s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
+                            if using_ssh.lower() == "putty":
+                                s.index(local_data, hpc_staging)
+                            else:
+                                s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
                             shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
                             if using_ssh.lower() == "putty":
                                 s.copy("putty", putty_session=hpc_name) # use putty command for windows-putty users
