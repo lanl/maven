@@ -3,10 +3,9 @@ boot run, so the user isn't staring at nothing for the 10-30s between
 double-clicking the app and the main pywebview window appearing.
 
 A plain tkinter.Tk (not Toplevel) is used because this needs to exist and
-be visible before any other Tk root does -- update.py's dialogs each create
-their own throwaway Tk() root, so this one must be hidden/shown around them
-rather than coexisting as a second top-level window (tkinter only supports
-one Tk() instance safely).
+be visible before any other Tk root does. Tkinter only supports one Tk()
+instance safely, so update.py's dialogs are parented off this root (via
+`.root`) as Toplevels rather than creating their own Tk() instances.
 """
 import tkinter as tk
 
@@ -40,6 +39,10 @@ class Splash:
         except Exception:
             logger.warning("Could not create splash window", exc_info=True)
             self._root = None
+
+    @property
+    def root(self):
+        return self._root
 
     def pump(self):
         if self._root is None:
