@@ -3644,10 +3644,11 @@ elif st.session_state.screen == "hpc_move":
 
                     with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
                         print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
+                        remote_command = "bash -c " + shlex.quote("source /etc/bashrc && module load dsi && python3 -")
                         if using_ssh.lower() == "putty":
-                            cmd = [plink, "-no-antispoof", "-load", hpc_name, "python3", "-"]
+                            cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
                         else:
-                            cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
+                            cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                         remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
                     print(" \nGo back to app")
                     if remote_run.returncode != 0:
