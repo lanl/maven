@@ -139,35 +139,39 @@ def consume_update_marker():
     return from_version or None
 
 
-def show_update_complete_dialog(from_version, to_version):
-    root = tk.Tk()
-    root.withdraw()
+def show_update_complete_dialog(from_version, to_version, parent=None):
+    owns_root = parent is None
+    root = parent if parent is not None else tk.Tk()
+    if owns_root:
+        root.withdraw()
     messagebox.showinfo(
         "Update complete",
         f"MAVEN was updated from v{from_version} to v{to_version}.",
+        master=root,
     )
-    root.destroy()
+    if owns_root:
+        root.destroy()
 
 
-def show_updating_dialog(message="Application updating..."):
+def show_updating_dialog(message="Application updating...", parent=None):
     """Non-blocking "please wait" window shown while a download/install is
     in progress. The process calls os._exit() once the platform installer
     script is handed off, so this window is torn down with the process --
     nothing needs to explicitly close it."""
-    root = tk.Tk()
+    root = tk.Toplevel(parent) if parent is not None else tk.Tk()
     root.title("MAVEN")
     root.resizable(False, False)
     tk.Label(root, text=message, padx=30, pady=20).pack()
-    root.eval("tk::PlaceWindow . center")
+    root.tk.eval(f"tk::PlaceWindow {root} center")
     root.update()
     return root
 
 
-def prompt_update_dialog(current_version, remote_version, deadline, mandatory):
-    """Shows a blocking Tk dialog and returns "update", "later", or "quit"."""
+def prompt_update_dialog(current_version, remote_version, deadline, mandatory, parent=None):
+    """Shows a blocking dialog and returns "update", "later", or "quit"."""
     result = {"choice": "quit" if mandatory else "later"}
 
-    root = tk.Tk()
+    root = tk.Toplevel(parent) if parent is not None else tk.Tk()
     root.title("Update available")
     root.resizable(False, False)
 
@@ -202,8 +206,11 @@ def prompt_update_dialog(current_version, remote_version, deadline, mandatory):
         )
         root.protocol("WM_DELETE_WINDOW", lambda: choose("later"))
 
-    root.eval("tk::PlaceWindow . center")
-    root.mainloop()
+    root.tk.eval(f"tk::PlaceWindow {root} center")
+    if parent is not None:
+        parent.wait_window(root)
+    else:
+        root.mainloop()
 
     return result["choice"]
 
@@ -313,7 +320,7 @@ def check_and_apply_update(splash=None):
         logger.info("Update completed: %s -> %s", from_version, __version__)
         if splash:
             splash.hide()
-        show_update_complete_dialog(from_version, __version__)
+        show_update_complete_dialog(from_version, __version__, parent=splash.root if splash else None)
         if splash:
             splash.show()
 
@@ -338,7 +345,9 @@ def check_and_apply_update(splash=None):
 
     if splash:
         splash.hide()
-    choice = prompt_update_dialog(__version__, remote_version, deadline, mandatory)
+    choice = prompt_update_dialog(
+        __version__, remote_version, deadline, mandatory, parent=splash.root if splash else None
+    )
     logger.info("Startup update dialog choice: %s", choice)
 
     if choice == "later":
@@ -348,7 +357,7 @@ def check_and_apply_update(splash=None):
     if choice == "quit":
         sys.exit(0)
 
-    updating_window = show_updating_dialog()
+    updating_window = show_updating_dialog(parent=splash.root if splash else None)
     try:
         asset_url = find_asset_url(release)
         if asset_url is None:
