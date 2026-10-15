@@ -65,7 +65,7 @@ def run_gui(port):
     window = webview.create_window("MAVEN", url, width=1280, height=900)
     menu = [
         Menu(
-            "MAVEN",
+            "Help",
             [
                 MenuAction("Check for Updates", lambda: run_manual_check(window)),
                 MenuAction("Export Logs...", lambda: export_logs_action(window)),
