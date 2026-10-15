@@ -3282,14 +3282,17 @@ elif st.session_state.screen == "hpc_move":
                             stdout = as_text(exc.stdout)
                             stderr = as_text(exc.stderr)
                             if "GSSAPI authentication initialisation failed" in stderr:
-                                putty_error = dedent("""Need to set CAPI Cert for all sessions in PuTTY app:
-
-                                1. Open PuTTY app, select a session, click **Load**
-                                2. On the left bar, go to **Connection -> SSH -> Certificate** screen
-                                3. Select **Set CAPI Cert** and follow on screen steps
-                                4. On the left bar, go to **Session**
-                                5. Select **Save** to apply the settings for that session
-                                6. Select **Cancel** to close the app and save CAPI Cert for all sessions
+                                putty_error = dedent("""Need to set CAPI Cert for your session in PuTTY app:
+                                1. Open PuTTY app, select the session you were using and  **Load** it. Remember the Host Name field.
+                                2. Select 'Default Settings' session and click **Load**
+                                3. On the left bar, go to the **Connection -> SSH -> Certificate** screen
+                                4. Check box for 'Attempt certificate authentication'
+                                5. Select **Set CAPI Cert** and follow on screen steps
+                                6. On the left bar, scroll up to **Session**
+                                7. Select 'Default Settings' session again and click **Save**
+                                8. Delete your previous session (if any)
+                                9. Select 'Default Settings' session and click **Load**
+                                10. Complete 'Host Name' & 'Saved Sessions' fields for your PuTTY session and click **Save**
                                 """).strip()
                             if "Using username" not in stderr:
                                 putty_error = "The PuTTY session's Host Name must be 'username@hpc_name'. Update the Host Name field in the PuTTY app"
