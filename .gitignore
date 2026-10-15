@@ -66,6 +66,7 @@ cover/
 # Testing artifacts
 *query.csv
 *.png
+!packaging/icon.png
 *.ipynb_checkpoints
 parquet.data
 debug.log
