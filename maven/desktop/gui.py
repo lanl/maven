@@ -2,6 +2,7 @@
 as a real desktop app (Dock/taskbar entry, native menu) instead of running
 headless and sending the user out to their own browser like the `maven`
 CLI's `streamlit run` + localhost-URL flow does today."""
+import sys
 import time
 import urllib.request
 
@@ -12,6 +13,21 @@ from maven.desktop.updater import run_manual_check
 from maven.desktop.wrapper_log import export_logs, get_logger
 
 logger = get_logger("gui")
+
+
+def _set_macos_app_name():
+    """Dev-mode `python -m` runs have no app bundle, so macOS falls back to
+    showing "Python" in the Dock/menu bar. Patch the in-memory bundle info
+    pywebview's Cocoa backend reads so it shows "MAVEN" instead, matching
+    the packaged app's Info.plist."""
+    if sys.platform != "darwin":
+        return
+    try:
+        from AppKit import NSBundle
+
+        NSBundle.mainBundle().infoDictionary()["CFBundleName"] = "MAVEN"
+    except Exception:
+        logger.warning("Could not set macOS app name", exc_info=True)
 
 
 def _wait_for_server(url, timeout=20):
@@ -39,6 +55,7 @@ def export_logs_action(window):
 
 
 def run_gui(port):
+    _set_macos_app_name()
     url = f"http://127.0.0.1:{port}/"
     logger.info("Waiting for Streamlit server to come up")
     if not _wait_for_server(url):
