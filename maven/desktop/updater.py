@@ -296,17 +296,26 @@ def install(installer_path):
         _install_linux(installer_path, current_exe)
 
 
-def check_and_apply_update():
+def check_and_apply_update(splash=None):
     """Entry point called from desktop_main.py on startup. Best-effort: a
     failed *check* (offline, rate-limited) is swallowed so the app still
     launches normally. A failed *install* only blocks startup if the update
-    had already become mandatory."""
+    had already become mandatory.
+
+    splash is hidden any time a dialog needs the user's attention, so the
+    two tkinter windows never overlap, and shown again afterward if startup
+    is going to continue (i.e. not on the mandatory-quit or install paths,
+    which end the process)."""
     logger.info("Startup update check: current version is %s", __version__)
 
     from_version = consume_update_marker()
     if from_version is not None:
         logger.info("Update completed: %s -> %s", from_version, __version__)
+        if splash:
+            splash.hide()
         show_update_complete_dialog(from_version, __version__)
+        if splash:
+            splash.show()
 
     if not getattr(sys, "frozen", False):
         logger.info("Running from source, not a packaged exe; skipping update check")
@@ -327,10 +336,14 @@ def check_and_apply_update():
     deadline = update_deadline(release)
     mandatory = datetime.now(timezone.utc) >= deadline
 
+    if splash:
+        splash.hide()
     choice = prompt_update_dialog(__version__, remote_version, deadline, mandatory)
     logger.info("Startup update dialog choice: %s", choice)
 
     if choice == "later":
+        if splash:
+            splash.show()
         return
     if choice == "quit":
         sys.exit(0)
@@ -351,6 +364,8 @@ def check_and_apply_update():
         updating_window.destroy()
         if mandatory:
             sys.exit(1)
+        if splash:
+            splash.show()
 
 
 def _set_status(window, message):

@@ -13,6 +13,16 @@ def resource_path(*parts: str) -> Path:
     return base.joinpath(*parts)
 
 
+def get_icon_path() -> Path:
+    """App icon, used for both the window/taskbar icon and the startup
+    splash screen. Lives under packaging/ (not maven/) in the source tree
+    since it's also consumed by the per-platform build scripts, so it needs
+    its own lookup instead of resource_path()'s maven-package convention."""
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS) / "maven" / "icon.png"
+    return Path(__file__).resolve().parent.parent.parent / "packaging" / "icon.png"
+
+
 def get_data_dir() -> Path:
     data_dir = Path.home() / ".maven_config" / "desktop_data"
     data_dir.mkdir(parents=True, exist_ok=True)

@@ -30,13 +30,15 @@ def _set_macos_app_name():
         logger.warning("Could not set macOS app name", exc_info=True)
 
 
-def _wait_for_server(url, timeout=20):
+def _wait_for_server(url, timeout=20, splash=None):
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
             urllib.request.urlopen(url, timeout=1)
             return True
         except Exception:
+            if splash:
+                splash.pump()
             time.sleep(0.3)
     return False
 
@@ -54,13 +56,15 @@ def export_logs_action(window):
     logger.info("Exported logs to %s", dest)
 
 
-def run_gui(port):
+def run_gui(port, splash=None):
     _set_macos_app_name()
     url = f"http://127.0.0.1:{port}/"
     logger.info("Waiting for Streamlit server to come up")
-    if not _wait_for_server(url):
+    if not _wait_for_server(url, splash=splash):
         logger.error("Streamlit server did not come up within timeout")
 
+    if splash:
+        splash.destroy()
     logger.info("Opening main window")
     window = webview.create_window("MAVEN", url, width=1280, height=900)
     menu = [
