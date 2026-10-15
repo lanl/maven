@@ -1,4 +1,3 @@
-
 '''
 ###############################################################################
 # This program is Open-Source under the BSD-3 License.                        #
@@ -52,9 +51,7 @@ Authors:
 Christopher W Johnson (cwj@lanl.gov)
 Vedant Iyer (iyer@lanl.gov)
 '''
-
 import json
-from typeguard import value
 import yaml
 from typing import Any, Dict, List, Tuple
 from pathlib import Path, PurePosixPath
@@ -1855,7 +1852,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                                 st.error("Cannot access AI Model. Ensure you are on the correct network.")
                             else:
                                 st.error("Error connecting to AI Model:")
-                                st.exception(e)
+                                st.exception(ai_model_error_msg)
                             st.stop()
 
                 st.session_state.screen = "tier1"
@@ -2530,7 +2527,7 @@ if st.session_state.screen == "datasheet":
                         st.error("Cannot access AI Model. Ensure you are on the correct network.")
                     else:
                         st.error("Error connecting to AI Model:")
-                        st.exception(e)
+                        st.exception(ai_model_error_msg)
                     st.stop()
 
                 st.session_state.active_qid = new_id
@@ -2566,7 +2563,7 @@ if st.session_state.screen == "datasheet":
                         st.error("Cannot access AI Model. Ensure you are on the correct network.")
                     else:
                         st.error("Error connecting to AI Model:")
-                        st.exception(e)
+                        st.exception(ai_model_error_msg)
                     st.stop()
                 st.session_state.section_idx = route_after_autofill(row_after_followup)
                 st.session_state._scroll_to_top = True
@@ -2622,7 +2619,7 @@ if st.session_state.screen == "datasheet":
                                 st.error("Cannot access AI Model. Ensure you are on the correct network.")
                             else:
                                 st.error("Error connecting to AI Model:")
-                                st.exception(e)
+                                st.exception(ai_model_error_msg)
                             st.stop()
 
                         if not isinstance(all_tier1_dicts, dict):
@@ -2686,7 +2683,7 @@ elif st.session_state.screen == "tier1":
                         st.error("Cannot access AI Model. Ensure you are on the correct network.")
                     else:
                         st.error("Error connecting to AI Model:")
-                        st.exception(e)
+                        st.exception(ai_model_error_msg)
                     st.stop()
 
                 if not isinstance(all_tier1_dicts, dict):
@@ -2783,7 +2780,7 @@ elif st.session_state.screen == "tier1":
                     st.error("Cannot access AI Model. Ensure you are on the correct network.")
                 else:
                     st.error("Error connecting to AI Model:")
-                    st.exception(e)
+                    st.exception(ai_model_error_msg)
                 st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
@@ -2804,7 +2801,7 @@ elif st.session_state.screen == "tier1":
                     st.error("Cannot access AI Model. Ensure you are on the correct network.")
                 else:
                     st.error("Error connecting to AI Model:")
-                    st.exception(e)
+                    st.exception(ai_model_error_msg)
                 st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
@@ -3577,7 +3574,6 @@ elif st.session_state.screen == "hpc_move":
                     st.stop()
 
                 # register project in diana endpoint
-                # TODO: Eventually replace with DSI Sync register commands
                 Path(f"{proj_name}_endpoint.txt").write_text(fed_line, encoding="utf-8")
                 Path(f"{proj_name}_endpoint.txt").chmod(0o644)
                 if copy_tool == "conduit":

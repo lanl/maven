@@ -1,5 +1,4 @@
 import json
-import re
 from copy import deepcopy
 from typing import Any
 from ursa.agents.chat_agent import ChatAgent
