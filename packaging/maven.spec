@@ -10,16 +10,23 @@
 # the two remote_*.py scripts it reads as text, .streamlit/config.toml) are
 # added explicitly since nothing imports them as code, so PyInstaller's
 # import-graph analysis has no way to discover them on its own.
+#
+# app.py itself is also never imported by name -- streamlit_runner.py hands
+# its path to Streamlit's bootstrap API at runtime instead -- so PyInstaller's
+# static analysis never walks app.py's own `from maven.x import y` statements
+# and silently drops maven's submodules (ursa_autofill, tier1_genesis_dc_agent,
+# migrations, ursa_utils) from the frozen build. collect_submodules("maven")
+# forces all of them in as hidden imports.
 import os
 
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 block_cipher = None
 repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(SPEC)), ".."))
 
 datas = []
 binaries = []
-hiddenimports = []
+hiddenimports = collect_submodules("maven")
 
 for pkg in ("streamlit", "ursa", "langchain", "dsi", "pypdf", "pptx", "docx", "reportlab"):
     pkg_datas, pkg_binaries, pkg_hiddenimports = collect_all(pkg)
