@@ -3609,8 +3609,8 @@ elif st.session_state.screen == "hpc_move":
             else:
                 if not st.session_state.local_to_staging_moved:
                     local_move_error = None
-                    with st.spinner("Moving local data to HPC staging space - check the terminal for 3 password prompts..."):
-                        print(" \n \nMoving local data to HPC staging space - 3 password prompts expected:\n ")
+                    with st.spinner("Moving local data to HPC staging space - check the terminal for 3-4 password prompts..."):
+                        print(" \n \nMoving local data to HPC staging space - 3-4 password prompts expected:\n ")
                         try:
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
@@ -3669,6 +3669,11 @@ elif st.session_state.screen == "hpc_move":
                                 st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
                             elif any("SyntaxWarning: invalid escape sequence" in text for text in (remote_run.stdout, remote_run.stderr)):
                                 st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
+                            elif "bash: /etc/bashrc: No such file or directory" in remote_run.stderr:
+                                if using_ssh.lower() == "putty":
+                                    st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
+                                else:
+                                    st.code(f"Please ensure your putty session '{hpc_name}' is for an HPC transfer node")
                             else:
                                 st.code(remote_run.stderr)
                         st.stop()
