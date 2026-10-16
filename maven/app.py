@@ -85,7 +85,42 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from dsi.dsi import DSI
+import dsi.sync as _dsi_sync_module
 from dsi.sync import Sync
+
+from maven.hpc_auth import (
+    cancel_ssh_step,
+    cancel_sync_call,
+    install_dsi_pty_patches,
+    run_ssh_step,
+    run_sync_call_with_gui_auth,
+)
+
+# Every key passed to run_ssh_step/run_sync_call_with_gui_auth within the
+# HPC move screen - kept in one place so navigating away can cancel any of
+# them that might still be in flight instead of orphaning a subprocess.
+_HPC_MOVE_SSH_STEP_KEYS = [
+    "validate_hpc_access", "validate_staging", "validate_campaign",
+    "validate_diana", "validate_user_group", "check_campaign_folders",
+    "staging_to_campaign", "register_diana_endpoint", "set_group_and_perms",
+]
+_HPC_MOVE_SYNC_CALL_KEYS = ["scratch_to_campaign_move", "local_to_staging_move"]
+
+
+def _cancel_in_flight_hpc_move_steps() -> None:
+    for key in _HPC_MOVE_SSH_STEP_KEYS:
+        cancel_ssh_step(key)
+    for key in _HPC_MOVE_SYNC_CALL_KEYS:
+        cancel_sync_call(key)
+
+# dsi-workflow is a third-party dependency that shells out to scp/rsync/
+# conduit/klist directly; patch its subprocess usage so those calls route
+# through the same in-app PTY/GUI auth prompt as our own ssh calls below,
+# instead of writing password/Kerberos prompts to whatever terminal
+# launched this process. POSIX only - skipped on Windows (see HPC MOVE
+# screen for the os.name == "nt" fallback that keeps the old behavior there).
+if os.name != "nt":
+    install_dsi_pty_patches(_dsi_sync_module, Sync)
 
 from maven.ursa_autofill import (
     AGENT_META_COLUMNS,
@@ -1919,6 +1954,10 @@ if "render_t1_markdown" not in st.session_state:
     st.session_state.render_t1_markdown = False
 if "render_hpc_move_btn" not in st.session_state:
     st.session_state.render_hpc_move_btn = False
+if "validating_tier2" not in st.session_state:
+    st.session_state.validating_tier2 = False
+if "dsi_move_in_progress" not in st.session_state:
+    st.session_state.dsi_move_in_progress = False
 if "tier2_loc_dict" not in st.session_state:
     st.session_state.tier2_loc_dict = None
 if "change_short_proj_title" not in st.session_state:
@@ -3074,7 +3113,19 @@ elif st.session_state.screen == "hpc_move":
 
 
         if st.button("Validate Data and HPC Fields", key=f"save_tier2_{qid}", width="stretch", type="primary"):
-            missing_fields = [col for col, value in updated_tier2_dict.items() 
+            st.session_state.validating_tier2 = True
+            st.rerun()
+
+        # Gated on a flag rather than the button directly: run_ssh_step()
+        # below may need multiple Streamlit reruns (triggered by its own
+        # polling fragment) to finish one ssh call, and st.button() only
+        # evaluates True on the single rerun where it was actually clicked.
+        # The flag is cleared at every terminal exit (error or success)
+        # below, but stays True across the reruns an in-flight ssh step
+        # needs, so this block resumes where it left off instead of being
+        # skipped once the button's one-shot True has passed.
+        if st.session_state.validating_tier2:
+            missing_fields = [col for col, value in updated_tier2_dict.items()
                               if not str(value).strip() and col not in ["user_group", "access_permissions"]]
             if missing_fields:
                 required_names_dict = {
@@ -3088,6 +3139,7 @@ elif st.session_state.screen == "hpc_move":
                 }
                 st.error("Please fill all fields before continuing:\n- " +
                          "\n- ".join(required_names_dict.get(m, m) for m in missing_fields))
+                st.session_state.validating_tier2 = False
                 st.stop()
 
             local_data_input = updated_tier2_dict["local_data_path"].strip()
@@ -3096,6 +3148,7 @@ elif st.session_state.screen == "hpc_move":
             hpc_staging_input = updated_tier2_dict["hpc_staging_space"].strip()
             if "scratch" not in hpc_staging_input.lower():
                 st.error("HPC Staging Location must be in the 'scratch' cluster.")
+                st.session_state.validating_tier2 = False
                 st.stop()
             if os.name != "nt":
                 hpc_staging_path = Path(hpc_staging_input)
@@ -3105,6 +3158,7 @@ elif st.session_state.screen == "hpc_move":
             hpc_campaign_input = updated_tier2_dict["hpc_campaign_space"].strip()
             if "campaign" not in hpc_campaign_input.lower():
                 st.error("HPC Campaign Location must be in the 'campaign' cluster.")
+                st.session_state.validating_tier2 = False
                 st.stop()
             if os.name != "nt":
                 hpc_campaign_path = Path(hpc_campaign_input)
@@ -3114,6 +3168,7 @@ elif st.session_state.screen == "hpc_move":
             diana_endpoint_input = updated_tier2_dict["diana_endpoint"].strip()
             if "campaign" not in diana_endpoint_input.lower():
                 st.error("DIANA Endpoint must be in the 'campaign' cluster.")
+                st.session_state.validating_tier2 = False
                 st.stop()
             if os.name != "nt":
                 diana_endpoint_path = Path(diana_endpoint_input)
@@ -3135,9 +3190,11 @@ elif st.session_state.screen == "hpc_move":
                 else:
                     st.error("This ROSY ID has not been reviewed yet and cannot be associated with this datasheet. " \
                             "Please try again later or clear the ROSY fields for now.")
+                    st.session_state.validating_tier2 = False
                     st.stop()
             elif (valid_rosy_id and rosy_z_num_input is None) or (not valid_rosy_id and rosy_z_num_input is not None):
                 st.error("If registering ROSY review, enter both ID and associated Z#. Cannot only save one and not the other.")
+                st.session_state.validating_tier2 = False
                 st.stop()
             t1_store.close()
 
@@ -3145,6 +3202,7 @@ elif st.session_state.screen == "hpc_move":
             if not locations_tbl.empty:
                 existing_loc_dict = locations_tbl.iloc[0].to_dict()
                 if all(str(existing_loc_dict[k]).strip() == str(updated_tier2_dict[k]).strip() for k in updated_tier2_dict.keys()):
+                    st.session_state.validating_tier2 = False
                     st.session_state.render_hpc_move_btn = True
                     st.session_state.tier2_loc_dict = existing_loc_dict
                     st.rerun()
@@ -3152,6 +3210,7 @@ elif st.session_state.screen == "hpc_move":
             if local_data_input.lower() == "n/a":
                 if not (hpc_staging_path.is_absolute() and hpc_staging_path.is_dir()):
                     st.error("HPC Staging Location must be an absolute path to the data you can access")
+                    st.session_state.validating_tier2 = False
                     st.stop()
                 try:
                     next(hpc_staging_path.iterdir(), None)
@@ -3159,24 +3218,29 @@ elif st.session_state.screen == "hpc_move":
                         pass
                 except (PermissionError, OSError):
                     st.error("HPC Staging Location must be a directory you can access")
+                    st.session_state.validating_tier2 = False
                     st.stop()
 
                 if not (hpc_campaign_path.is_absolute() and hpc_campaign_path.is_dir()):
                     st.error("HPC Campaign Location must be an absolute path to a directory you can access")
+                    st.session_state.validating_tier2 = False
                     st.stop()
                 try:
                     next(hpc_campaign_path.iterdir(), None)
                 except (PermissionError, OSError):
                     st.error("HPC Campaign Location must be a directory you can access")
+                    st.session_state.validating_tier2 = False
                     st.stop()
 
                 if not (diana_endpoint_path.is_absolute() and diana_endpoint_path.is_dir()):
                     st.error("DIANA Endpoint must be an absolute path to a directory you can access")
+                    st.session_state.validating_tier2 = False
                     st.stop()
                 try:
                     next(diana_endpoint_path.iterdir(), None)
                 except (PermissionError, OSError):
                     st.error("DIANA Endpoint must be a directory you can access")
+                    st.session_state.validating_tier2 = False
                     st.stop()
                 # set username
                 updated_tier2_dict["username"] = getpass.getuser()
@@ -3187,71 +3251,107 @@ elif st.session_state.screen == "hpc_move":
                     grp.getgrnam(user_group_input)
                 except KeyError:
                     st.error("User Group does not exist on this HPC")
+                    st.session_state.validating_tier2 = False
                     st.stop()
             else:
                 if not (local_path.is_absolute() and local_path.is_dir() and os.access(local_path, os.R_OK | os.W_OK | os.X_OK)):
                     st.error("Local Data Location must be an absolute path to data you can access")
+                    st.session_state.validating_tier2 = False
                     st.stop()
                 if not hpc_staging_path.is_absolute():
                     st.error("HPC Staging Location must be an absolute path to a directory on HPC")
+                    st.session_state.validating_tier2 = False
                     st.stop()
                 if not hpc_campaign_path.is_absolute():
                     st.error("HPC Campaign Location must be an absolute path to a directory on HPC")
+                    st.session_state.validating_tier2 = False
                     st.stop()
                 if not diana_endpoint_path.is_absolute():
                     st.error("DIANA Endpoint must be an absolute path to a directory on HPC")
+                    st.session_state.validating_tier2 = False
                     st.stop()
 
-                num_prompts = 5 if user_group_input else 4
-                print(f" \nPassword prompt 1/{num_prompts}: validating HPC access")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
+                if os.name == "nt":
+                    num_prompts = 5 if user_group_input else 4
+                    print(f" \nPassword prompt 1/{num_prompts}: validating HPC access")
+                    with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", "echo", "test"]
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                else:
                     cmd = ["ssh", f"{username_input}@{hpc_system_input}", "echo", "test"]
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    result = run_ssh_step("validate_hpc_access", cmd, "Validating HPC access")
+                    if result is None:
+                        st.stop()
                 if result.returncode != 0:
                     print("View error on app")
                     st.error("Invalid HPC username or system name")
                     st.code(result.stderr)
+                    st.session_state.validating_tier2 = False
                     st.stop()
 
-                print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging location")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
+                if os.name == "nt":
+                    with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                else:
                     cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    result = run_ssh_step("validate_staging", cmd, "Validating HPC staging location")
+                    if result is None:
+                        st.stop()
                 if result.returncode != 0:
                     print("View error on app")
                     st.error("HPC Staging Location does not exist or is not accessible for this user")
                     st.code(result.stderr)
+                    st.session_state.validating_tier2 = False
                     st.stop()
 
-                print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign location")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                if os.name == "nt":
+                    with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                else:
                     cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    result = run_ssh_step("validate_campaign", cmd, "Validating HPC campaign location")
+                    if result is None:
+                        st.stop()
                 if result.returncode != 0:
                     print("View error on app")
                     st.error("HPC Campaign Location does not exist or is not accessible for this user")
                     st.code(result.stderr)
+                    st.session_state.validating_tier2 = False
                     st.stop()
 
-                print(f" \nPassword prompt 4/{num_prompts}: validating DIANA endpoint")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                if os.name == "nt":
+                    with st.spinner(f"Validating HPC field inputs — check the terminal for 4/{num_prompts} password prompts..."):
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                else:
                     cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    result = run_ssh_step("validate_diana", cmd, "Validating DIANA endpoint")
+                    if result is None:
+                        st.stop()
                 if result.returncode != 0:
                     print("View error on app")
                     st.error("DIANA Endpoint does not exist or is not accessible for this user")
                     st.code(result.stderr)
+                    st.session_state.validating_tier2 = False
                     st.stop()
 
                 if user_group_input:
-                    print(f" \nPassword prompt 5/{num_prompts}: validating user group is valid")
-                    with st.spinner("Validating user group input — check the terminal for 4/{num_prompts} password prompts..."):
+                    if os.name == "nt":
+                        with st.spinner("Validating user group input — check the terminal for 5/{num_prompts} password prompts..."):
+                            cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
+                            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
-                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                        result = run_ssh_step("validate_user_group", cmd, "Validating user group")
+                        if result is None:
+                            st.stop()
                     if result.returncode != 0:
                         print("View error on app")
                         st.error("User Group does not exist on this HPC")
                         st.code(result.stderr)
+                        st.session_state.validating_tier2 = False
                         st.stop()
                 print(" \nGo back to app")
 
@@ -3266,6 +3366,7 @@ elif st.session_state.screen == "hpc_move":
                 store.query(query, params=new_values)
             store.close()
 
+            st.session_state.validating_tier2 = False
             st.session_state.render_hpc_move_btn = True
             st.session_state.tier2_loc_dict = updated_tier2_dict
             st.session_state.local_to_staging_moved = False
@@ -3291,6 +3392,8 @@ elif st.session_state.screen == "hpc_move":
         back_col, other = st.columns([1, 4], width="stretch")
         with back_col:
             if st.button("⬅ Edit Data & HPC Info", width="stretch"):
+                _cancel_in_flight_hpc_move_steps()
+                st.session_state.dsi_move_in_progress = False
                 st.session_state.render_hpc_move_btn = False
                 st.session_state.tier2_loc_dict = None
                 st.session_state.ran_change_dialog = False
@@ -3303,9 +3406,16 @@ elif st.session_state.screen == "hpc_move":
         else:
             st.subheader("Move data from Local Machine ➡ HPC staging ➡ HPC campaign")
         st.space()
-        dsi_move_btn = st.button("Move to HPC", key=f"dsi_move_{qid}", width="stretch", type="primary")
+        if st.button("Move to HPC", key=f"dsi_move_{qid}", width="stretch", type="primary"):
+            st.session_state.dsi_move_in_progress = True
+            st.rerun()
 
-        if dsi_move_btn:
+        # Gated on a flag rather than the button directly, same reason as
+        # "Validate Data and HPC Fields" above: the ssh/Sync calls in this
+        # block may take multiple Streamlit reruns to finish, so this needs
+        # to resume across reruns instead of only firing on the one rerun
+        # where the button was actually clicked.
+        if st.session_state.dsi_move_in_progress:
             temp_master_store = get_db(get_master_db_name())
             has_moved = temp_master_store.query(f"SELECT has_moved FROM {PROJECTS_TABLE} WHERE project_id = {qid}", True).iloc[0, 0]
             temp_master_store.close()
@@ -3331,18 +3441,23 @@ elif st.session_state.screen == "hpc_move":
                             curr_folders = {p.name: p.owner() for p in hpc_path.iterdir() if p.is_dir()}
                         except Exception:
                             st.error("HPC staging path does not exist. Go to previous screen and enter a valid path.")
+                            st.session_state.dsi_move_in_progress = False
                             st.stop()
 
                     else:
-                        print(" \nPassword prompt 1/1: checking existing folders on campaign")
-                        with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
-                            cmd = ["ssh", f"{username}@{hpc_name}",
-                                f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
-                            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                        print(" \nGo back to app")
+                        cmd = ["ssh", f"{username}@{hpc_name}",
+                            f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
+                        if os.name == "nt":
+                            with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
+                                result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                        else:
+                            result = run_ssh_step("check_campaign_folders", cmd, "Checking HPC Campaign for existing projects")
+                            if result is None:
+                                st.stop()
                         if result.returncode != 0:
                             st.error("Error checking existing folders in HPC Campaign Location")
                             st.code(result.stderr)
+                            st.session_state.dsi_move_in_progress = False
                             st.stop()
 
                         curr_folders = {PurePosixPath(path).name: owner for line in result.stdout.strip().splitlines() if line.strip()
@@ -3417,27 +3532,39 @@ elif st.session_state.screen == "hpc_move":
                     copy_tool = "pfcp"
                 else:
                     st.error("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
+                    st.session_state.dsi_move_in_progress = False
                     st.stop()
 
-                scratch_move_error = None
-                with st.spinner(f"Moving data to HPC campaign with `{copy_tool}`"):
-                    try:
-                        # TODO: Turn verbose off after done testing
-                        s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
-                        s.index(hpc_staging, hpc_campaign)
-                        shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
+                def _do_scratch_to_campaign_move() -> None:
+                    # TODO: Turn verbose off after done testing
+                    s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
+                    s.index(hpc_staging, hpc_campaign)
+                    shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
 
-                        # delete data in t2 locations table on scratch before moving to campaign
-                        store = get_db(temp_t2_db_name)
-                        df = store.get_table(TIER_2_TABLE, True, True)
-                        df.iloc[0, 1:] = None # delete all col data except the dsi_table_name col
-                        store.update(df)
-                        store.close()
+                    # delete data in t2 locations table on scratch before moving to campaign
+                    store = get_db(temp_t2_db_name)
+                    df = store.get_table(TIER_2_TABLE, True, True)
+                    df.iloc[0, 1:] = None # delete all col data except the dsi_table_name col
+                    store.update(df)
+                    store.close()
 
-                        s.copy(copy_tool)
-                    except Exception as e:
-                        scratch_move_error = e
-                
+                    s.copy(copy_tool)
+
+                if os.name == "nt":
+                    scratch_move_error = None
+                    with st.spinner(f"Moving data to HPC campaign with `{copy_tool}`"):
+                        try:
+                            _do_scratch_to_campaign_move()
+                        except Exception as e:
+                            scratch_move_error = e
+                else:
+                    outcome = run_sync_call_with_gui_auth(
+                        "scratch_to_campaign_move", _do_scratch_to_campaign_move,
+                        f"Moving data to HPC campaign with `{copy_tool}`")
+                    if outcome is None:
+                        st.stop()
+                    _, scratch_move_error = outcome
+
                 if scratch_move_error is not None:
                     st.error("Scratch to Campaign Move Error:")
                     lower_error_str = str(scratch_move_error).lower()
@@ -3445,6 +3572,7 @@ elif st.session_state.screen == "hpc_move":
                         st.code("Please run 'conduit get' in another terminal to move data on this HPC.")
                     else:
                         st.code(str(scratch_move_error))
+                    st.session_state.dsi_move_in_progress = False
                     st.stop()
 
                 # register project in diana endpoint
@@ -3468,26 +3596,37 @@ elif st.session_state.screen == "hpc_move":
                         st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                     else:
                         st.code(stderr)
+                    st.session_state.dsi_move_in_progress = False
                     st.stop()
 
             else:
                 if not st.session_state.local_to_staging_moved:
-                    local_move_error = None
-                    with st.spinner("Moving local data to HPC staging space - check the terminal for 3 password prompts..."):
-                        print(" \n \nMoving local data to HPC staging space - 3 password prompts expected:\n ")
-                        try:
-                            # TODO: Turn verbose off after done testing
-                            s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
-                            s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
-                            shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
-                            s.copy("rsync")
-                        except Exception as e:
-                            local_move_error = e
-                            print(" \nGo back to app")
+                    def _do_local_to_staging_move() -> None:
+                        # TODO: Turn verbose off after done testing
+                        s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
+                        s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
+                        shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
+                        s.copy("rsync")
+
+                    if os.name == "nt":
+                        local_move_error = None
+                        with st.spinner("Moving local data to HPC staging space - check the terminal for 3 password prompts..."):
+                            try:
+                                _do_local_to_staging_move()
+                            except Exception as e:
+                                local_move_error = e
+                    else:
+                        outcome = run_sync_call_with_gui_auth(
+                            "local_to_staging_move", _do_local_to_staging_move,
+                            "Moving local data to HPC staging space")
+                        if outcome is None:
+                            st.stop()
+                        _, local_move_error = outcome
 
                     if local_move_error is not None:
                         st.error("Local Data to HPC Staging Move Error:")
                         st.code(str(local_move_error))
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
 
                     st.session_state.local_to_staging_moved = True
@@ -3503,11 +3642,15 @@ elif st.session_state.screen == "hpc_move":
                     script = script.replace('44444', repr(hpc_campaign)) # campaign folder
                     script = script.replace('55555', repr(TIER_2_TABLE)) # t2 locations table name
 
-                    with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
-                        print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
-                        cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
-                        remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
-                    print(" \nGo back to app")
+                    cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
+                    if os.name == "nt":
+                        with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
+                            remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
+                    else:
+                        remote_run = run_ssh_step("staging_to_campaign", cmd,
+                                                   "Moving data from HPC staging to HPC campaign", input_text=script)
+                        if remote_run is None:
+                            st.stop()
                     if remote_run.returncode != 0:
                         st.error("HPC Staging to Campaign Move Error:")
                         if remote_run.stderr:
@@ -3522,13 +3665,16 @@ elif st.session_state.screen == "hpc_move":
                                 st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                             else:
                                 st.code(remote_run.stderr)
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
 
                     if "Only testing on this HPC for now" in remote_run.stdout:
                         st.error("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
                     elif "Add the DSI HPC module to your shell config file" in remote_run.stdout:
                         st.error("Add the DSI HPC module to your shell config file")
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
 
                     marker = "DSI HPC Staging to Campaign Move Error"
@@ -3542,8 +3688,9 @@ elif st.session_state.screen == "hpc_move":
                             st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                         else:
                             st.code(remote_run.stdout[idx + len(marker):])
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
-                    
+
                     st.session_state.staging_to_campaign_moved = True
 
                 endpoint_script = REMOTE_REGISTER_ENDPOINT_SCRIPT
@@ -3553,10 +3700,15 @@ elif st.session_state.screen == "hpc_move":
                 endpoint_script = endpoint_script.replace('22222', repr(proj_name))
                 endpoint_script = endpoint_script.replace('33333', repr(diana_endpoint))
 
-                with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
-                    print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
-                    cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
-                    remote_endpoint_run = subprocess.run(cmd, input=endpoint_script, text=True, capture_output=True, check=False)
+                cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
+                if os.name == "nt":
+                    with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
+                        remote_endpoint_run = subprocess.run(cmd, input=endpoint_script, text=True, capture_output=True, check=False)
+                else:
+                    remote_endpoint_run = run_ssh_step("register_diana_endpoint", cmd,
+                                                        "Registering project in DIANA Catalog", input_text=endpoint_script)
+                    if remote_endpoint_run is None:
+                        st.stop()
 
                 if remote_endpoint_run.returncode != 0:
                     st.error("Error registering project in DIANA Catalog:")
@@ -3572,8 +3724,8 @@ elif st.session_state.screen == "hpc_move":
                         else:
                             st.code(remote_endpoint_run.stderr)
                             st.code(output)
-                        print(" \nGo back to app")
-                    st.stop()                
+                    st.session_state.dsi_move_in_progress = False
+                    st.stop()
 
             # set user group and access permissions after move
             full_campaign_path = os.path.join(hpc_campaign, proj_name)
@@ -3585,8 +3737,8 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting user group for data on Campaign")
                         st.code(result.stderr)
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
-                        print(" \nGo back to app")
 
                 if access_permissions_code:
                     with st.spinner("Updating data access permissions on Campaign"):
@@ -3595,22 +3747,25 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting access permissions for data on Campaign")
                         st.code(result.stderr)
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
-                        print(" \nGo back to app")
             else:
                 if user_group and access_permissions_code:
-                    print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
-                    with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
-                        cmd = ["ssh", f"{username}@{hpc_name}",
-                            f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
-                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    cmd = ["ssh", f"{username}@{hpc_name}",
+                        f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
+                    if os.name == "nt":
+                        with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
+                            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    else:
+                        result = run_ssh_step("set_group_and_perms", cmd,
+                                               "Updating group/permissions on HPC Campaign")
+                        if result is None:
+                            st.stop()
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
+                        st.session_state.dsi_move_in_progress = False
                         st.stop()
-                        print(" \nGo back to app")
-
-            print(" \nGo back to app")
 
             # after move, delete the temp t1 & t2 dbs that were actually moved
             os.remove(temp_t2_db_name)
@@ -3625,5 +3780,6 @@ elif st.session_state.screen == "hpc_move":
             st.session_state.ran_change_dialog = False
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
+            st.session_state.dsi_move_in_progress = False
 
             st.success(f"Successfully moved data with DSI to HPC campaign: {os.path.join(hpc_campaign, proj_name)}/")
