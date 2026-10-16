@@ -132,6 +132,33 @@ else transitively installed it).
 Added `!packaging/maven.spec` — the repo's blanket `*.spec` ignore rule
 would otherwise exclude this intentionally-committed build spec.
 
+## Installing the macOS `.dmg`
+
+Since the `.dmg` is only ad-hoc codesigned (no Apple Developer ID / no
+notarization), Gatekeeper treats it as "unidentified developer" at best, and
+on some machines refuses to open it at all with a "is damaged and can't be
+opened" message. To install:
+
+1. Open the `.dmg` and drag `maven.app` into `/Applications`.
+2. Try launching it normally first: right-click (or Control-click)
+   `maven.app` → **Open**, then confirm the "unidentified developer" prompt.
+   This works on most machines and only needs to be done once.
+3. If step 2 doesn't offer an "Open" option, or macOS claims the app is
+   damaged, Gatekeeper is refusing to honor the ad-hoc signature at all.
+   Clear the quarantine extended attribute macOS attaches to anything
+   downloaded from the internet, which re-signs it as adhoc-trusted locally:
+
+   ```
+   xattr -cr /Applications/maven.app
+   ```
+
+   This strips the `com.apple.quarantine` flag (and any other extended
+   attributes) recursively from the app bundle, so Gatekeeper no longer
+   evaluates it against the (missing) notarization/Developer ID checks.
+   This is a one-time, per-machine workaround — it doesn't persist across
+   reinstalling or updating the app, so re-run it if a future self-update
+   re-triggers the same warning.
+
 ## Known limitations / things to validate further
 
 - **Binary size**: ~250 MB per platform (Streamlit + pandas + LangChain +
