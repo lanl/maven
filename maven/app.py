@@ -1936,6 +1936,8 @@ if "invalid_fields" not in st.session_state:
     st.session_state.invalid_fields = []
 if "t2_uploader_version" not in st.session_state:
     st.session_state.t2_uploader_version = 0
+if "bashrc_path" not in st.session_state:
+    st.session_state.bashrc_path = None
 
 if get_maven_dir() is None:
     st.title("Welcome to the MAVEN App")
@@ -3462,12 +3464,24 @@ elif st.session_state.screen == "hpc_move":
                     else:
                         print(" \nPassword prompt 1/1: checking existing folders on campaign")
                         with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
+                            remote_script = (
+                                'id -un && '
+                                'if [ -f /etc/bashrc ]; then '
+                                '    printf "/etc/bashrc\\n"; '
+                                'elif [ -f /etc/bash.bashrc ]; then '
+                                '    printf "/etc/bash.bashrc\\n"; '
+                                'else '
+                                '    printf "\\n"; '
+                                'fi; '
+                                f'find {shlex.quote(hpc_campaign)} '
+                                '-mindepth 1 -maxdepth 1 -type d '
+                                '-exec stat -c "%U %n" {} \\;'
+                            )
+                            remote_command = f"sh -c {shlex.quote(remote_script)}"
                             if using_ssh.lower() == "putty":
-                                cmd = [plink, "-no-antispoof", "-load", hpc_name, 
-                                       f'id -un && find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
+                                cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
                             else:
-                                cmd = ["ssh", f"{username}@{hpc_name}",
-                                        f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
+                                cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                         print(" \nGo back to app")
                         if result.returncode != 0:
@@ -3475,14 +3489,19 @@ elif st.session_state.screen == "hpc_move":
                             st.code(result.stderr)
                             st.stop()
 
+                        username1, _, remaining = result.stdout.partition("\n")
+                        bashrc_path, _, directory_output = remaining.partition("\n")
+                        bashrc_path = bashrc_path.strip() or None
+                        if bashrc_path is None:
+                            st.error("HPC does not have necessary bashrc structure to be able to move data")
+                            st.stop()
+                        st.session_state.bashrc_path = bashrc_path
+
                         if using_ssh.lower() == "putty":
-                            username, _, directory_output = result.stdout.partition("\n")
-                            username = username.strip()
-                            curr_folders = {PurePosixPath(path).name: owner for line in directory_output.splitlines() if line.strip()
-                                        for owner, path in [line.split(" ", 1)]}
-                        else:
-                            curr_folders = {PurePosixPath(path).name: owner for line in result.stdout.strip().splitlines() if line.strip()
-                                        for owner, path in [line.split(" ", 1)]}
+                            username = username1.strip()
+
+                        curr_folders = {PurePosixPath(path).name: owner for line in directory_output.splitlines() if line.strip()
+                                    for owner, path in [line.split(" ", 1)]}
 
                     # check if short_proj_name is in campaign folder
                     if short_proj_name in curr_folders:
@@ -3650,7 +3669,7 @@ elif st.session_state.screen == "hpc_move":
 
                     with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
                         print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
-                        remote_command = "bash -c " + shlex.quote("source /etc/bashrc && module load dsi && python3 -")
+                        remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
                         if using_ssh.lower() == "putty":
                             cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
                         else:
@@ -3671,9 +3690,9 @@ elif st.session_state.screen == "hpc_move":
                                 st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                             elif "bash: /etc/bashrc: No such file or directory" in remote_run.stderr:
                                 if using_ssh.lower() == "putty":
-                                    st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
+                                    st.code(f"Please ensure your putty session '{hpc_name}' represents an HPC transfer node")
                                 else:
-                                    st.code(f"Please ensure your putty session '{hpc_name}' is for an HPC transfer node")
+                                    st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                             else:
                                 st.code(remote_run.stderr)
                         st.stop()
@@ -3709,7 +3728,7 @@ elif st.session_state.screen == "hpc_move":
 
                 with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
                     print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
-                    remote_command = "bash -c " + shlex.quote("source /etc/bashrc && module load dsi && python3 -")
+                    remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
                     if using_ssh.lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
                     else:
@@ -3727,6 +3746,11 @@ elif st.session_state.screen == "hpc_move":
                                 st.code(f"Unable to register '{proj_name}' in {diana_endpoint}. Verify you have write permissions.")
                             else:
                                 st.code(remote_endpoint_run.stdout.split("Endpoint error", 1)[1])
+                        elif "bash: /etc/bashrc: No such file or directory" in remote_endpoint_run.stderr:
+                            if using_ssh.lower() == "putty":
+                                st.code(f"Please ensure your putty session '{hpc_name}' represents an HPC transfer node")
+                            else:
+                                st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                         else:
                             st.code(remote_endpoint_run.stderr)
                             st.code(output)
