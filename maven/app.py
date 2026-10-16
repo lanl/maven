@@ -3464,7 +3464,7 @@ elif st.session_state.screen == "hpc_move":
                         with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
                             if using_ssh.lower() == "putty":
                                 cmd = [plink, "-no-antispoof", "-load", hpc_name, 
-                                       f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
+                                       f'id -un && find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
                             else:
                                 cmd = ["ssh", f"{username}@{hpc_name}",
                                         f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
@@ -3475,7 +3475,13 @@ elif st.session_state.screen == "hpc_move":
                             st.code(result.stderr)
                             st.stop()
 
-                        curr_folders = {PurePosixPath(path).name: owner for line in result.stdout.strip().splitlines() if line.strip()
+                        if using_ssh.lower() == "putty":
+                            username, _, directory_output = result.stdout.partition("\n")
+                            username = username.strip()
+                            curr_folders = {PurePosixPath(path).name: owner for line in directory_output.splitlines() if line.strip()
+                                        for owner, path in [line.split(" ", 1)]}
+                        else:
+                            curr_folders = {PurePosixPath(path).name: owner for line in result.stdout.strip().splitlines() if line.strip()
                                         for owner, path in [line.split(" ", 1)]}
 
                     # check if short_proj_name is in campaign folder
