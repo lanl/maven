@@ -17,12 +17,20 @@
 # and silently drops maven's submodules (ursa_autofill, tier1_genesis_dc_agent,
 # migrations, ursa_utils) from the frozen build. collect_submodules("maven")
 # forces all of them in as hidden imports.
+#
+# collect_submodules() imports the "maven" package itself to walk it, so repo_root
+# must be on sys.path *before* that call. The release workflow never installs the
+# maven package (only its runtime dependencies), so without this, collect_submodules
+# silently returns [] and the build ships without those submodules even though it
+# works for anyone with an editable/local install of maven on their machine.
 import os
+import sys
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 block_cipher = None
 repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(SPEC)), ".."))
+sys.path.insert(0, repo_root)
 
 datas = []
 binaries = []
