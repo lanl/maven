@@ -55,6 +55,7 @@ import json
 import yaml
 from typing import Any, Dict, List, Tuple
 from pathlib import Path, PurePosixPath
+import posixpath
 import os
 import streamlit as st
 import pypdf
@@ -3633,7 +3634,7 @@ elif st.session_state.screen == "hpc_move":
                 if not st.session_state.staging_to_campaign_moved:
                     # run remote script to move from scratch to campaign
                     script = REMOTE_MOVE_SCRIPT
-                    full_staging_path = os.path.join(hpc_staging, proj_name)
+                    full_staging_path = posixpath.join(hpc_staging, proj_name)
                     script = script.replace('00000', repr(full_staging_path)) # staging folder
                     script = script.replace('11111', repr(t1_db_name)) # t1 db name
                     script = script.replace('22222', repr(temp_t2_db_name)) # t2 db name
@@ -3689,7 +3690,7 @@ elif st.session_state.screen == "hpc_move":
                     st.session_state.staging_to_campaign_moved = True
 
                 endpoint_script = REMOTE_REGISTER_ENDPOINT_SCRIPT
-                full_staging_path = os.path.join(hpc_staging, proj_name)
+                full_staging_path = posixpath.join(hpc_staging, proj_name)
                 endpoint_script = endpoint_script.replace('00000', repr(full_staging_path)) # staging folder
                 endpoint_script = endpoint_script.replace('11111', repr(fed_line))
                 endpoint_script = endpoint_script.replace('22222', repr(proj_name))
@@ -3697,10 +3698,11 @@ elif st.session_state.screen == "hpc_move":
 
                 with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
                     print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
+                    remote_command = "bash -c " + shlex.quote("source /etc/bashrc && module load dsi && python3 -")
                     if using_ssh.lower() == "putty":
-                        cmd = [plink, "-no-antispoof", "-load", hpc_name, "python3", "-"]
+                        cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
                     else:
-                        cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
+                        cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                     remote_endpoint_run = subprocess.run(cmd, input=endpoint_script, text=True, capture_output=True, check=False)
 
                 if remote_endpoint_run.returncode != 0:
