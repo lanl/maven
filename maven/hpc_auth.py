@@ -18,6 +18,7 @@ import re
 import signal
 import threading
 import time
+import types
 from typing import Any, Callable, Literal
 
 import streamlit as st
@@ -501,5 +502,17 @@ def install_dsi_pty_patches(sync_module: Any, sync_cls: type) -> None:
             raise RuntimeError(f"{cmd_name} failed: \n{result.stderr}") from None
         return result.stdout
 
-    sync_module.subprocess.run = _pty_subprocess_run
+    # sync_module.subprocess is the *same* module object as the global
+    # `subprocess` module (sys.modules["subprocess"]) - assigning .run on it
+    # directly would patch subprocess.run/check_output for every other
+    # importer in the process too (e.g. matplotlib's fontconfig lookup,
+    # which then chokes on a str where it expects bytes). Rebind
+    # sync_module.subprocess to a shim object instead, leaving the real
+    # subprocess module untouched for everyone else.
+    shim_attrs = {
+        name: getattr(sync_module.subprocess, name)
+        for name in dir(sync_module.subprocess) if not name.startswith("_")
+    }
+    shim_attrs["run"] = _pty_subprocess_run
+    sync_module.subprocess = types.SimpleNamespace(**shim_attrs)
     sync_cls.execute_cmd = _pty_execute_cmd
