@@ -59,6 +59,7 @@ PLATFORM_ASSET_NAMES = {
 }
 
 UPDATE_MARKER_FILENAME = "pending_update_from.txt"
+UPDATE_FAILURE_MARKER_FILENAME = "failed_update.txt"
 
 logger = get_logger("updater")
 
@@ -122,6 +123,10 @@ def _update_marker_path():
     return get_data_dir() / UPDATE_MARKER_FILENAME
 
 
+def _update_failure_marker_path():
+    return get_data_dir() / UPDATE_FAILURE_MARKER_FILENAME
+
+
 def write_update_marker(from_version):
     """Records the version we're updating *from*, read back on the next
     launch (post-install) to show a "successfully updated" message."""
@@ -139,6 +144,26 @@ def consume_update_marker():
     return from_version or None
 
 
+def write_update_failure_marker(reason):
+    """Records why an install attempt failed, read back on the next launch
+    to tell the user the automatic update didn't complete. Called from the
+    detached install scripts (which run after this process has already
+    exited), not from Python, so this must be callable with a plain string
+    reason and nothing else."""
+    _update_failure_marker_path().write_text(reason)
+
+
+def consume_update_failure_marker():
+    """Returns the failure reason if the previous install attempt failed,
+    deleting the marker so the message only shows once."""
+    marker_path = _update_failure_marker_path()
+    if not marker_path.exists():
+        return None
+    reason = marker_path.read_text().strip()
+    marker_path.unlink()
+    return reason or None
+
+
 def show_update_complete_dialog(from_version, to_version, parent=None):
     owns_root = parent is None
     root = parent if parent is not None else tk.Tk()
@@ -147,6 +172,20 @@ def show_update_complete_dialog(from_version, to_version, parent=None):
     messagebox.showinfo(
         "Update complete",
         f"MAVEN was updated from v{from_version} to v{to_version}.",
+        master=root,
+    )
+    if owns_root:
+        root.destroy()
+
+
+def show_update_failed_dialog(reason, parent=None):
+    owns_root = parent is None
+    root = parent if parent is not None else tk.Tk()
+    if owns_root:
+        root.withdraw()
+    messagebox.showwarning(
+        "Update failed",
+        f"MAVEN could not finish updating and is still running v{__version__}.\n\nDetails: {reason}",
         master=root,
     )
     if owns_root:
@@ -223,22 +262,90 @@ def _write_and_launch(script_path, script_body, launch_cmd):
 
 
 def _install_macos(installer_path, current_exe):
+    """Swaps the app bundle's Contents/ directory in place rather than
+    deleting and recreating the .app directory itself. macOS's App
+    Management protection blocks `rm -rf` (and `mv`) on a registered .app
+    bundle's own directory entry in /Applications even when the owning user
+    can freely create/delete every file *inside* it -- so this stages the
+    new build alongside the old one (Contents.new), then does two same-
+    volume renames (Contents -> Contents.old, Contents.new -> Contents),
+    which are themselves just moving directories owned by the user *inside*
+    the still-existing bundle, not touching the bundle's own entry. Every
+    step is checked so that a failure rolls back to a launchable bundle
+    (old or new) instead of silently leaving a half-swapped Contents/ that
+    won't open."""
     # current_exe is .../MAVEN.app/Contents/MacOS/maven-macos
     app_bundle = os.path.dirname(os.path.dirname(os.path.dirname(current_exe)))
-    apps_dir = os.path.dirname(app_bundle)
     bundle_name = os.path.basename(app_bundle)
     mount_point = tempfile.mkdtemp(prefix="maven-update-")
     pid = os.getpid()
 
+    q_bundle = _sh_quote(app_bundle)
+    q_mount = _sh_quote(mount_point)
+    q_installer = _sh_quote(installer_path)
+    q_fail_marker = _sh_quote(str(_update_failure_marker_path()))
+    new_contents = os.path.join(app_bundle, "Contents.new")
+    old_contents = os.path.join(app_bundle, "Contents.old")
+    live_contents = os.path.join(app_bundle, "Contents")
+    q_new = _sh_quote(new_contents)
+    q_old = _sh_quote(old_contents)
+    q_live = _sh_quote(live_contents)
+
     script_path = os.path.join(tempfile.gettempdir(), "maven_update.sh")
     script_body = f"""#!/bin/sh
 while kill -0 {pid} 2>/dev/null; do sleep 0.5; done
-hdiutil attach {_sh_quote(installer_path)} -mountpoint {_sh_quote(mount_point)} -nobrowse -quiet
-rm -rf {_sh_quote(app_bundle)}
-cp -R {_sh_quote(mount_point)}/{_sh_quote(bundle_name)} {_sh_quote(apps_dir)}/
-hdiutil detach {_sh_quote(mount_point)} -quiet
-rm -f {_sh_quote(installer_path)}
-open {_sh_quote(app_bundle)}
+
+write_failure() {{
+    echo "$1" > {q_fail_marker}
+}}
+
+if ! hdiutil attach {q_installer} -mountpoint {q_mount} -nobrowse -quiet; then
+    write_failure "failed to mount the downloaded update image"
+    open {q_bundle}
+    rm -f "$0"
+    exit 1
+fi
+
+rm -rf {q_new}
+if ! cp -R {q_mount}/{_sh_quote(bundle_name)}/Contents {q_new}; then
+    write_failure "failed to copy the new application files"
+    rm -rf {q_new}
+    hdiutil detach {q_mount} -quiet
+    open {q_bundle}
+    rm -f "$0"
+    exit 1
+fi
+
+hdiutil detach {q_mount} -quiet
+rm -f {q_installer}
+
+rm -rf {q_old}
+if ! mv {q_live} {q_old}; then
+    write_failure "failed to set aside the previous application files"
+    rm -rf {q_new}
+    open {q_bundle}
+    rm -f "$0"
+    exit 1
+fi
+
+if ! mv {q_new} {q_live}; then
+    write_failure "failed to install the new application files"
+    mv {q_old} {q_live}
+    open {q_bundle}
+    rm -f "$0"
+    exit 1
+fi
+
+if ! open {q_bundle}; then
+    write_failure "updated application failed to launch, reverted to the previous version"
+    rm -rf {q_live}
+    mv {q_old} {q_live}
+    open {q_bundle}
+    rm -f "$0"
+    exit 1
+fi
+
+rm -rf {q_old}
 rm -f "$0"
 """
     _write_and_launch(script_path, script_body, ["/bin/sh", script_path])
@@ -246,7 +353,13 @@ rm -f "$0"
 
 
 def _install_windows(installer_path, current_exe):
+    """Runs the NSIS installer silently, then relaunches. If the installer
+    itself reports failure (nonzero exit code), the failure marker is
+    written and the *current* exe is relaunched as a fallback instead of
+    the (possibly not actually installed) new one, so a failed update still
+    leaves a working app running."""
     pid = os.getpid()
+    fail_marker = str(_update_failure_marker_path())
 
     script_path = os.path.join(tempfile.gettempdir(), "maven_update.bat")
     script_body = (
@@ -258,6 +371,13 @@ def _install_windows(installer_path, current_exe):
         f"  goto wait\r\n"
         f")\r\n"
         f'"{installer_path}" /S\r\n'
+        f"if errorlevel 1 (\r\n"
+        f'  echo installer exited with a non-zero status> "{fail_marker}"\r\n'
+        f'  start "" "{current_exe}"\r\n'
+        f'  del "{installer_path}"\r\n'
+        f'  del "%~f0"\r\n'
+        f"  exit /b 1\r\n"
+        f")\r\n"
         f'start "" "{current_exe}"\r\n'
         f'del "{installer_path}"\r\n'
         f'del "%~f0"\r\n'
@@ -274,15 +394,35 @@ def _install_windows(installer_path, current_exe):
 
 
 def _install_linux(installer_path, current_exe):
+    """Swaps the downloaded AppImage over the current one. If chmod or the
+    move itself fails, the failure marker is written and whatever is still
+    at `target` (the old build, since a failed mv doesn't touch it) is
+    relaunched as a fallback."""
     target = os.environ.get("APPIMAGE") or current_exe
     pid = os.getpid()
+    q_installer = _sh_quote(installer_path)
+    q_target = _sh_quote(target)
+    q_fail_marker = _sh_quote(str(_update_failure_marker_path()))
 
     script_path = os.path.join(tempfile.gettempdir(), "maven_update.sh")
     script_body = f"""#!/bin/sh
 while kill -0 {pid} 2>/dev/null; do sleep 0.5; done
-chmod +x {_sh_quote(installer_path)}
-mv {_sh_quote(installer_path)} {_sh_quote(target)}
-{_sh_quote(target)} &
+
+if ! chmod +x {q_installer}; then
+    echo "failed to prepare the downloaded update" > {q_fail_marker}
+    {q_target} &
+    rm -f "$0"
+    exit 1
+fi
+
+if ! mv {q_installer} {q_target}; then
+    echo "failed to install the new application files" > {q_fail_marker}
+    {q_target} &
+    rm -f "$0"
+    exit 1
+fi
+
+{q_target} &
 rm -f "$0"
 """
     _write_and_launch(script_path, script_body, ["/bin/sh", script_path])
@@ -321,6 +461,15 @@ def check_and_apply_update(splash=None):
         if splash:
             splash.hide()
         show_update_complete_dialog(from_version, __version__, parent=splash.root if splash else None)
+        if splash:
+            splash.show()
+
+    failure_reason = consume_update_failure_marker()
+    if failure_reason is not None:
+        logger.error("Previous update attempt failed: %s", failure_reason)
+        if splash:
+            splash.hide()
+        show_update_failed_dialog(failure_reason, parent=splash.root if splash else None)
         if splash:
             splash.show()
 
