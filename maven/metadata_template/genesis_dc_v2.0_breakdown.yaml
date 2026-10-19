@@ -26,55 +26,356 @@
 # ============================================================================
 # TODO(C): xCard (v2.0 L182-183) - waiting on Vedant. Not added yet: the app requires a matching supports_xCard key.
 
+# TODO: Is there a genesis_dc_v2.0_reference_guide.md? In the v1.2 breakdown, each description is the
+# reference-guide text combined with the YAML comment
+# (e.g. supports_discoverability: reference guide L31 + v1.2 YAML L125-126).
+# For v2.0, should descriptions be combined the same way, or use only the v2.0 comments?
+
+# TODO: [ ] v2.0 dropped agent_type/type. Should we add a discriminator back, as in v1.2?
+# ============================================================================
+
+
 supports_discoverability:
   required: true
-  description: '"Yes" is required for all datacards to indicate whether the dataset
-    described in the datacard is intended to be discoverable in catalogs and repositories.
-    Does not necessarily indicate that the dataset is currently discoverable or that it
-    meets all criteria for discoverability.'
+  description: ' "Yes" is required for all datacards to indicate whether the dataset described in
+    the datacard is intended to be discoverable in catalogs and repositories. Does not
+    necessarily indicate that the dataset is currently discoverable or that it meets
+    all criteria for discoverability.'
   value: ${"Yes|No"}
 
 
 supports_accessibility:
   required: true
-  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is
-    intended to be shared or accessed by others,  whether internally within a project or
-    organization, with external collaborators, or publicly. Does not necessarily indicate that
-    the dataset is currently accessible or that it meets all criteria for accessibility.'
+  description: ' "Yes" | "No" - Indicates whether the dataset described in the datacard is intended
+    to be shared or accessed by others, whether internally within a project or
+    organization, with external collaborators, or publicly. Does not necessarily
+    indicate that the dataset is currently accessible or that it meets all criteria for
+    accessibility.'
   value: ${"Yes|No"}
 
 
 supports_interoperability:
   required: true
-  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended
-    to be interoperable,  meaning it is intended to be integrated with other datasets
-    or systems, or used in combination with other datasets. Does not necessarily indicate that the
-    dataset is currently interoperable or that it meets all criteria for interoperability.'
+  description: ' "Yes" | "No" - Indicates whether the dataset described in the datacard is intended
+    to be interoperable, meaning it is intended to be integrated with other datasets or
+    systems, or used in combination with other datasets. Does not necessarily indicate
+    that the dataset is currently interoperable or that it meets all criteria for
+    interoperability.'
   value: ${"Yes|No"}
 
 
 supports_reusability:
   required: true
-  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended to be
-    reusable,  meaning it is intended to be reused by others for the same or different purposes. Does not
-    necessarily indicate that the dataset is currently reusable or that it meets all criteria for reusability.'
+  description: ' "Yes" | "No" - Indicates whether the dataset described in the datacard is intended
+    to be reusable, meaning it is intended to be reused by others for the same or
+    different purposes. Does not necessarily indicate that the dataset is currently
+    reusable or that it meets all criteria for reusability.'
   value: ${"Yes|No"}
 
 
 supports_governed_use:
   required: true
-  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended
-    to be shared or accessed  under specific governance or oversight, such as datasets that are
-    subject to security controls, export control, IRB oversight, or other types of formal review
-    and approval processes. Does not necessarily indicate that the dataset is currently shared or
-    accessed under specific governance or oversight, or that it meets all criteria for governed use.'
+  description: ' "Yes" | "No" - Indicates whether the dataset described in the datacard is intended
+    to be shared or accessed under specific governance or oversight, such as datasets
+    that are subject to security controls, export control, IRB oversight, or other
+    types of formal review and approval processes. Does not necessarily indicate that
+    the dataset is currently shared or accessed under specific governance or oversight,
+    or that it meets all criteria for governed use.'
   value: ${"Yes|No"}
 
 
 supports_ai_usability:
   required: true
-  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended
-    to be used for AI training, evaluation, or other AI-related purposes. Does not necessarily indicate
-    that the dataset is currently used for AI purposes or that it meets all criteria for AI usability.'
+  description: ' "Yes" | "No" - Indicates whether the dataset described in the datacard is intended
+    to be used for AI training, evaluation, or other AI-related purposes. Does not
+    necessarily indicate that the dataset is currently used for AI purposes or that it
+    meets all criteria for AI usability.'
   value: ${"Yes|No"}
+
+
+discoverability:
+  required: true
+  description: " Metadata fields that support the discoverability of the dataset, a key aspect of
+    the FAIR principles and essential for enabling users to find the dataset in
+    catalogs and repositories. These fields provide critical information that can
+    enhance the data's discoverability and help users understand its relevance and
+    suitability for their needs. The discoverability capability is required for all
+    datacards to support basic findability in catalogs and repositories."
+  value:
+    datacard:
+      required: true
+      description: " Metadata about the datacard itself (not the dataset), including its
+        sensitivity, creation method, and change log."
+      value:
+        template_version:
+          required: true
+          description: " Current version is 2.0.0; the version of the datacard template used to
+            create this datacard."
+          value: '2.0.0'
+        datacard_version:
+          required: true
+          description: " Replace default value with the version of the datacard itself, which should
+            be incremented when the datacard is meaningfully updated. Use semantic
+            versioning: MAJOR.MINOR.PATCH e.g., 1.0 → 1.1 for content updates; 1.x ->
+            2.0 for structural changes"
+          value: '1.0.0'
+        filename:
+          required: true
+          description: ' The filename of the data card document, follow naming convention:
+            "genesis_datacard_${SNAKE_CASE_DATASET_NAME}$.md" where
+            ${SNAKE_CASE_DATASET_NAME} is the dataset name in snake_case format. Use
+            "genesis_datacard_other_${SNAKE_CASE_DATASET_NAME}$.md" for datasets that
+            are not part of a Genesis project or sub-project.'
+          value: genesis_datacard_${SNAKE_CASE_DATASET_NAME}.md
+        language:
+          required: true
+          description: " Replace default value, 'en', with the language of the datacard content,
+            following ISO 639-1 codes. e.g., en | es | fr | de | zh | ru | ar | pt | ja
+            | ko"
+          value: en
+        id:
+          required: false
+          description: " A unique identifier for the datacard document itself, distinct from the
+            dataset identifier. Assign if the datacard is registered in a catalog or
+            repository independently of the dataset. If one of type or value is
+            provided, the other must also be provided."
+          value:
+            type:
+              required: false
+              description: " The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi
+                | handle | local | purl | url | urn | uuid | other | unregistered"
+              type: dropdown
+              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              value: __TYPE__
+            value:
+              required: false
+              description: " The value of the identifier, following the format specified by the
+                'type' field."
+              value: __VALUE__
+        sensitivity:
+          required: true
+          description: " Sensitivity of the DATA CARD itself, which may differ from the sensitivity
+            of the dataset it describes. Populate based on the sensitivity of the data
+            card content alone, not the dataset. See NOTE ON SENSITIVITY above. NOTE:
+            Sensitivity terminology is still under Genesis governance review.
+            Vocabulary may evolve."
+          value:
+            overall_sensitivity:
+              required: true
+              description: ' Human-readable top-level sensitivity posture of the data card (for
+                `discoverability.datacard.sensitivity`), or the dataset (for
+                `discoverability.sensitivity`) - do not automatically set the overall
+                sensitivity of the data card and dataset sensitivity to the same value,
+                as they may differ. The field value is based on the authoritative
+                source markings and metadata fields. This is a summary field only and
+                does not replace the authoritative fields such as the
+                classification_status, classification_level, export_control_basis, or
+                privacy_control_basis fields. Authoritative source markings and
+                metadata fields should be used for access control and governance
+                decisions. Use "Public" for unclassified, non-sensitive assets that can
+                be shared publicly. Allowed values: Public | Unclassified_Uncontrolled
+                | CUI | UCNI | Classified | Legacy_Controlled | Mixed |
+                Other_Controlled'
+              type: dropdown
+              options: ["Public: No sensitivity; publicly shareable",
+                        "Unclassified_Uncontrolled: Unclassified but uncontrolled",
+                        "CUI: CUI (Controlled Unclassified Information)",
+                        "UCNI: UCNI (Unclassified Controlled Nuclear Information)",
+                        "Classified: Classified information; requires handling per classification level and guide;",
+                        "Legacy_Controlled: Legacy controlled information;",
+                        "Mixed: Mixed sensitivity; contains a combination of sensitive and non-sensitive information;",
+                        "Other_Controlled: Other controlled information;"]
+              value: "${OVERALL_SENSITIVITY}"
+            source_marking_string:
+              required: true
+              description: ' Exact marking/banner/control text as it appears on the source artifact
+                or in the authoritative review/release output, if applicable. The
+                artifact is either the data card (for
+                `discoverability.datacard.sensitivity`), or the dataset (for
+                `discoverability.sensitivity`). Provides the authoritative source
+                marking information for the asset, which is critical for ensuring
+                proper handling and access controls based on the sensitivity of the
+                asset. If no source markings apply to the asset, this field should be
+                filled with "not_applicable". If the asset has multiple source
+                markings, list them separated by // with no spaces. This field does not
+                replace the individual metadata fields for classification status,
+                classification level, export control basis, or privacy control basis,
+                which should still be filled out based on the authoritative source
+                markings. e.g., not_applicable | CUI//SP-EXPT//NOFORN |
+                SECRET//RD//SIGMA 15 | OFFICIAL USE ONLY'
+              value: "${STRING}"
+            source_marking_scheme:
+              required: true
+              description: ' Identifies the authoritative source marking regime, for the
+                source_marking_string field. Use "None" for unclassified, non-sensitive
+                assets that can be shared publicly. If a Legacy_OUO is unresolved to a
+                current standard marking, the `normalized_control_basis` should be
+                populated as "Legacy_Needs_Mapping" to indicate that the control basis
+                is legacy and needs interpretation for governance purposes. Allowed
+                values: DOE_CUI | DOE_UCNI | EO13526_Classified | AEA_RD_FRD_TFNI |
+                DOD_CUI | DHS_CUI | Legacy_OUO | Legacy_Site_Specific | Other_Agency |
+                None'
+              type: dropdown
+              options: [DOE_CUI, DOE_UCNI, EO13526_Classified, AEA_RD_FRD_TFNI, DOD_CUI, DHS_CUI, Legacy_OUO,
+                        Legacy_Site_Specific, Other_Agency, None]
+              value: "${SCHEME}"
+            classified_status:
+              required: true
+              description: " Indicates whether the asset is classified."
+              type: radio
+              options: ["Yes", "No"]
+              value: "${STATUS}"
+            classification_level:
+              required: false
+              description: ' Official classification level, if the asset is classified. Required if
+                classified_status is "Yes". Allowed values: Top_Secret | Secret |
+                Confidential'
+              type: dropdown
+              options: [Top_Secret, Secret, Confidential, None]
+              value: __LEVEL__
+            classification_category:
+              required: false
+              description: ' Official classification category, if the asset is classified. Required
+                if classified_status = "Yes". If present, at least one specified
+                category must be included. Allowed values: NSI | RD | FRD | TFNI |
+                Other_Classified'
+              type: dropdown
+              options: [NSI, RD, FRD, TFNI, Other_Classified, None]
+              value: []
+            classified_control_markings:
+              required: false
+              description: " Additional classified dissemination/caveat/handling markings appearing
+                with classified content. List all that apply, each as a separate entry.
+                This provides important context for handling and access controls for
+                classified assets. e.g., NOFORN | CNWDI | SIGMA 15 | ORCON | REL TO
+                USA, GBR"
+              value: []
+            cui_status:
+              required: true
+              description: " Indicates whether the asset is Controlled Unclassified Information
+                (CUI)."
+              type: radio
+              options: ["Yes", "No"]
+              value: "${STATUS}"
+            cui_basic_categories:
+              required: false
+              description: " Basic CUI categories applicable to this asset, if it is CUI. Use the
+                DOE/ISOO-authoritative CUI Basic categories or subcategories. List all
+                that apply, each as a separate entry. This provides important context
+                for handling and access controls for CUI assets."
+              value: []
+            cui_specified_categories:
+              required: false
+              description: ' Specified CUI categories applicable to this asset, if it is CUI. At
+                least one specified category is required if cui_status = "Yes" or
+                ucni_status = "Yes". If present, at least one specified category must
+                be included. Use the DOE/ISOO-authoritative CUI Specified categories or
+                subcategories. List all that apply, each as a separate entry. This
+                provides important context for handling and access controls for CUI
+                assets.'
+              value: []
+            cui_limited_dissemination_controls:
+              required: false
+              description: " Applicable CUI limited dissemination controls. Ordering/formatting
+                should follow authoritative agency guidance. If
+                cui_limited_dissemination_controls contains NOFORN, REL TO..., DISPLAY
+                ONLY..., or similar controls, then
+                governed_use.non_sensitivity_governance_metadata.foreign_national_access_status
+                should be consistent with those controls. e.g., NOFORN | REL TO USA,
+                GBR | DISPLAY ONLY USA, GBR | RELIDO | [other authoritative values.]"
+              value: []
+            ucni_status:
+              required: true
+              description: " Indicates whether the asset contains UCNI. UCNI is represented
+                separately and should not be treated as an ordinary CUI category value.
+                This provides important context for handling and access controls for
+                UCNI assets."
+              type: radio
+              options: ["Yes", "No"]
+              value: "${STATUS}"
+            uk_mda_status:
+              required: false
+              description: ' Indicates whether the asset is subject to UK Ministry of Defence
+                Assessment (MDA)-specific handling. Optional and may be used where
+                relevant to local/site governance. Allowed values: "Yes" | "No" |
+                Unknown | not_applicable'
+              type: dropdown
+              options: ["Yes", "No", "Unknown"]
+              value: __STATUS__
+            legacy_label_source:
+              required: false
+              description: " Preserves deprecated or local historical control labels such as OUO,
+                SBU, or site-specific legacy markings as provenance/source information
+                only. If source_marking_scheme = Legacy_OUO, legacy_label_source should
+                be populated with the corresponding legacy OUO labels. Provide as a
+                list of unique entries if multiple legacy labels apply. e.g., OUO | SBU
+                | Legacy_Site_Marking"
+              value: []
+            normalized_control_basis:
+              required: false
+              description: ' Optional interpreted control basis used for governance where source
+                materials contain legacy, mixed, or non-standard constructs. If
+                present, it must be populated with at least one value. Provide as a
+                list of unique entries if multiple control bases apply. This does not
+                replace authoritative source markings. If source_marking_scheme =
+                Legacy_OUO and the legacy marking is unresolved to a current standard
+                marking, this should be populated as "Legacy_Needs_Mapping" to indicate
+                that the control basis is legacy and needs interpretation for
+                governance purposes. Allowed values: Classified | CUI | UCNI |
+                Public_Release_Approved | Legacy_Needs_Mapping | Other_Controlled'
+              type: dropdown
+              options: [Classified, CUI, UCNI, Public_Release_Approved, Legacy_Needs_Mapping, Other_Controlled, None]
+              value: []
+        created_date:
+          required: true
+          description: " The date the datacard was first created, in ISO 8601 format (YYYY-MM-DD).
+            Provides temporal context for the datacard and can be used for tracking its
+            age and relevance."
+          value: "${YYYY-MM-DD}"
+        updated_date:
+          required: false
+          description: " The date the datacard was last updated, in ISO 8601 format (YYYY-MM-DD).
+            Date of most recent update; revise on every change to the datacard,
+            including minor edits and version updates. This provides temporal context
+            for the datacard and can be used for tracking its currency and maintenance."
+          value: __YYYY-MM-DD__
+        change_log:
+          required: true
+          description: " Running history of meaningful changes to this datacard. Add a new entry
+            every time the datacard is updated. Do not overwrite or delete prior
+            entries. If there have been no changes since creation, include a single
+            entry with the creation date and the summary 'Initial creation'."
+          value:
+            change_date:
+              required: true
+              description: " The date of a specific change to the datacard, in ISO 8601 format
+                (YYYY-MM-DD)."
+              value: "${YYYY-MM-DD}"
+            datacard_version:
+              required: true
+              description: " Replace default value with the version of the updated version, which
+                should be incremented when the datacard is meaningfully updated. Use
+                semantic versioning: MAJOR.MINOR.PATCH e.g., 1.0 → 1.1 for content
+                updates; 1.x -> 2.0 for structural changes."
+              value: '1.0.0'
+            summary:
+              required: true
+              description: " A brief description of what was changed in a specific update to the
+                datacard and why. Update this text for all subsequent revisions. This
+                provides context for each change and can be used for understanding the
+                evolution of the datacard over time. Brief description of what changed
+                and why. e.g., Initial creation | Updated license to CC-BY-4.0 | Added
+                checksum after file transfer to OSTI | Corrected collection end date"
+              value: "${SUMMARY}"     
+        creation_method:
+          required: true
+          description: " The method by which the datacard was created, following a controlled
+            vocabulary. This provides context on how the datacard was generated and can
+            inform trust and maintenance practices. Allowed values: Manual | Automated | Hybrid"
+          type: dropdown
+          options: [Manual, Automated, Hybrid]
+          value: "${CREATION_METHOD}"
+                
+        # TODO(C): created_by (v2.0 L222-255) - agent_type discriminator removed in v2.0; waiting on Vedant.
+
 
