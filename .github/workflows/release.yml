@@ -64,7 +64,11 @@ jobs:
         env:
           MSYS_NO_PATHCONV: "1"
         run: |
-          choco install nsis --no-progress -y
+          for i in 1 2 3 4 5; do
+            choco install nsis --no-progress -y && break
+            echo "choco install nsis failed (attempt $i), retrying in 30s..."
+            sleep 30
+          done
           pip install -q pillow
           python -c "from PIL import Image; Image.open('packaging/icon.png').save('packaging/icon.ico', format='ICO')"
           exe_path="$(pwd -W)/release/${{ matrix.asset_name }}"
