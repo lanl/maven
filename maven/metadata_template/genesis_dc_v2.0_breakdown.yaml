@@ -23,9 +23,8 @@
 #
 # For detailed field descriptions, conditional logic, controlled vocabularies,
 # and examples, always consult: genesis_dc_v2.0_reference_guide.md
-# TODO(C): xCard (v2.0 L182-183) - waiting on Vedant. Not added yet: the app requires a matching supports_xCard key.
 # ============================================================================
-
+# TODO(C): xCard (v2.0 L182-183) - waiting on Vedant. Not added yet: the app requires a matching supports_xCard key.
 
 supports_discoverability:
   required: true
