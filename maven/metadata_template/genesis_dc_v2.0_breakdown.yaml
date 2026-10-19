@@ -300,7 +300,7 @@ discoverability:
                 relevant to local/site governance. Allowed values: "Yes" | "No" |
                 Unknown | not_applicable'
               type: dropdown
-              options: ["Yes", "No", "Unknown"]
+              options: ["Yes", "No", "Unknown", "not_applicable"]
               value: __STATUS__
             legacy_label_source:
               required: false
@@ -378,4 +378,126 @@ discoverability:
                 
         # TODO(C): created_by (v2.0 L222-255) - agent_type discriminator removed in v2.0; waiting on Vedant.
 
-
+    identification:
+      required: true
+      description: " Key metadata fields that uniquely identify this dataset."
+      value:
+        name:
+          required: true
+          description: " Human-readable name or local string key for the entity."
+          value: "${NAME}"
+        project:
+          required: true
+          description: " Replace default value if necessary with a single human-readable name from
+            the project this dataset belongs to. May be a Genesis project or
+            sub-project, or a non-Genesis project or sub-project. Use the same name in
+            the datacard filename. e.g., genesis | genesis-fusion |
+            genesis-lightsource | nuclear-physics"
+          value: genesis
+        version:
+          required: true
+          description: " Dataset version using semantic versioning: MAJOR.MINOR.PATCH Increment
+            MAJOR for breaking changes, MINOR for additions, PATCH for corrections.
+            Start at 1.0.0 for first release. See supersedes / superseded_by below for
+            linking versions, and stewardship.versioning_strategy for how versions are
+            managed."
+          value: '1.0.0'
+        primary_id:
+          required: true
+          description: " Primary identifier block for this dataset. This is the main identifier for
+            the dataset and should be globally unique and resolvable if possible.
+            Strongly recommended to use a persistent identifier (PID) such as a DOI or
+            ARK. If one of `type` or `value` is provided, the other must also be
+            provided."
+          value:
+            type:
+              required: true
+              description: " The type of the identifier (e.g., DOI, UUID). Allowed values: ark |
+                doi | handle | local | purl | url | urn | uuid | other | unregistered"
+              type: dropdown
+              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              value: __TYPE__
+            value:
+              required: true
+              description: " The value of the identifier, following the format specified by the
+                'type' field."
+              value: __VALUE__
+        additional_ids:
+          required: false
+          description: " Additional identifiers for this dataset."
+          value:
+            type:
+              required: false
+              description: " The type of the identifier (e.g., DOI, UUID). Allowed values: ark |
+                doi | handle | local | purl | url | urn | uuid | other | unregistered"
+              type: dropdown
+              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              value: __TYPE__
+            value:
+              required: false
+              description: " The value of the identifier, following the format specified by the
+                'type' field."
+              value: __VALUE__
+        supersedes:
+          required: false
+          description: " Identifier of the prior version this dataset replaces. If one of type or
+            value is provided, the other must also be provided."
+          value:
+            type:
+              required: false
+              description: " The type of the identifier (e.g., DOI, UUID). Allowed values: ark |
+                doi | handle | local | purl | url | urn | uuid | other | unregistered"
+              type: dropdown
+              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              value: __TYPE__
+            value:
+              required: false
+              description: " The value of the identifier, following the format specified by the
+                'type' field."
+              value: __VALUE__
+        superseded_by:
+          required: false
+          description: " Identifier of the newer version that replaces this dataset. If one of type
+            or value is provided, the other must also be provided."
+          value:
+            type:
+              required: false
+              description: " The type of the identifier (e.g., DOI, UUID). Allowed values: ark |
+                doi | handle | local | purl | url | urn | uuid | other | unregistered"
+              type: dropdown
+              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              value: __TYPE__
+            value:
+              required: false
+              description: " The value of the identifier, following the format specified by the
+                'type' field."
+              value: __VALUE__
+        parent_collection:
+          required: false
+          description: " Class collection or experimental campaign this dataset belongs to. Use
+            when this dataset is one of many in a larger organized collection or
+            ensemble."
+          value:
+            name:
+              required: false
+              description: " Human-readable name or local string key for the entity."
+              value: "${NAME}"
+            identifier:
+              required: false
+              description: " Unique identifier for an external resource, such as a DOI, ARK, or
+                other identifier. If one of `type` or `value` is provided, the other
+                must also be provided."
+              value:
+                type:
+                  required: false
+                  description: " The type of the identifier (e.g., DOI, UUID). Allowed values: ark
+                    | doi | handle | local | purl | url | urn | uuid | other |
+                    unregistered"
+                  type: dropdown
+                  options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+                  value: __TYPE__
+                value:
+                  required: false
+                  description: " The value of the identifier, following the format specified by the
+                    'type' field."
+                  value: __VALUE__
