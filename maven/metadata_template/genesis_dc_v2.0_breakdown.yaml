@@ -1,0 +1,81 @@
+---
+# ============================================================================
+# Genesis Data Card Breakdown Schema v2.0
+# ============================================================================
+#
+# PURPOSE: This file provides a structured index of all fields in the Genesis
+# Data Card schema, including field paths, types, basic requirements, and
+# machine-readable descriptions.
+#
+# CONDITIONAL REQUIREMENTS:
+# Some fields use "one-of" patterns where multiple alternatives exist but only
+# ONE should be populated based on a discriminator field. For example:
+#   - authors.type determines whether to use authors.person OR authors.organization
+#   - created_by.creator.agent_type determines person | organization | ai_model | software
+#
+# These alternatives are marked with:
+#   conditional_context: "one_of_alternatives"
+#   condition_discriminator: "<field_name>"
+#
+# Within each alternative, required: true means "required IF this alternative
+# is selected". The reference guide (genesis_dc_v2.0_reference_guide.md) is the
+# authoritative source for understanding which alternative to select.
+#
+# For detailed field descriptions, conditional logic, controlled vocabularies,
+# and examples, always consult: genesis_dc_v2.0_reference_guide.md
+# TODO(C): xCard (v2.0 L182-183) - waiting on Vedant. Not added yet: the app requires a matching supports_xCard key.
+# ============================================================================
+
+
+supports_discoverability:
+  required: true
+  description: '"Yes" is required for all datacards to indicate whether the dataset 
+    described in the datacard is intended to be discoverable in catalogs and repositories. 
+    Does not necessarily indicate that the dataset is currently discoverable or that it 
+    meets all criteria for discoverability.'
+  value: ${"Yes|No"} 
+
+
+supports_accessibility:
+  required: true
+  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is 
+    intended to be shared or accessed by others,  whether internally within a project or 
+    organization, with external collaborators, or publicly. Does not necessarily indicate that 
+    the dataset is currently accessible or that it meets all criteria for accessibility.'
+  value: ${"Yes|No"}
+
+
+supports_interoperability:
+  required: true
+  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended 
+    to be interoperable,  meaning it is intended to be integrated with other datasets 
+    or systems, or used in combination with other datasets. Does not necessarily indicate that the 
+    dataset is currently interoperable or that it meets all criteria for interoperability.'
+  value: ${"Yes|No"}
+
+
+supports_reusability:
+  required: true
+  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended to be 
+    reusable,  meaning it is intended to be reused by others for the same or different purposes. Does not 
+    necessarily indicate that the dataset is currently reusable or that it meets all criteria for reusability.'
+  value: ${"Yes|No"}
+
+
+supports_governed_use:
+  required: true
+  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended 
+    to be shared or accessed  under specific governance or oversight, such as datasets that are 
+    subject to security controls, export control, IRB oversight, or other types of formal review 
+    and approval processes. Does not necessarily indicate that the dataset is currently shared or 
+    accessed under specific governance or oversight, or that it meets all criteria for governed use.'
+  value: ${"Yes|No"}
+
+
+supports_ai_usability:
+  required: true
+  description: '"Yes" | "No" - Indicates whether the dataset described in the datacard is intended 
+    to be used for AI training, evaluation, or other AI-related purposes. Does not necessarily indicate 
+    that the dataset is currently used for AI purposes or that it meets all criteria for AI usability.'
+  value: ${"Yes|No"}
+
