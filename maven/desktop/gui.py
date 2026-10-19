@@ -18,8 +18,12 @@ logger = get_logger("gui")
 def _set_macos_app_name():
     """Dev-mode `python -m` runs have no app bundle, so macOS falls back to
     showing "Python" in the Dock/menu bar. Patch the in-memory bundle info
-    pywebview's Cocoa backend reads so it shows "MAVEN" instead, matching
-    the packaged app's Info.plist."""
+    so it shows "MAVEN" instead, matching the packaged app's Info.plist.
+
+    This must run before anything triggers Cocoa's NSApplication init
+    (e.g. creating a tkinter.Tk() for the splash screen, or a pywebview
+    window) - the menu bar name is locked in at that point and patching
+    the bundle info afterward has no effect."""
     if sys.platform != "darwin":
         return
     try:
@@ -57,14 +61,17 @@ def export_logs_action(window):
 
 
 def run_gui(port, splash=None):
-    _set_macos_app_name()
     url = f"http://127.0.0.1:{port}/"
     logger.info("Waiting for Streamlit server to come up")
     if not _wait_for_server(url, splash=splash):
         logger.error("Streamlit server did not come up within timeout")
 
     if splash:
-        splash.destroy()
+        # Hide rather than destroy: destroying the Tk root here leaves
+        # Cocoa's run loop in a state where the native app menu's Quit
+        # item (NSApplication terminate:) stops actually exiting the
+        # process once pywebview starts.
+        splash.hide()
     logger.info("Opening main window")
     window = webview.create_window("MAVEN", url, width=1280, height=900)
     menu = [

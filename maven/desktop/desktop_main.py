@@ -16,6 +16,7 @@ def run(splash):
 
 def main():
     logger.info("Starting MAVEN desktop %s", __version__)
+    gui._set_macos_app_name()
     splash = Splash()
     try:
         check_and_apply_update(splash)
