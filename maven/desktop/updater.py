@@ -262,6 +262,13 @@ def _write_and_launch(script_path, script_body, launch_cmd):
     subprocess.Popen(launch_cmd, close_fds=True, start_new_session=True)
 
 
+def _as_escape(text):
+    """Escapes a string for embedding inside a double-quoted AppleScript
+    string literal (backslash and double-quote are the only characters
+    AppleScript string literals treat specially)."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _install_macos(installer_path, current_exe):
     """Swaps the app bundle's Contents/ directory in place rather than
     deleting and recreating the .app directory itself. macOS's App
@@ -274,7 +281,26 @@ def _install_macos(installer_path, current_exe):
     the still-existing bundle, not touching the bundle's own entry. Every
     step is checked so that a failure rolls back to a launchable bundle
     (old or new) instead of silently leaving a half-swapped Contents/ that
-    won't open."""
+    won't open.
+
+    Some managed Mac deployments install the app somewhere the signed-in
+    user can't write to at all (e.g. owned by a different admin account),
+    so the swap above fails outright with a permission error. Rather than
+    trying unprivileged first, this always asks for administrator
+    credentials up front via AppleScript's `do shell script ... with
+    administrator privileges`, which pops the native macOS password dialog.
+    The actual swap/verify/rollback logic runs as its own script (`inner`)
+    so the whole chain -- including every rollback branch -- executes under
+    one elevated session; splitting it across multiple `do shell script`
+    calls would risk a second password prompt mid-rollback, or a rollback
+    step that can no longer write into a bundle a previous privileged step
+    already modified. Mounting/unmounting the downloaded .dmg and deleting
+    user-owned temp files don't need root, so those stay in the outer,
+    unprivileged script. The AppleScript source itself is written to its
+    own file (rather than inlined as a `osascript -e '...'` argument) to
+    avoid nesting an AppleScript string literal inside a POSIX-shell single-
+    quoted argument, which have no mutually-safe escaping for each other's
+    quote characters."""
     # current_exe is .../MAVEN.app/Contents/MacOS/maven-macos
     app_bundle = os.path.dirname(os.path.dirname(os.path.dirname(current_exe)))
     bundle_name = os.path.basename(app_bundle)
@@ -292,6 +318,61 @@ def _install_macos(installer_path, current_exe):
     q_old = _sh_quote(old_contents)
     q_live = _sh_quote(live_contents)
 
+    inner_script_path = os.path.join(tempfile.gettempdir(), "maven_update_inner.sh")
+    applescript_path = os.path.join(tempfile.gettempdir(), "maven_update.applescript")
+    q_inner = _sh_quote(inner_script_path)
+    q_applescript = _sh_quote(applescript_path)
+
+    inner_script_body = f"""#!/bin/sh
+write_failure() {{
+    echo "$1" > {q_fail_marker}
+}}
+
+rm -rf {q_new}
+if ! cp -R {q_mount}/{_sh_quote(bundle_name)}/Contents {q_new}; then
+    write_failure "failed to copy the new application files"
+    rm -rf {q_new}
+    open {q_bundle}
+    exit 1
+fi
+
+rm -rf {q_old}
+if ! mv {q_live} {q_old}; then
+    write_failure "failed to set aside the previous application files"
+    rm -rf {q_new}
+    open {q_bundle}
+    exit 1
+fi
+
+if ! mv {q_new} {q_live}; then
+    write_failure "failed to install the new application files"
+    mv {q_old} {q_live}
+    open {q_bundle}
+    exit 1
+fi
+
+if ! open {q_bundle}; then
+    write_failure "updated application failed to launch, reverted to the previous version"
+    rm -rf {q_live}
+    mv {q_old} {q_live}
+    open {q_bundle}
+    exit 1
+fi
+
+rm -rf {q_old}
+"""
+    with open(inner_script_path, "w") as f:
+        f.write(inner_script_body)
+    os.chmod(inner_script_path, 0o755)
+
+    applescript_body = (
+        f'do shell script "{_as_escape(inner_script_path)}" '
+        "with administrator privileges "
+        'with prompt "MAVEN needs administrator access to install the update."'
+    )
+    with open(applescript_path, "w") as f:
+        f.write(applescript_body)
+
     script_path = os.path.join(tempfile.gettempdir(), "maven_update.sh")
     script_body = f"""#!/bin/sh
 while kill -0 {pid} 2>/dev/null; do sleep 0.5; done
@@ -303,51 +384,19 @@ write_failure() {{
 if ! hdiutil attach {q_installer} -mountpoint {q_mount} -nobrowse -quiet; then
     write_failure "failed to mount the downloaded update image"
     open {q_bundle}
-    rm -f "$0"
+    rm -f {q_inner} {q_applescript} "$0"
     exit 1
 fi
 
-rm -rf {q_new}
-if ! cp -R {q_mount}/{_sh_quote(bundle_name)}/Contents {q_new}; then
-    write_failure "failed to copy the new application files"
-    rm -rf {q_new}
-    hdiutil detach {q_mount} -quiet
-    open {q_bundle}
-    rm -f "$0"
-    exit 1
+if ! osascript {q_applescript}; then
+    if [ ! -f {q_fail_marker} ]; then
+        write_failure "administrator authorization was not granted"
+        open {q_bundle}
+    fi
 fi
 
 hdiutil detach {q_mount} -quiet
-rm -f {q_installer}
-
-rm -rf {q_old}
-if ! mv {q_live} {q_old}; then
-    write_failure "failed to set aside the previous application files"
-    rm -rf {q_new}
-    open {q_bundle}
-    rm -f "$0"
-    exit 1
-fi
-
-if ! mv {q_new} {q_live}; then
-    write_failure "failed to install the new application files"
-    mv {q_old} {q_live}
-    open {q_bundle}
-    rm -f "$0"
-    exit 1
-fi
-
-if ! open {q_bundle}; then
-    write_failure "updated application failed to launch, reverted to the previous version"
-    rm -rf {q_live}
-    mv {q_old} {q_live}
-    open {q_bundle}
-    rm -f "$0"
-    exit 1
-fi
-
-rm -rf {q_old}
-rm -f "$0"
+rm -f {q_installer} {q_inner} {q_applescript} "$0"
 """
     _write_and_launch(script_path, script_body, ["/bin/sh", script_path])
     os._exit(0)
