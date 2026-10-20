@@ -26,6 +26,7 @@ before app.py is ever imported. This must never be "fixed" by
 bundling/exporting a cert from any particular machine into this repo;
 relying on the OS trust store is what makes it work on any machine.
 """
+import json
 import os
 import shutil
 import subprocess
@@ -526,8 +527,59 @@ def check_and_apply_update(splash=None):
             splash.show()
 
 
+_OVERLAY_ELEMENT_ID = "maven-update-overlay"
+
+
 def _set_status(window, message):
+    """Shows (or updates) a full-window overlay over the loaded page so the
+    user sees that something is happening, instead of the window just
+    appearing to hang while a check/download/install runs on the background
+    thread pywebview dispatches menu actions on. `evaluate_js` is one of the
+    few `window` methods documented as safe to call off the main thread
+    (every backend marshals it onto its own UI thread/loop internally), so
+    this is used instead of trying to touch tkinter from here."""
     logger.info(message)
+    script = f"""
+        (function() {{
+            var el = document.getElementById({json.dumps(_OVERLAY_ELEMENT_ID)});
+            if (!el) {{
+                el = document.createElement('div');
+                el.id = {json.dumps(_OVERLAY_ELEMENT_ID)};
+                el.style.position = 'fixed';
+                el.style.top = '0';
+                el.style.left = '0';
+                el.style.width = '100%';
+                el.style.height = '100%';
+                el.style.background = 'rgba(0, 0, 0, 0.75)';
+                el.style.color = '#fff';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
+                el.style.fontSize = '18px';
+                el.style.fontFamily = 'sans-serif';
+                el.style.zIndex = '2147483647';
+                document.body.appendChild(el);
+            }}
+            el.textContent = {json.dumps(message)};
+        }})();
+    """
+    try:
+        window.evaluate_js(script)
+    except Exception:
+        logger.warning("Could not update in-page status overlay", exc_info=True)
+
+
+def _clear_status(window):
+    script = f"""
+        (function() {{
+            var el = document.getElementById({json.dumps(_OVERLAY_ELEMENT_ID)});
+            if (el) {{ el.remove(); }}
+        }})();
+    """
+    try:
+        window.evaluate_js(script)
+    except Exception:
+        logger.warning("Could not clear in-page status overlay", exc_info=True)
 
 
 def run_manual_check(window):
@@ -535,7 +587,7 @@ def run_manual_check(window):
     pywebview-managed background thread (confirmed in pywebview's cocoa
     backend: menu actions are dispatched via `Thread(...).start()`), so this
     avoids tkinter (main-thread only) and instead uses pywebview's own
-    thread-safe `window.create_confirmation_dialog`."""
+    thread-safe `window.create_confirmation_dialog` and `window.evaluate_js`."""
     logger.info("Manual update check requested (current version %s)", __version__)
     _set_status(window, "Checking for updates...")
 
@@ -543,12 +595,14 @@ def run_manual_check(window):
         release = get_latest_release()
     except Exception as exc:
         logger.warning("Manual update check failed: %s", exc)
+        _clear_status(window)
         window.create_confirmation_dialog("Update check failed", str(exc))
         return
 
     remote_version = release["tag_name"].lstrip("v")
     if not is_newer(release):
         logger.info("Manual update check: up to date (latest release is %s)", remote_version)
+        _clear_status(window)
         window.create_confirmation_dialog("Up to date", f"You are running the latest version (v{__version__}).")
         return
 
@@ -556,8 +610,10 @@ def run_manual_check(window):
 
     if not getattr(sys, "frozen", False):
         logger.info("Running from source; not offering to install %s", remote_version)
+        _clear_status(window)
         return
 
+    _clear_status(window)
     confirmed = window.create_confirmation_dialog(
         "Update available",
         f"A new version is available: v{remote_version} (you have v{__version__}). Update now?",
@@ -566,7 +622,7 @@ def run_manual_check(window):
     if not confirmed:
         return
 
-    _set_status(window, "Application updating...")
+    _set_status(window, "Downloading update...")
     try:
         asset_url = find_asset_url(release)
         if asset_url is None:
@@ -575,7 +631,10 @@ def run_manual_check(window):
             tmp_path = tmp.name
         download_asset(asset_url, tmp_path)
         logger.info("Downloaded update asset, installing %s", remote_version)
+        _set_status(window, "Installing update...")
         write_update_marker(__version__)
         install(tmp_path)  # dispatches to the platform installer, then exits
     except Exception as exc:
         logger.error("Manual update install failed: %s", exc)
+        _clear_status(window)
+        window.create_confirmation_dialog("Update failed", f"MAVEN could not download or install the update.\n\nDetails: {exc}")
