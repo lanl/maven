@@ -3,7 +3,7 @@ from maven.desktop import gui
 from maven.desktop.splash import Splash
 from maven.desktop.streamlit_runner import start_streamlit_background
 from maven.desktop.updater import check_and_apply_update
-from maven.desktop.wrapper_log import get_logger
+from maven.desktop.wrapper_log import get_logger, install_crash_logging
 
 logger = get_logger("main")
 
@@ -15,6 +15,7 @@ def run(splash):
 
 
 def main():
+    install_crash_logging()
     logger.info("Starting MAVEN desktop %s", __version__)
     gui._set_macos_app_name()
     splash = Splash()

@@ -6,14 +6,28 @@ packaged as a --windowed PyInstaller build.
 Each line in <data_dir>/wrapper.log is one JSON object. Call get_logger(name)
 from any desktop module to get a child logger that feeds the one shared file
 handler below.
+
+install_crash_logging() makes otherwise-invisible crashes show up here too:
+in a --windowed build there's no console for Python's default traceback
+printing (sys.excepthook / threading.excepthook) or for faulthandler's
+fatal-signal dumps to land on, so both get redirected into this log instead.
+A periodic heartbeat is also logged so a crash that doesn't get caught by
+either of those (e.g. the whole process being killed) still leaves a last-
+known-alive timestamp to bound when it happened.
 """
+import atexit
+import faulthandler
 import json
 import logging
+import sys
+import threading
 from datetime import datetime, timezone
 
 from maven.desktop.paths import get_data_dir
 
 LOG_FILENAME = "wrapper.log"
+CRASH_LOG_FILENAME = "faulthandler.log"
+HEARTBEAT_INTERVAL_SECONDS = 5 * 60
 
 _root_logger = logging.getLogger("maven.wrapper")
 _root_logger.setLevel(logging.INFO)
@@ -58,12 +72,25 @@ def read_records():
     return records
 
 
+def _read_crash_dumps():
+    """Native (faulthandler) crash dumps live in their own plain-text file,
+    not the JSON-Lines wrapper log -- faulthandler writes straight to a file
+    object from a signal handler, so it can't go through the logging module's
+    formatting machinery. Read back as one string per invocation; most runs
+    will have zero."""
+    crash_log_path = get_data_dir() / CRASH_LOG_FILENAME
+    if not crash_log_path.exists():
+        return ""
+    return crash_log_path.read_text(encoding="utf-8", errors="replace")
+
+
 def export_logs(dest_path):
     records = read_records()
+    crash_dumps = _read_crash_dumps()
     dest_path = str(dest_path)
     if dest_path.lower().endswith(".json"):
         with open(dest_path, "w", encoding="utf-8") as f:
-            json.dump(records, f, indent=2)
+            json.dump({"records": records, "native_crash_dumps": crash_dumps}, f, indent=2)
     else:
         with open(dest_path, "w", encoding="utf-8") as f:
             for record in records:
@@ -71,3 +98,68 @@ def export_logs(dest_path):
                     f"{record.get('timestamp', '')} {record.get('level', '')} "
                     f"{record.get('message', '')}\n"
                 )
+            if crash_dumps:
+                f.write("\n--- native crash dumps ---\n")
+                f.write(crash_dumps)
+
+
+_crash_logger = get_logger("crash")
+
+
+def _log_uncaught_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    _crash_logger.error(
+        "Unhandled exception on main thread, process likely about to exit",
+        exc_info=(exc_type, exc_value, exc_traceback),
+    )
+
+
+def _log_uncaught_thread_exception(args):
+    _crash_logger.error(
+        "Unhandled exception on background thread %r",
+        args.thread.name if args.thread else "?",
+        exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+    )
+
+
+def _heartbeat():
+    _crash_logger.info("Still running")
+    timer = threading.Timer(HEARTBEAT_INTERVAL_SECONDS, _heartbeat)
+    timer.daemon = True
+    timer.start()
+
+
+def install_crash_logging():
+    """Call once at startup. Covers the three ways an idle --windowed app can
+    disappear without a trace today:
+
+    - An uncaught exception on the main thread: sys.excepthook's default
+      traceback print has no console to write to in a --windowed build, so
+      it's silently swallowed. Redirected into the wrapper log instead.
+    - An uncaught exception on a background thread (e.g. the Streamlit
+      bootstrap thread from streamlit_runner.py): same problem, via
+      threading.excepthook (Python 3.8+).
+    - A fatal native crash (segfault, abort, etc. -- e.g. from a native
+      library going idle/suspended and misbehaving on resume): faulthandler
+      normally dumps a traceback to stderr, which again goes nowhere here,
+      so it's pointed at its own file under the data dir instead (opened for
+      the life of the process, since faulthandler needs a real, already-open
+      file object to dump to from a signal handler).
+
+    None of these three catch a hard `kill`/OOM-kill of the whole process, so
+    a periodic heartbeat is also logged -- if the app vanishes between two
+    heartbeats with no exception or faulthandler entry, that's itself the
+    signal that something outside Python's control (OS-level kill, power
+    event, etc.) ended the process.
+    """
+    sys.excepthook = _log_uncaught_exception
+    threading.excepthook = _log_uncaught_thread_exception
+
+    crash_log_path = get_data_dir() / CRASH_LOG_FILENAME
+    crash_log_file = open(crash_log_path, "a", encoding="utf-8")
+    faulthandler.enable(file=crash_log_file, all_threads=True)
+    atexit.register(crash_log_file.close)
+
+    _heartbeat()
