@@ -60,7 +60,8 @@ origin v1.1.0`) triggers `.github/workflows/release.yml`, which:
 2. Builds the PyInstaller executable on Windows, macOS, and Linux runners in
    parallel via `packaging/maven.spec`.
 3. Wraps each platform's binary into a native installer: an NSIS installer
-   (`.exe`) on Windows, a `.dmg` on macOS, an AppImage on Linux.
+   (`.exe`) on Windows, a `.dmg` on macOS (built with `create-dmg` for a
+   proper drag-the-icon-onto-Applications layout), an AppImage on Linux.
 4. Publishes a GitHub Release on the tag with all six artifacts (three raw
    binaries the self-updater downloads, three installers end users
    download for a first install).
@@ -82,7 +83,7 @@ needs any of these extra dependencies.
 | `streamlit_runner.py` | Starts the Streamlit server in-process on a background thread via `streamlit.web.bootstrap.run()`, instead of `cli.py`'s subprocess-based `streamlit run` (which doesn't work inside a frozen one-file binary — there's no `python` to re-invoke). Disables Streamlit's OS signal-handler installation, since that requires the main thread and pywebview needs the main thread on macOS. |
 | `gui.py` | Opens the Streamlit UI in a native `pywebview` window with a menu bar ("Check for Updates", "Export Logs..."). |
 | `desktop_main.py` | Entry point: runs the update check, then starts the Streamlit thread and opens the window. This is what gets built into the packaged executable. |
-| `updater.py` | Self-updater: checks `lanl/maven`'s GitHub Releases for a newer version, prompts the user (becomes mandatory 7 days after a release ships), downloads the right installer for the platform, and swaps itself in place. Uses the OS trust store (via `truststore`) for HTTPS instead of the bundled `certifi` CA list, so it keeps working behind TLS-inspecting proxies — never fixed by bundling a certificate into the repo. |
+| `updater.py` | Self-updater: checks `lanl/maven`'s GitHub Releases for a newer version, prompts the user (becomes mandatory 7 days after a release ships), downloads the right installer for the platform, and swaps itself in place. A manual "Check for Updates" shows an in-page overlay (via `window.evaluate_js`) while checking/downloading/installing instead of appearing to hang, and surfaces failures through a dialog rather than swallowing them. On macOS, installing always prompts for administrator credentials via AppleScript's `do shell script ... with administrator privileges`, since some managed Mac deployments have the app installed somewhere the signed-in user can't write to at all. Uses the OS trust store (via `truststore`) for HTTPS instead of the bundled `certifi` CA list, so it keeps working behind TLS-inspecting proxies — never fixed by bundling a certificate into the repo. |
 | `wrapper_log.py` | Shared JSON-lines logger at `<data_dir>/wrapper.log`, since a windowed packaged app has no visible console output. |
 
 ### New: `packaging/`
@@ -169,5 +170,12 @@ opened" message. To install:
   "unidentified developer" warning.
 - **Windows WebView2**: `pywebview`'s Windows backend needs the Edge WebView2
   runtime, which ships with modern Windows but isn't guaranteed present on
-  older/locked-down images. Not yet validated against LANL's managed Windows
+  older/locked-down images. Not yet validated against a managed Windows
   baseline.
+- **macOS self-update now requires an admin password**: swapping the app
+  bundle's `Contents/` always runs under `osascript ... with administrator
+  privileges`, so every self-update pops a native password dialog even on
+  machines where the user already owns `/Applications/MAVEN.app`. Simplest
+  approach that works across both the common case and managed deployments
+  where the user can't write to the install location at all; revisit if the
+  extra prompt turns out to be more annoying than useful.
