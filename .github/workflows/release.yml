@@ -103,9 +103,30 @@ jobs:
 
           codesign --force --deep -s - "$app_dir"
 
-          hdiutil create -volname MAVEN -srcfolder "$app_dir" -ov -format UDZO \
-            "release/maven-macos-installer.dmg"
-          rm -rf "$app_dir" icon.iconset
+          brew install create-dmg
+
+          dmg_staging="dmg_staging"
+          rm -rf "$dmg_staging"
+          mkdir -p "$dmg_staging"
+          mv "$app_dir" "$dmg_staging/MAVEN.app"
+
+          dmg_path="$(pwd)/release/maven-macos-installer.dmg"
+          rm -f "$dmg_path"
+
+          create-dmg \
+            --volname "MAVEN" \
+            --window-size 660 400 \
+            --icon-size 128 \
+            --icon "MAVEN.app" 160 185 \
+            --hide-extension "MAVEN.app" \
+            --app-drop-link 480 185 \
+            --no-internet-enable \
+            "$dmg_path" \
+            "$dmg_staging" || true
+
+          test -f "$dmg_path"
+
+          rm -rf "$dmg_staging" icon.iconset
 
       - name: Build Linux AppImage
         if: matrix.os == 'ubuntu-latest'
