@@ -49,6 +49,8 @@ datas += [
     (os.path.join(repo_root, "maven", "remote_register_endpoint.py"), "maven"),
     (os.path.join(repo_root, "maven", ".streamlit"), "maven/.streamlit"),
     (os.path.join(repo_root, "packaging", "icon.png"), "maven"),
+    (os.path.join(repo_root, "Installable_Readme.md"), "."),
+    (os.path.join(repo_root, "Database_Migrations.md"), "."),
 ]
 
 a = Analysis(

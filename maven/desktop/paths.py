@@ -27,3 +27,15 @@ def get_data_dir() -> Path:
     data_dir = Path.home() / ".maven_config" / "desktop_data"
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
+
+
+def get_doc_path(filename: str) -> Path:
+    """Root-level docs (Installable_Readme.md, Database_Migrations.md) live
+    outside maven/, unlike resource_path()'s packaged-under-maven convention,
+    so they need their own base: bundled at the top level of _MEIPASS by
+    packaging/maven.spec's datas, or the repo root when running from source."""
+    if getattr(sys, "frozen", False):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).resolve().parent.parent.parent  # repo root
+    return base / filename

@@ -9,6 +9,7 @@ import urllib.request
 import webview
 from webview.menu import Menu, MenuAction
 
+from maven.desktop.docs_viewer import open_doc_window
 from maven.desktop.updater import run_manual_check
 from maven.desktop.wrapper_log import export_logs, get_logger
 
@@ -80,6 +81,19 @@ def run_gui(port, splash=None):
             [
                 MenuAction("Check for Updates", lambda: run_manual_check(window)),
                 MenuAction("Export Logs...", lambda: export_logs_action(window)),
+                Menu(
+                    "Documentation",
+                    [
+                        MenuAction(
+                            "Installation Guide",
+                            lambda: open_doc_window(window, "Installable_Readme.md", "MAVEN - Installation Guide"),
+                        ),
+                        MenuAction(
+                            "Database Migrations",
+                            lambda: open_doc_window(window, "Database_Migrations.md", "MAVEN - Database Migrations"),
+                        ),
+                    ],
+                ),
             ],
         )
     ]

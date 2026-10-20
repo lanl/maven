@@ -2,3 +2,4 @@ pyinstaller
 pywebview
 truststore
 packaging
+markdown
