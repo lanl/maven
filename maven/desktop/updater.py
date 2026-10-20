@@ -300,12 +300,23 @@ def _install_macos(installer_path, current_exe):
     own file (rather than inlined as a `osascript -e '...'` argument) to
     avoid nesting an AppleScript string literal inside a POSIX-shell single-
     quoted argument, which have no mutually-safe escaping for each other's
-    quote characters."""
+    quote characters.
+
+    The inner (privileged) script must never call `open` on the bundle --
+    `open` run as root can't hand the GUI launch off to the logged-in user's
+    window server session, so the relaunched app would never actually show a
+    window (dock icon just bounces forever). The inner script only verifies
+    the swapped-in executable exists and is executable; the outer
+    (unprivileged) script does the real `open`, after the privileged step
+    finishes either way."""
     # current_exe is .../MAVEN.app/Contents/MacOS/maven-macos
     app_bundle = os.path.dirname(os.path.dirname(os.path.dirname(current_exe)))
     bundle_name = os.path.basename(app_bundle)
     mount_point = tempfile.mkdtemp(prefix="maven-update-")
     pid = os.getpid()
+    # e.g. "MacOS/maven-macos", used to sanity-check a swapped-in Contents/
+    # without ever launching the app as root (see note below).
+    exe_rel_path = os.path.relpath(current_exe, os.path.join(app_bundle, "Contents"))
 
     q_bundle = _sh_quote(app_bundle)
     q_mount = _sh_quote(mount_point)
@@ -317,12 +328,20 @@ def _install_macos(installer_path, current_exe):
     q_new = _sh_quote(new_contents)
     q_old = _sh_quote(old_contents)
     q_live = _sh_quote(live_contents)
+    q_live_exe = _sh_quote(os.path.join(live_contents, exe_rel_path))
 
     inner_script_path = os.path.join(tempfile.gettempdir(), "maven_update_inner.sh")
     applescript_path = os.path.join(tempfile.gettempdir(), "maven_update.applescript")
     q_inner = _sh_quote(inner_script_path)
     q_applescript = _sh_quote(applescript_path)
 
+    # Note: this script runs "with administrator privileges" (as root), so it
+    # must never call `open` on the app bundle -- `open` run as root can't
+    # hand the GUI launch off to the logged-in user's window server session,
+    # so Launch Services just queues the request forever (dock icon bounces,
+    # no window ever appears). Instead this only verifies the swapped-in
+    # executable exists and is executable; the actual `open` happens later in
+    # the unprivileged outer script, running as the real logged-in user.
     inner_script_body = f"""#!/bin/sh
 write_failure() {{
     echo "$1" > {q_fail_marker}
@@ -332,7 +351,6 @@ rm -rf {q_new}
 if ! cp -R {q_mount}/{_sh_quote(bundle_name)}/Contents {q_new}; then
     write_failure "failed to copy the new application files"
     rm -rf {q_new}
-    open {q_bundle}
     exit 1
 fi
 
@@ -340,22 +358,19 @@ rm -rf {q_old}
 if ! mv {q_live} {q_old}; then
     write_failure "failed to set aside the previous application files"
     rm -rf {q_new}
-    open {q_bundle}
     exit 1
 fi
 
 if ! mv {q_new} {q_live}; then
     write_failure "failed to install the new application files"
     mv {q_old} {q_live}
-    open {q_bundle}
     exit 1
 fi
 
-if ! open {q_bundle}; then
-    write_failure "updated application failed to launch, reverted to the previous version"
+if [ ! -x {q_live_exe} ]; then
+    write_failure "updated application files are not launchable, reverted to the previous version"
     rm -rf {q_live}
     mv {q_old} {q_live}
-    open {q_bundle}
     exit 1
 fi
 
@@ -391,9 +406,16 @@ fi
 if ! osascript {q_applescript}; then
     if [ ! -f {q_fail_marker} ]; then
         write_failure "administrator authorization was not granted"
-        open {q_bundle}
     fi
 fi
+
+# The privileged inner script never calls `open` itself (root can't hand a
+# GUI launch off to the logged-in user's window server session, so the app
+# would never actually appear) -- it only swaps files and leaves a failure
+# marker if the swap didn't produce a launchable bundle. This script runs
+# unprivileged as the real logged-in user, so it does the actual launch,
+# either way, once the privileged step above has finished.
+open {q_bundle}
 
 hdiutil detach {q_mount} -quiet
 rm -f {q_installer} {q_inner} {q_applescript} "$0"
