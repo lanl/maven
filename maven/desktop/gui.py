@@ -2,7 +2,9 @@
 as a real desktop app (Dock/taskbar entry, native menu) instead of running
 headless and sending the user out to their own browser like the `maven`
 CLI's `streamlit run` + localhost-URL flow does today."""
+import os
 import sys
+import threading
 import time
 import urllib.request
 
@@ -61,6 +63,17 @@ def export_logs_action(window):
     logger.info("Exported logs to %s", dest)
 
 
+def _force_exit_soon():
+    """Backstop for the native "Quit MAVEN" menu item (and Cmd+Q), which both
+    route through Cocoa's own `terminate:` handling rather than any Python
+    code here. That native teardown is known to sometimes never reach its
+    own process-exit call (e.g. with the splash screen's leftover hidden
+    Tk root, or extra doc-viewer windows still open) - this fires on the
+    same window-closing event Cocoa consults either way, and force-exits a
+    moment later if the normal shutdown hasn't already finished the job."""
+    threading.Timer(1.0, lambda: os._exit(0)).start()
+
+
 def run_gui(port, splash=None):
     url = f"http://127.0.0.1:{port}/"
     logger.info("Waiting for Streamlit server to come up")
@@ -75,6 +88,7 @@ def run_gui(port, splash=None):
         splash.hide()
     logger.info("Opening main window")
     window = webview.create_window("MAVEN", url, width=1280, height=900)
+    window.events.closing += _force_exit_soon
     menu = [
         Menu(
             "Help",
