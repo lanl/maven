@@ -27,6 +27,10 @@ from maven.desktop.paths import get_data_dir
 
 LOG_FILENAME = "wrapper.log"
 CRASH_LOG_FILENAME = "faulthandler.log"
+# Must match updater.INSTALL_TRACE_LOG_FILENAME. Kept as a separate constant
+# (rather than importing updater here) since wrapper_log is imported by
+# updater.py itself; a back-import would be circular.
+INSTALL_TRACE_LOG_FILENAME = "install_trace.log"
 HEARTBEAT_INTERVAL_SECONDS = 5 * 60
 
 _root_logger = logging.getLogger("maven.wrapper")
@@ -84,13 +88,33 @@ def _read_crash_dumps():
     return crash_log_path.read_text(encoding="utf-8", errors="replace")
 
 
+def _read_install_trace_log():
+    """The self-update install scripts run after this process has already
+    called os._exit(0), so they can't go through the logging module either
+    -- they append plain text lines directly to their own file instead (see
+    updater._install_trace_log_path()). Most runs will have none."""
+    trace_log_path = get_data_dir() / INSTALL_TRACE_LOG_FILENAME
+    if not trace_log_path.exists():
+        return ""
+    return trace_log_path.read_text(encoding="utf-8", errors="replace")
+
+
 def export_logs(dest_path):
     records = read_records()
     crash_dumps = _read_crash_dumps()
+    install_trace = _read_install_trace_log()
     dest_path = str(dest_path)
     if dest_path.lower().endswith(".json"):
         with open(dest_path, "w", encoding="utf-8") as f:
-            json.dump({"records": records, "native_crash_dumps": crash_dumps}, f, indent=2)
+            json.dump(
+                {
+                    "records": records,
+                    "native_crash_dumps": crash_dumps,
+                    "install_trace_log": install_trace,
+                },
+                f,
+                indent=2,
+            )
     else:
         with open(dest_path, "w", encoding="utf-8") as f:
             for record in records:
@@ -101,6 +125,9 @@ def export_logs(dest_path):
             if crash_dumps:
                 f.write("\n--- native crash dumps ---\n")
                 f.write(crash_dumps)
+            if install_trace:
+                f.write("\n--- self-update install trace log ---\n")
+                f.write(install_trace)
 
 
 _crash_logger = get_logger("crash")

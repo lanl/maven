@@ -62,6 +62,7 @@ PLATFORM_ASSET_NAMES = {
 
 UPDATE_MARKER_FILENAME = "pending_update_from.txt"
 UPDATE_FAILURE_MARKER_FILENAME = "failed_update.txt"
+INSTALL_TRACE_LOG_FILENAME = "install_trace.log"
 
 logger = get_logger("updater")
 
@@ -141,6 +142,17 @@ def _update_marker_path():
 
 def _update_failure_marker_path():
     return get_data_dir() / UPDATE_FAILURE_MARKER_FILENAME
+
+
+def _install_trace_log_path():
+    """Plain-text, append-only log written to directly by the detached
+    install shell scripts (both the unprivileged outer script and the
+    privileged inner one) as they run -- unlike wrapper.log, which only
+    Python writes to. The scripts run after this process has already called
+    os._exit(0), so there's no other way to see what they actually did step
+    by step if something between the file swap and the final relaunch goes
+    wrong without tripping any of the existing failure-marker checks."""
+    return get_data_dir() / INSTALL_TRACE_LOG_FILENAME
 
 
 def write_update_marker(from_version):
@@ -337,6 +349,7 @@ def _install_macos(installer_path, current_exe):
     q_mount = _sh_quote(mount_point)
     q_installer = _sh_quote(installer_path)
     q_fail_marker = _sh_quote(str(_update_failure_marker_path()))
+    q_trace_log = _sh_quote(str(_install_trace_log_path()))
     new_contents = os.path.join(app_bundle, "Contents.new")
     old_contents = os.path.join(app_bundle, "Contents.old")
     live_contents = os.path.join(app_bundle, "Contents")
@@ -362,9 +375,15 @@ def _install_macos(installer_path, current_exe):
     # executable exists and is executable; the actual `open` happens later in
     # the unprivileged outer script, running as the real logged-in user.
     inner_script_body = f"""#!/bin/sh
+trace() {{
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [inner pid {pid}] $1" >> {q_trace_log}
+}}
 write_failure() {{
     echo "$1" > {q_fail_marker}
+    trace "FAILURE: $1"
 }}
+
+trace "inner script start, whoami=$(whoami)"
 
 rm -rf {q_new}
 if ! cp -R {q_mount}/{_sh_quote(bundle_name)}/Contents {q_new}; then
@@ -372,6 +391,7 @@ if ! cp -R {q_mount}/{_sh_quote(bundle_name)}/Contents {q_new}; then
     rm -rf {q_new}
     exit 1
 fi
+trace "staged new Contents.new"
 
 rm -rf {q_old}
 if ! mv {q_live} {q_old}; then
@@ -379,12 +399,14 @@ if ! mv {q_live} {q_old}; then
     rm -rf {q_new}
     exit 1
 fi
+trace "moved live Contents to Contents.old"
 
 if ! mv {q_new} {q_live}; then
     write_failure "failed to install the new application files"
     mv {q_old} {q_live}
     exit 1
 fi
+trace "moved Contents.new into place as live Contents"
 
 if [ ! -x {q_live_exe} ]; then
     write_failure "updated application files are not launchable, reverted to the previous version"
@@ -392,8 +414,10 @@ if [ ! -x {q_live_exe} ]; then
     mv {q_old} {q_live}
     exit 1
 fi
+trace "verified swapped-in executable is launchable"
 
 rm -rf {q_old}
+trace "inner script end, swap succeeded"
 """
     with open(inner_script_path, "w") as f:
         f.write(inner_script_body)
@@ -409,24 +433,32 @@ rm -rf {q_old}
 
     script_path = os.path.join(tempfile.gettempdir(), f"maven_update_{pid}.sh")
     script_body = f"""#!/bin/sh
-while kill -0 {pid} 2>/dev/null; do sleep 0.5; done
-
+trace() {{
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [outer pid {pid}] $1" >> {q_trace_log}
+}}
 write_failure() {{
     echo "$1" > {q_fail_marker}
+    trace "FAILURE: $1"
 }}
+
+trace "outer script start, waiting for pid {pid} to exit"
+while kill -0 {pid} 2>/dev/null; do sleep 0.5; done
+trace "pid {pid} has exited"
 
 if ! hdiutil attach {q_installer} -mountpoint {q_mount} -nobrowse -quiet; then
     write_failure "failed to mount the downloaded update image"
-    open {q_bundle}
+    open -n {q_bundle}
     rm -f {q_inner} {q_applescript} "$0"
     exit 1
 fi
+trace "mounted installer image at {mount_point}"
 
 if ! osascript {q_applescript}; then
     if [ ! -f {q_fail_marker} ]; then
         write_failure "administrator authorization was not granted"
     fi
 fi
+trace "osascript (privileged inner script) finished"
 
 # The privileged inner script never calls `open` itself (root can't hand a
 # GUI launch off to the logged-in user's window server session, so the app
@@ -434,10 +466,18 @@ fi
 # marker if the swap didn't produce a launchable bundle. This script runs
 # unprivileged as the real logged-in user, so it does the actual launch,
 # either way, once the privileged step above has finished.
-open {q_bundle}
+#
+# -n forces a new process instead of plain `open`'s default of activating
+# an already-running instance. Harmless either way since the old process
+# has already exited, but removes any dependency on exactly how quickly
+# LaunchServices notices that exit.
+trace "calling open -n on the bundle, whoami=$(whoami)"
+open -n {q_bundle}
+trace "open -n exit code: $?"
 
 hdiutil detach {q_mount} -quiet
 rm -f {q_installer} {q_inner} {q_applescript} "$0"
+trace "outer script end"
 """
     _write_and_launch(script_path, script_body, ["/bin/sh", script_path])
     os._exit(0)
