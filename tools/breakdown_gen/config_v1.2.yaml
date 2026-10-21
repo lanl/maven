@@ -1,0 +1,35 @@
+# Breakdown generator config for Genesis datacard v1.2.
+# Paths are relative to this file; "archive::member" reads a file inside a .tar.gz / .zip.
+title: Genesis Data Card Breakdown Schema v1.2
+output: genesis_dc_v1.2_breakdown.generated.yaml
+
+# The original template from the tarball: the generator flattens its lists itself.
+template: inputs/data-cards-v1.2.0.tar.gz::data-cards-v1.2.0/template/latest/genesis_datacard_merged_shared.yaml
+# Template only, as the v1.2 breakdown was made: required, options and descriptions come from the template
+# tags, placeholders and comments. Uncomment to let the LinkML schema decide them instead (decision A).
+# schema: inputs/data-cards-v1.2.0.tar.gz::data-cards-v1.2.0/datacard_schema/src/genesis_datacard/schema/genesis_datacard.yaml
+guide: inputs/data-cards-v1.2.0.tar.gz::data-cards-v1.2.0/template/latest/data_card_field_reference_guide.md
+root_class: GenesisDatacardClass
+
+# One-of agent blocks. v1.2 templates carry their own discriminator keys.
+alternatives:
+  blocks: [person, organization, ai_model, software]
+  discriminator_keys: [agent_type, type]
+  synthesize_as: null
+  # Vedant's email: the chosen agent block's fields become required. His v1.2 file applies that to the
+  # identifying fields only (not orcid / ror_id / role / email), so those are listed here.
+  required_keys: [given_name, family_name, name, version, affiliation, type, value]
+
+# Rule 2: a required dropdown with no "nothing applies" option gets this one added.
+extra_option: None
+no_extra_option:
+  - discoverability.datacard.creation_method
+
+# Prefix top-level descriptions (supports_*) with the reference-guide table text, as v1.2 did.
+guide_for_top_level: true
+
+# Top-level template blocks to leave out (e.g. reference-only blocks).
+exclude_top_level: [_repository]
+
+# Manual decisions, applied last: field path -> keys to set.
+overrides: {}
