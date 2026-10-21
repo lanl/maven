@@ -32,6 +32,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import tkinter as tk
 from datetime import datetime, timedelta, timezone
 from tkinter import messagebox
@@ -63,6 +64,20 @@ UPDATE_MARKER_FILENAME = "pending_update_from.txt"
 UPDATE_FAILURE_MARKER_FILENAME = "failed_update.txt"
 
 logger = get_logger("updater")
+
+# Guards check_and_apply_update (startup, main thread) and run_manual_check
+# ("Check for Updates" menu item, a pywebview-managed background thread --
+# and the thread that dispatches menu actions isn't reused, so clicking the
+# menu item again while a check/install is still running starts a second,
+# fully independent run of this same code). Without this, two installs can
+# race: both write to the same fixed /tmp script paths (see _install_macos)
+# and both call AppleScript's administrator-privileges prompt independently,
+# producing two password prompts and two concurrent Contents-swap attempts
+# against the same .app bundle -- which is what corrupts the install and
+# leaves the app unable to reopen. A non-blocking acquire is used so a
+# second trigger is rejected immediately rather than queued, since queueing
+# would just delay the same race rather than prevent it.
+_update_lock = threading.Lock()
 
 
 def get_latest_release():
@@ -330,8 +345,12 @@ def _install_macos(installer_path, current_exe):
     q_live = _sh_quote(live_contents)
     q_live_exe = _sh_quote(os.path.join(live_contents, exe_rel_path))
 
-    inner_script_path = os.path.join(tempfile.gettempdir(), "maven_update_inner.sh")
-    applescript_path = os.path.join(tempfile.gettempdir(), "maven_update.applescript")
+    # Suffixed with the current pid so an overlapping install (e.g. two
+    # update triggers racing before _update_lock existed, or two separate
+    # app instances) can't stomp on another install's in-flight script
+    # files out from under it.
+    inner_script_path = os.path.join(tempfile.gettempdir(), f"maven_update_inner_{pid}.sh")
+    applescript_path = os.path.join(tempfile.gettempdir(), f"maven_update_{pid}.applescript")
     q_inner = _sh_quote(inner_script_path)
     q_applescript = _sh_quote(applescript_path)
 
@@ -388,7 +407,7 @@ rm -rf {q_old}
     with open(applescript_path, "w") as f:
         f.write(applescript_body)
 
-    script_path = os.path.join(tempfile.gettempdir(), "maven_update.sh")
+    script_path = os.path.join(tempfile.gettempdir(), f"maven_update_{pid}.sh")
     script_body = f"""#!/bin/sh
 while kill -0 {pid} 2>/dev/null; do sleep 0.5; done
 
@@ -433,7 +452,7 @@ def _install_windows(installer_path, current_exe):
     pid = os.getpid()
     fail_marker = str(_update_failure_marker_path())
 
-    script_path = os.path.join(tempfile.gettempdir(), "maven_update.bat")
+    script_path = os.path.join(tempfile.gettempdir(), f"maven_update_{pid}.bat")
     script_body = (
         "@echo off\r\n"
         f":wait\r\n"
@@ -476,7 +495,7 @@ def _install_linux(installer_path, current_exe):
     q_target = _sh_quote(target)
     q_fail_marker = _sh_quote(str(_update_failure_marker_path()))
 
-    script_path = os.path.join(tempfile.gettempdir(), "maven_update.sh")
+    script_path = os.path.join(tempfile.gettempdir(), f"maven_update_{pid}.sh")
     script_body = f"""#!/bin/sh
 while kill -0 {pid} 2>/dev/null; do sleep 0.5; done
 
@@ -525,6 +544,16 @@ def check_and_apply_update(splash=None):
     two tkinter windows never overlap, and shown again afterward if startup
     is going to continue (i.e. not on the mandatory-quit or install paths,
     which end the process)."""
+    if not _update_lock.acquire(blocking=False):
+        logger.info("Startup update check: an update is already in progress, skipping")
+        return
+    try:
+        _check_and_apply_update_locked(splash)
+    finally:
+        _update_lock.release()
+
+
+def _check_and_apply_update_locked(splash):
     logger.info("Startup update check: current version is %s", __version__)
 
     from_version = consume_update_marker()
@@ -659,6 +688,17 @@ def run_manual_check(window):
     backend: menu actions are dispatched via `Thread(...).start()`), so this
     avoids tkinter (main-thread only) and instead uses pywebview's own
     thread-safe `window.create_confirmation_dialog` and `window.evaluate_js`."""
+    if not _update_lock.acquire(blocking=False):
+        logger.info("Manual update check requested while an update is already in progress, skipping")
+        window.create_confirmation_dialog("Update in progress", "An update check or install is already running.")
+        return
+    try:
+        _run_manual_check_locked(window)
+    finally:
+        _update_lock.release()
+
+
+def _run_manual_check_locked(window):
     logger.info("Manual update check requested (current version %s)", __version__)
     _set_status(window, "Checking for updates...")
 
