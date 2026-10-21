@@ -1,0 +1,34 @@
+# Breakdown generator config for Genesis datacard v2.0.0.
+# Paths are relative to this file; "archive::member" reads a file inside a .tar.gz / .zip.
+title: Genesis Data Card Breakdown Schema v2.0
+output: genesis_dc_v2.0_breakdown.generated.yaml
+
+template: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml
+# Template only, as the v1.2 breakdown was made: required, options and descriptions come from the template
+# tags, placeholders and comments. Uncomment to let the LinkML schema decide them instead (decision A).
+# schema: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/datacard_schema/src/genesis_datacard/schema/genesis_datacard.yaml
+guide: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md
+root_class: GenesisDatacardClass
+
+# v2.0 removed agent_type / type; the agent is identified by which sub-block is filled in.
+# MAVEN's form needs a sibling discriminator, so one is synthesized (Q1 for Vedant: must MAVEN strip it on export?).
+alternatives:
+  blocks: [person, organization, ai_model, software]
+  discriminator_keys: [agent_type, type]
+  synthesize_as: agent_type
+  required_keys: [given_name, family_name, name, version, affiliation, type, value]  # same convention as v1.2
+
+extra_option: None
+no_extra_option:
+  - discoverability.datacard.creation_method
+
+guide_for_top_level: false
+
+# xCard has no supports_xCard key, which MAVEN's form requires (Q5 for Vedant). Left out until decided.
+exclude_top_level: [xCard]
+
+# Decisions recorded on 2026-10-19 (see MAVEN_overview.md section 8.4, D1-D3).
+overrides:
+  discoverability.identification.name: {required: true}            # D1: required by the schema, untagged in template
+  discoverability.identification.primary_id.type: {required: true}  # D2: required block needs the ID type ('unregistered' exists)
+  discoverability.identification.primary_id.value: {required: true} # D3: type and value go together; 'not_applicable' when unregistered
