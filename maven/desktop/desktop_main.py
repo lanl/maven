@@ -21,6 +21,7 @@ def main():
         logger.info("Another MAVEN instance is already running, exiting")
         return
     logger.info("Starting MAVEN desktop %s", __version__)
+    logger.info("Post-update relaunch check: process started successfully")
     gui._set_macos_app_name()
     splash = Splash()
     try:
