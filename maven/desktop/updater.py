@@ -63,6 +63,7 @@ PLATFORM_ASSET_NAMES = {
 UPDATE_MARKER_FILENAME = "pending_update_from.txt"
 UPDATE_FAILURE_MARKER_FILENAME = "failed_update.txt"
 INSTALL_TRACE_LOG_FILENAME = "install_trace.log"
+RELAUNCH_STDIO_LOG_FILENAME = "relaunch_stdio.log"
 
 logger = get_logger("updater")
 
@@ -153,6 +154,17 @@ def _install_trace_log_path():
     by step if something between the file swap and the final relaunch goes
     wrong without tripping any of the existing failure-marker checks."""
     return get_data_dir() / INSTALL_TRACE_LOG_FILENAME
+
+
+def _relaunch_stdio_log_path():
+    """Captures the relaunched app's own stdout/stderr via `open -n`'s
+    --stdout/--stderr flags. Plain `open` silently discards whatever the
+    launched process prints -- so every previous attempt to diagnose "app
+    doesn't reopen after update" has had zero visibility into *why* the
+    relaunch died (Python traceback, Gatekeeper rejection, etc.), only that
+    it did. Truncated before each retry attempt in the install script so
+    output from different attempts isn't blended together."""
+    return get_data_dir() / RELAUNCH_STDIO_LOG_FILENAME
 
 
 def write_update_marker(from_version):
@@ -350,6 +362,7 @@ def _install_macos(installer_path, current_exe):
     q_installer = _sh_quote(installer_path)
     q_fail_marker = _sh_quote(str(_update_failure_marker_path()))
     q_trace_log = _sh_quote(str(_install_trace_log_path()))
+    q_relaunch_log = _sh_quote(str(_relaunch_stdio_log_path()))
     new_contents = os.path.join(app_bundle, "Contents.new")
     old_contents = os.path.join(app_bundle, "Contents.old")
     live_contents = os.path.join(app_bundle, "Contents")
@@ -472,29 +485,49 @@ trace "osascript (privileged inner script) finished"
 # an already-running instance. Harmless either way since the old process
 # has already exited, but removes any dependency on exactly how quickly
 # LaunchServices notices that exit.
-trace "calling open -n on the bundle, whoami=$(whoami)"
-open -n {q_bundle}
-trace "open -n exit code: $?"
-
+#
 # open -n returning 0 only means LaunchServices accepted the request, not
 # that the process actually came up and stayed alive -- a silent kill before
 # Python logging initializes (e.g. Gatekeeper rejecting an ad-hoc-signed
-# binary) leaves no trace anywhere else. This distinguishes that case from
-# one where the process starts but dies even earlier than wrapper.log.
-sleep 2
-if pgrep -f {q_exe_name} >/dev/null 2>&1; then
-    trace "relaunched process is alive 2s after open -n"
-else
-    trace "relaunched process is NOT running 2s after open -n, retrying open -n"
-    open -n {q_bundle}
-    trace "retry open -n exit code: $?"
+# binary) leaves no trace anywhere else, and a couple of retries weren't
+# always enough (seen failing repeatedly in practice). So this keeps calling
+# `open -n` and re-checking with pgrep for up to MAX_RELAUNCH_ATTEMPTS * 2
+# seconds, instead of giving up after a handful of tries -- the whole point
+# of an automatic update is that the user shouldn't have to click the Dock
+# icon themselves to finish the job. The cap still exists so a deterministic
+# rejection (not a timing fluke) doesn't spin forever; if every attempt
+# fails, the failure marker is written so the next manual launch at least
+# tells the user the auto-relaunch didn't work.
+#
+# --stdout/--stderr redirect the *relaunched app's own* standard streams to
+# a file -- plain `open` silently discards them, which is why every previous
+# attempt to diagnose this exact symptom only ever showed "it died", never
+# *why* (a Python traceback, an OS-level rejection message, etc.). The log
+# is truncated before each attempt so one attempt's output can't be
+# mistaken for another's; its contents are copied into the trace log on
+# failure so there's a single place to look.
+attempt=1
+max_attempts=60
+relaunched=0
+while [ $attempt -le $max_attempts ]; do
+    trace "calling open -n on the bundle, attempt $attempt, whoami=$(whoami)"
+    : > {q_relaunch_log}
+    open -n --stdout {q_relaunch_log} --stderr {q_relaunch_log} {q_bundle}
+    trace "open -n exit code: $? (attempt $attempt)"
     sleep 2
     if pgrep -f {q_exe_name} >/dev/null 2>&1; then
-        trace "relaunched process is alive 2s after retry"
-    else
-        trace "relaunched process is NOT running 2s after retry"
-        write_failure "app did not stay open after being relaunched post-update (tried twice)"
+        trace "relaunched process is alive 2s after open -n (attempt $attempt)"
+        relaunched=1
+        break
     fi
+    trace "relaunched process is NOT running 2s after open -n (attempt $attempt)"
+    if [ -s {q_relaunch_log} ]; then
+        trace "relaunched process output (attempt $attempt): $(tail -n 20 {q_relaunch_log})"
+    fi
+    attempt=$((attempt + 1))
+done
+if [ $relaunched -eq 0 ]; then
+    write_failure "app did not stay open after being relaunched post-update (tried $max_attempts times)"
 fi
 
 hdiutil detach {q_mount} -quiet
