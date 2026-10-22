@@ -357,6 +357,7 @@ def _install_macos(installer_path, current_exe):
     q_old = _sh_quote(old_contents)
     q_live = _sh_quote(live_contents)
     q_live_exe = _sh_quote(os.path.join(live_contents, exe_rel_path))
+    q_exe_name = _sh_quote(os.path.basename(exe_rel_path))
 
     # Suffixed with the current pid so an overlapping install (e.g. two
     # update triggers racing before _update_lock existed, or two separate
@@ -474,6 +475,18 @@ trace "osascript (privileged inner script) finished"
 trace "calling open -n on the bundle, whoami=$(whoami)"
 open -n {q_bundle}
 trace "open -n exit code: $?"
+
+# open -n returning 0 only means LaunchServices accepted the request, not
+# that the process actually came up and stayed alive -- a silent kill before
+# Python logging initializes (e.g. Gatekeeper rejecting an ad-hoc-signed
+# binary) leaves no trace anywhere else. This distinguishes that case from
+# one where the process starts but dies even earlier than wrapper.log.
+sleep 2
+if pgrep -f {q_exe_name} >/dev/null 2>&1; then
+    trace "relaunched process is alive 2s after open -n"
+else
+    trace "relaunched process is NOT running 2s after open -n"
+fi
 
 hdiutil detach {q_mount} -quiet
 rm -f {q_installer} {q_inner} {q_applescript} "$0"
