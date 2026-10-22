@@ -485,7 +485,16 @@ sleep 2
 if pgrep -f {q_exe_name} >/dev/null 2>&1; then
     trace "relaunched process is alive 2s after open -n"
 else
-    trace "relaunched process is NOT running 2s after open -n"
+    trace "relaunched process is NOT running 2s after open -n, retrying open -n"
+    open -n {q_bundle}
+    trace "retry open -n exit code: $?"
+    sleep 2
+    if pgrep -f {q_exe_name} >/dev/null 2>&1; then
+        trace "relaunched process is alive 2s after retry"
+    else
+        trace "relaunched process is NOT running 2s after retry"
+        write_failure "app did not stay open after being relaunched post-update (tried twice)"
+    fi
 fi
 
 hdiutil detach {q_mount} -quiet
