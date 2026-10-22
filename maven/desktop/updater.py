@@ -506,6 +506,19 @@ trace "osascript (privileged inner script) finished"
 # is truncated before each attempt so one attempt's output can't be
 # mistaken for another's; its contents are copied into the trace log on
 # failure so there's a single place to look.
+#
+# That capture is what finally exposed the real cause (confirmed via a live
+# repro): PyInstaller's onefile bootloader extracts itself into a
+# `_MEI<hash>` directory under TMPDIR, and that hash is derived from the
+# *executable itself*, not randomized per-launch -- so every relaunch of the
+# same binary reuses the same extraction directory. If that extraction gets
+# corrupted (plausible right after the privileged swap, racing the just-
+# killed old process's own bootloader cleanup of that same directory), every
+# subsequent `open -n` retry keeps hitting the identical broken cache and
+# fails identically -- a retry loop alone can never recover from this, only
+# removing the stale directory before the next attempt can. This greps the
+# captured output for that failure signature and removes the named `_MEI*`
+# directory so the next retry is forced to re-extract cleanly.
 attempt=1
 max_attempts=60
 relaunched=0
@@ -523,6 +536,18 @@ while [ $attempt -le $max_attempts ]; do
     trace "relaunched process is NOT running 2s after open -n (attempt $attempt)"
     if [ -s {q_relaunch_log} ]; then
         trace "relaunched process output (attempt $attempt): $(tail -n 20 {q_relaunch_log})"
+        # Extracts the full absolute path up to and including the _MEI<hash>
+        # component (e.g. /var/folders/.../_MEI00003fb0krtdiO) rather than
+        # just the trailing directory name, since rm -rf needs a real path,
+        # not a bare basename. The grep pattern itself requires a leading
+        # "/" and a "_MEI" component, so it can never match a bare "/" or an
+        # unrelated path -- the -d check below is extra insurance that the
+        # path actually exists and is a directory before removing it.
+        stale_mei=$(grep -oE "/[^[:space:]]+/_MEI[A-Za-z0-9]+" {q_relaunch_log} | head -n 1)
+        if [ -n "$stale_mei" ] && [ -d "$stale_mei" ]; then
+            trace "removing stale PyInstaller extraction dir $stale_mei (attempt $attempt)"
+            rm -rf "$stale_mei"
+        fi
     fi
     attempt=$((attempt + 1))
 done
