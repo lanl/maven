@@ -96,3 +96,7 @@ diana_maven_files/
 maven_files/
 .diana_maven_config/
 .maven_config/
+
+# Local self-update test harness (scripts/release_testing)
+scripts/release_testing/.ca/
+scripts/release_testing/out/
