@@ -30,9 +30,12 @@ over a real TLS connection to the hostname the app already talks to.
 scripts/release_testing/run_update_test.sh
 ```
 
-Follow the prompts; it asks for `sudo` (needed for keychain trust, the
-`/etc/hosts` edit, and binding port 443) and will pause so you can watch
-the real update dialog, the AppleScript admin prompt, and the relaunch.
+Follow the prompts; it asks which admin account to `sudo` as (needed for
+keychain trust, the `/etc/hosts` edit, and binding port 443) -- leave blank
+to sudo as your current user, or set `MAVEN_SUDO_ADMIN=<username>` beforehand
+to skip that prompt (needed on machines where your login account isn't
+itself in the admin group). It then pauses so you can watch the real update
+dialog, the AppleScript admin prompt, and the relaunch.
 While it's running, these logs are useful:
 
 ```

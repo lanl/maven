@@ -24,6 +24,17 @@
 # updater.py code, run for real.
 set -euo pipefail
 
+# On machines where the logged-in user isn't themselves in the admin group,
+# sudo needs to run as a separate admin account. Set MAVEN_SUDO_ADMIN to that
+# account's username to use it non-interactively; otherwise this prompts for
+# one (leave blank to sudo as the current user, the common case).
+if [ -z "${MAVEN_SUDO_ADMIN:-}" ]; then
+    read -r -p "Admin username for sudo (blank = sudo as current user): " MAVEN_SUDO_ADMIN
+fi
+if [ -n "$MAVEN_SUDO_ADMIN" ]; then
+    sudo() { command sudo -u "$MAVEN_SUDO_ADMIN" "$@"; }
+fi
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script_dir="$repo_root/scripts/release_testing"
 out_dir="$script_dir/out"
