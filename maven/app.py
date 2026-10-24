@@ -3566,10 +3566,10 @@ elif st.session_state.screen == "hpc_move":
 
             if local_data.lower() == "n/a":
                 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-                if "conduit/conduit-x86_64" in str(result.stderr):
-                    copy_tool = "conduit"
-                elif shutil.which("pfcp"):
+                if shutil.which("pfcp"):
                     copy_tool = "pfcp"
+                elif "conduit/conduit-x86_64" in str(result.stderr):
+                    copy_tool = "conduit"
                 else:
                     st.error("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                     st.stop()
