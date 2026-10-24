@@ -16,7 +16,10 @@ Path(f"{proj_name}_endpoint.txt").write_text(endpoint_line, encoding="utf-8")
 Path(f"{proj_name}_endpoint.txt").chmod(0o644)
 
 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-if "conduit/conduit-x86_64" in str(result.stderr):
+if shutil.which("pfcp"):
+    copy_command = ["pfcp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")]
+
+elif "conduit/conduit-x86_64" in str(result.stderr):
     result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
     copy_command = str(result.stdout).split()
     for idx, s in enumerate(copy_command):
@@ -25,9 +28,6 @@ if "conduit/conduit-x86_64" in str(result.stderr):
             break
     copy_command.extend(["cp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")])
 
-elif shutil.which("pfcp"):
-    copy_command = ["pfcp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")]
-    
 else:
     print("Only testing on this HPC for now")
     assert False

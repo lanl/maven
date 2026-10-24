@@ -1,4 +1,3 @@
-
 '''
 ###############################################################################
 # This program is Open-Source under the BSD-3 License.                        #
@@ -52,11 +51,11 @@ Authors:
 Christopher W Johnson (cwj@lanl.gov)
 Vedant Iyer (iyer@lanl.gov)
 '''
-
 import json
 import yaml
 from typing import Any, Dict, List, Tuple
 from pathlib import Path, PurePosixPath
+import posixpath
 import os
 import streamlit as st
 import pypdf
@@ -71,7 +70,6 @@ from reportlab.lib.styles import ParagraphStyle
 import html
 import subprocess
 import shlex
-from pathlib import PurePosixPath
 import getpass
 import socket
 import re
@@ -83,6 +81,7 @@ from datetime import UTC, datetime
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from textwrap import dedent
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
@@ -297,7 +296,7 @@ def create_tier2_db(db_path: str):
     store = get_db(db_path)
     tier2_data_dict = {"local_data_path": "", "username": "", "hpc_system": "",
                   "hpc_staging_space": "", "hpc_campaign_space": "", "user_group": "", 
-                  "access_permissions": "", "diana_endpoint": "", "contact_email": ""}
+                  "access_permissions": "", "diana_endpoint": "", "contact_email": "", "using_ssh": ""}
     store.read(tier2_data_dict, "Collection", table_name=TIER_2_TABLE)
     tier2_files_dict = {"filepaths": ""}
     store.read(tier2_files_dict, "Collection", table_name=TIER_2_FILES_TABLE)
@@ -1838,22 +1837,24 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                 if TIER1_MARKDOWN_TABLE not in curr_tables:
                     with next_col:
                         with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+                            ai_model_error_msg = None
                             tier1_yaml_df = pd.DataFrame([updated_values])
                             try:
                                 all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
+                                tier1_db_path = get_tier1_db_path(qid)
+                                store = get_db(tier1_db_path)
+                                for tier1_table_name, tier1_dict in all_tier1_dicts.items():
+                                    store.read(tier1_dict, "Collection", tier1_table_name)
+                                store.close()
                             except Exception as e:
-                                if "connection error" in str(e).lower():
-                                    st.error("Ensure you are on the correct network to access the AI Model")
-                                else:
-                                    st.error("Error connecting to AI Model:")
-                                    st.exception(e)
-                                st.stop()
-
-                            tier1_db_path = get_tier1_db_path(qid)
-                            store = get_db(tier1_db_path)
-                            for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                                store.read(tier1_dict, "Collection", tier1_table_name)
-                            store.close()
+                                ai_model_error_msg = str(e)
+                        if ai_model_error_msg is not None:
+                            if "connection error" in ai_model_error_msg.lower():
+                                st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                            else:
+                                st.error("Error connecting to AI Model:")
+                                st.exception(ai_model_error_msg)
+                            st.stop()
 
                 st.session_state.screen = "tier1"
                 st.session_state.render_t1_markdown = True
@@ -1935,6 +1936,8 @@ if "invalid_fields" not in st.session_state:
     st.session_state.invalid_fields = []
 if "t2_uploader_version" not in st.session_state:
     st.session_state.t2_uploader_version = 0
+if "bashrc_path" not in st.session_state:
+    st.session_state.bashrc_path = None
 
 if get_maven_dir() is None:
     st.title("Welcome to the MAVEN App")
@@ -2517,15 +2520,19 @@ if st.session_state.screen == "datasheet":
 
                 new_id = commit_section0_and_create_row(st.session_state.draft_answers)
                 with st.spinner("Running URSA-assisted autofill. May take a few minutes..."):
+                    ai_model_error_msg = None
                     try:
                         row_after_autofill = run_initial_autofill_for_project(CHAT_AGENT, new_id)
                     except Exception as e:
-                        if "connection error" in str(e).lower():
-                            st.error("Ensure you are on the correct network to access the AI Model")
-                        else:
-                            st.error("Error connecting to AI Model:")
-                            st.exception(e)
-                        st.stop()
+                        ai_model_error_msg = str(e)
+                if ai_model_error_msg is not None:
+                    if "connection error" in ai_model_error_msg.lower():
+                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                    else:
+                        st.error("Error connecting to AI Model:")
+                        st.exception(ai_model_error_msg)
+                    st.stop()
+
                 st.session_state.active_qid = new_id
                 meta = load_agent_meta(row_after_autofill)
                 st.session_state.section_idx = (
@@ -2549,15 +2556,18 @@ if st.session_state.screen == "datasheet":
                 questions = load_agent_meta(row).get("followup_questions", [])
                 clarifications = collect_followup_answers(qid, questions)
                 with st.spinner("Applying clarifications. May take a few minutes..."):
+                    ai_model_error_msg = None
                     try:
                         row_after_followup = run_followup_autofill_for_project(CHAT_AGENT, qid, clarifications)
                     except Exception as e:
-                        if "connection error" in str(e).lower():
-                            st.error("Ensure you are on the correct network to access the AI Model")
-                        else:
-                            st.error("Error connecting to AI Model:")
-                            st.exception(e)
-                        st.stop()
+                        ai_model_error_msg = str(e)
+                if ai_model_error_msg is not None:
+                    if "connection error" in ai_model_error_msg.lower():
+                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                    else:
+                        st.error("Error connecting to AI Model:")
+                        st.exception(ai_model_error_msg)
+                    st.stop()
                 st.session_state.section_idx = route_after_autofill(row_after_followup)
                 st.session_state._scroll_to_top = True
                 st.rerun()
@@ -2602,15 +2612,18 @@ if st.session_state.screen == "datasheet":
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
                         flattened_fields, tier1_cards, datacard_dict = get_tier1_fields()
                         with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+                            ai_model_error_msg = None
                             try:
                                 all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
                             except Exception as e:
-                                if "connection error" in str(e).lower():
-                                    st.error("Ensure you are on the correct network to access the AI Model")
-                                else:
-                                    st.error("Error connecting to AI Model:")
-                                    st.exception(e)
-                                st.stop()
+                                ai_model_error_msg = str(e)
+                        if ai_model_error_msg is not None:
+                            if "connection error" in ai_model_error_msg.lower():
+                                st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                            else:
+                                st.error("Error connecting to AI Model:")
+                                st.exception(ai_model_error_msg)
+                            st.stop()
 
                         if not isinstance(all_tier1_dicts, dict):
                             if isinstance(all_tier1_dicts, None):
@@ -2663,15 +2676,18 @@ elif st.session_state.screen == "tier1":
                 st.rerun()
             else: # run t1 agent
                 with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+                    ai_model_error_msg = None
                     try:
                         all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
                     except Exception as e:
-                        if "connection error" in str(e).lower():
-                            st.error("Ensure you are on the correct network to access the AI Model")
-                        else:
-                            st.error("Error connecting to AI Model:")
-                            st.exception(e)
-                        st.stop()
+                        ai_model_error_msg = str(e)
+                if ai_model_error_msg is not None:
+                    if "connection error" in ai_model_error_msg.lower():
+                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                    else:
+                        st.error("Error connecting to AI Model:")
+                        st.exception(ai_model_error_msg)
+                    st.stop()
 
                 if not isinstance(all_tier1_dicts, dict):
                     if isinstance(all_tier1_dicts, None):
@@ -2757,15 +2773,18 @@ elif st.session_state.screen == "tier1":
 
         if not curr_tables:
             with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+                ai_model_error_msg = None
                 try:
                     all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
                 except Exception as e:
-                    if "connection error" in str(e).lower():
-                        st.error("Ensure you are on the correct network to access the AI Model")
-                    else:
-                        st.error("Error connecting to AI Model:")
-                        st.exception(e)
-                    st.stop()
+                    ai_model_error_msg = str(e)
+            if ai_model_error_msg is not None:
+                if "connection error" in ai_model_error_msg.lower():
+                    st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                else:
+                    st.error("Error connecting to AI Model:")
+                    st.exception(ai_model_error_msg)
+                st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -2775,15 +2794,18 @@ elif st.session_state.screen == "tier1":
             st.rerun()
         if TIER1_MARKDOWN_TABLE not in curr_tables:
             with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+                ai_model_error_msg = None
                 try:
                     all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, curr_tables[TIER1_YAML_TABLE], tier1_cards)
                 except Exception as e:
-                    if "connection error" in str(e).lower():
-                        st.error("Ensure you are on the correct network to access the AI Model")
-                    else:
-                        st.error("Error connecting to AI Model:")
-                        st.exception(e)
-                    st.stop()
+                    ai_model_error_msg = str(e)
+            if ai_model_error_msg is not None:
+                if "connection error" in ai_model_error_msg.lower():
+                    st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                else:
+                    st.error("Error connecting to AI Model:")
+                    st.exception(ai_model_error_msg)
+                st.stop()
 
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
@@ -2940,10 +2962,51 @@ elif st.session_state.screen == "hpc_move":
 
     st.title("Move Data and Metadata to HPC")
 
+    plink = shutil.which("plink.exe") or shutil.which("plink")
+    pscp = shutil.which("pscp.exe") or shutil.which("pscp")
+
     show_tier2_extraction = (st.session_state.render_hpc_move_btn and st.session_state.tier2_loc_dict is not None)
 
     if not show_tier2_extraction:
         st.subheader("Enter data locations and HPC information to enable data movement")
+
+        if os.name == "nt":
+            tier2_store = get_db(tier2_db_path)
+            locations_tbl = tier2_store.get_table(TIER_2_TABLE, True)
+            tier2_store.close()
+
+            options = ["SSH", "PuTTY"]
+            using_ssh = locations_tbl["using_ssh"].iloc[0] if not locations_tbl.empty else ""
+            default_index = options.index(str(using_ssh)) if str(using_ssh) in options else None
+            st.write("Are you using SSH or PuTTY to connect to HPC?")
+            st.caption("If unsure, contact maven-help@lanl.gov. Download PuTTY from your software center or [here](https://www.puttyssh.org/)")
+            new_using_ssh_value = st.radio("radio_label", options, index=default_index, key="windows_using_ssh_btn", 
+                    label_visibility="collapsed", horizontal=True)
+            if new_using_ssh_value is not None:
+                tier2_store = get_db(tier2_db_path)
+                if using_ssh == "":
+                    tier2_store.read({"using_ssh":new_using_ssh_value}, "Collection", TIER_2_TABLE)
+                else:
+                    tier2_store.query(f"UPDATE {TIER_2_TABLE} SET using_ssh = ?", params=[new_using_ssh_value])
+                tier2_store.close()
+                if using_ssh != new_using_ssh_value:
+                    st.rerun()
+            else:
+                st.warning("Please select a HPC connection type")
+                st.stop()
+
+            if new_using_ssh_value.lower() == "putty" and (not plink or not pscp):
+                    st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
+                    st.stop()
+        
+        else:
+            tier2_store = get_db(tier2_db_path)
+            if tier2_store.get_table(TIER_2_TABLE, True).empty:
+                tier2_store.read({"using_ssh":"SSH"}, "Collection", TIER_2_TABLE)
+            else:
+                tier2_store.query(f"UPDATE {TIER_2_TABLE} SET using_ssh = ?", params=["SSH"])
+            tier2_store.close()
+        
 
         tier2_store = get_db(tier2_db_path)
         locations_tbl = tier2_store.get_table(TIER_2_TABLE, True)
@@ -2961,38 +3024,45 @@ elif st.session_state.screen == "hpc_move":
                                     value=locations_tbl["local_data_path"].iloc[0] if not locations_tbl.empty else "",
                                     label_visibility="collapsed")
 
-            l1, r1 = st.columns(2)
-            with l1:
-                st.write("Username")
-                st.caption("Username to access the HPC System. Ex: ssh **username**@hpc_system:/path/")
-                updated_tier2_dict["username"] = st.text_input("Enter", key=f"hpc_username_{qid}",
-                                    value=locations_tbl["username"].iloc[0] if not locations_tbl.empty else "",
-                                    label_visibility="collapsed")
-            with r1:
-                st.write("HPC System")
-                st.caption("HPC system to access. **Specify the transfer node, not head node**. Ex: ssh username@**hpc_system**:/path/")
+            if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                updated_tier2_dict["username"] = "N/A"
+                st.write("PuTTY Session Name")
+                st.caption("Name of the PuTTY session to use to access HPC. Choose the session for a HPC transfer node.")
+                st.caption("PuTTY Session's Host Name must include username. Ex: my_username@hpc_transfer_node")
                 updated_tier2_dict["hpc_system"] = st.text_input("Enter", key=f"hpc_system_{qid}",
-                                    value=locations_tbl["hpc_system"].iloc[0] if not locations_tbl.empty else "",
-                                    label_visibility="collapsed")
+                                    value=locations_tbl["hpc_system"].iloc[0] if not locations_tbl.empty else "", label_visibility="collapsed")
+            else:
+                l1, r1 = st.columns(2)
+                with l1:
+                    st.write("Username")
+                    st.caption("Username to access the HPC System. Ex: ssh **username**@hpc_system:/path/")
+                    updated_tier2_dict["username"] = st.text_input("Enter", key=f"hpc_username_{qid}",
+                                        value=locations_tbl["username"].iloc[0] if not locations_tbl.empty else "",
+                                        label_visibility="collapsed")
+                with r1:
+                    st.write("HPC System")
+                    st.caption("HPC system to access. **Specify the transfer node, not head node**. Ex: ssh username@**hpc_system**:/path/")
+                    updated_tier2_dict["hpc_system"] = st.text_input("Enter", key=f"hpc_system_{qid}",
+                                        value=locations_tbl["hpc_system"].iloc[0] if not locations_tbl.empty else "", label_visibility="collapsed")
 
         l2, r2 = st.columns(2)
         with l2:
             if is_remote and "lanl.gov" in socket.getfqdn().lower():
-                st.write("Staging Location")
+                st.write("Staging Directory")
                 st.caption("Absolute path to directory where data is currently staged")
             else:
-                st.write("HPC Staging Location")
+                st.write("HPC Staging Directory")
                 st.caption("Absolute path to HPC directory where data and metadata will be temporarily staged")
             updated_tier2_dict["hpc_staging_space"] = st.text_input("Enter", key=f"hpc_staging_{qid}",
                                 value=locations_tbl["hpc_staging_space"].iloc[0] if not locations_tbl.empty else "",
                                 label_visibility="collapsed")
         with r2:
             if is_remote and "lanl.gov" in socket.getfqdn().lower():
-                st.write("Campaign Location")
-                st.caption("Absolute path to directory where data and metadata will be permanently stored")
+                st.write("Campaign Directory")
+                st.caption("Absolute path to Campaign directory where a project folder will be created for permanent storage")
             else:
-                st.write("HPC Campaign Location")
-                st.caption("Absolute path to HPC directory where data and metadata will be permanently stored")
+                st.write("HPC Campaign Directory")
+                st.caption("Absolute path to Campaign directory where a project folder will be created for permanent storage")
             updated_tier2_dict["hpc_campaign_space"] = st.text_input("Enter", key=f"hpc_campaign_{qid}",
                                 value=locations_tbl["hpc_campaign_space"].iloc[0] if not locations_tbl.empty else "",
                                 label_visibility="collapsed")
@@ -3036,7 +3106,7 @@ elif st.session_state.screen == "hpc_move":
 
         l4, r4 = st.columns(2)
         with l4:
-            st.write("DIANA Catalog Endpoint")
+            st.write("DIANA Catalog Endpoint Directory")
             st.caption("Absolute path to HPC directory where this project will be registered in the DIANA catalog")
             updated_tier2_dict["diana_endpoint"] = st.text_input("Enter", key=f"diana_endpoint_{qid}",
                                 value=locations_tbl["diana_endpoint"].iloc[0] if not locations_tbl.empty else "",
@@ -3073,9 +3143,9 @@ elif st.session_state.screen == "hpc_move":
                     "local_data_path": "Local Data Location",
                     "username": "Username",
                     "hpc_system": "HPC System",
-                    "hpc_staging_space": "HPC Staging Location",
-                    "hpc_campaign_space": "HPC Campaign Location",
-                    "diana_endpoint": "DIANA Catalog Endpoint",
+                    "hpc_staging_space": "HPC Staging Directory",
+                    "hpc_campaign_space": "HPC Campaign Directory",
+                    "diana_endpoint": "DIANA Catalog Endpoint Directory",
                     "contact_email": "Contact Email Address"
                 }
                 st.error("Please fill all fields before continuing:\n- " +
@@ -3087,7 +3157,7 @@ elif st.session_state.screen == "hpc_move":
 
             hpc_staging_input = updated_tier2_dict["hpc_staging_space"].strip()
             if "scratch" not in hpc_staging_input.lower():
-                st.error("HPC Staging Location must be in the 'scratch' cluster.")
+                st.error("HPC Staging Directory must be in the 'scratch' cluster.")
                 st.stop()
             if os.name != "nt":
                 hpc_staging_path = Path(hpc_staging_input)
@@ -3096,7 +3166,7 @@ elif st.session_state.screen == "hpc_move":
 
             hpc_campaign_input = updated_tier2_dict["hpc_campaign_space"].strip()
             if "campaign" not in hpc_campaign_input.lower():
-                st.error("HPC Campaign Location must be in the 'campaign' cluster.")
+                st.error("HPC Campaign Directory must be in the 'campaign' cluster.")
                 st.stop()
             if os.name != "nt":
                 hpc_campaign_path = Path(hpc_campaign_input)
@@ -3106,6 +3176,9 @@ elif st.session_state.screen == "hpc_move":
             diana_endpoint_input = updated_tier2_dict["diana_endpoint"].strip()
             if "campaign" not in diana_endpoint_input.lower():
                 st.error("DIANA Endpoint must be in the 'campaign' cluster.")
+                st.stop()
+            if "catalog" not in diana_endpoint_input.lower():
+                st.error("DIANA Endpoint must be in a catalog folder.")
                 st.stop()
             if os.name != "nt":
                 diana_endpoint_path = Path(diana_endpoint_input)
@@ -3185,20 +3258,67 @@ elif st.session_state.screen == "hpc_move":
                     st.error("Local Data Location must be an absolute path to data you can access")
                     st.stop()
                 if not hpc_staging_path.is_absolute():
-                    st.error("HPC Staging Location must be an absolute path to a directory on HPC")
+                    st.error("HPC Staging Directory must be an absolute path to a directory on HPC")
                     st.stop()
                 if not hpc_campaign_path.is_absolute():
-                    st.error("HPC Campaign Location must be an absolute path to a directory on HPC")
+                    st.error("HPC Campaign Directory must be an absolute path to a directory on HPC")
                     st.stop()
                 if not diana_endpoint_path.is_absolute():
-                    st.error("DIANA Endpoint must be an absolute path to a directory on HPC")
+                    st.error("DIANA Catalog Endpoint Directory must be an absolute path to a directory on HPC")
                     st.stop()
 
                 num_prompts = 5 if user_group_input else 4
                 print(f" \nPassword prompt 1/{num_prompts}: validating HPC access")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
-                    cmd = ["ssh", f"{username_input}@{hpc_system_input}", "echo", "test"]
-                    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                    putty_error = None
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        cmd = [plink, "-v", "-no-antispoof", "-load", hpc_system_input, "echo", "test"]
+                        try:
+                            result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=15)
+                        except subprocess.TimeoutExpired as exc:
+                            def as_text(value):
+                                if value is None:
+                                    return ""
+                                if isinstance(value, bytes):
+                                    return value.decode(errors="replace")
+                                return value
+                            stdout = as_text(exc.stdout)
+                            stderr = as_text(exc.stderr)
+                            if "GSSAPI authentication initialisation failed" in stderr:
+                                putty_error = dedent("""Need to set CAPI Cert for your session in PuTTY app:
+                                1. Open PuTTY app, select the session you were using and  **Load** it. Remember the Host Name field.
+                                2. Select 'Default Settings' session and click **Load**
+                                3. On the left bar, go to the **Connection -> SSH -> Certificate** screen
+                                4. Check box for 'Attempt certificate authentication'
+                                5. Select **Set CAPI Cert** and follow on screen steps
+                                6. On the left bar, scroll up to **Session**
+                                7. Select 'Default Settings' session again and click **Save**
+                                8. Delete your previous session (if any)
+                                9. Select 'Default Settings' session and click **Load**
+                                10. Complete 'Host Name' & 'Saved Sessions' fields for your PuTTY session and click **Save**
+                                """).strip()
+                            if "Using username" not in stderr:
+                                putty_error = "The PuTTY session's Host Name must be 'username@hpc_name'. Update the Host Name field in the PuTTY app"
+                            elif any("The host key is not cached for this server" in text for text in (stdout, stderr)):
+                                putty_error = "If first connection to this HPC, you must first click 'Open' in the PuTTY app to trust the host"
+                            else:
+                                putty_error = "Timed out in accessing HPC. Try again."
+                    else:
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", "echo", "test"]
+                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                    if putty_error is not None:
+                        st.error(putty_error)
+                        st.stop()
+                    if "Host does not exist" in result.stderr:
+                        st.error("The PuTTY session or Host Name does not exist. Please check spelling and that the session is saved in the PuTTY app")
+                        st.stop()
+                    if "Using username" not in result.stderr:
+                        st.error("The PuTTY session's Host Name must be 'username@hpc_name'. Update the Host Name field in the PuTTY app")
+                        st.stop()
+                    if any(msg in (result.stdout + result.stderr) for msg in ("Connection abandoned.", "User aborted at host key verification")):
+                        st.error("On first connection to this HPC, you must enter 'y' to trust the host. Try again.")
+                        st.stop()
                 if result.returncode != 0:
                     print("View error on app")
                     st.error("Invalid HPC username or system name")
@@ -3207,38 +3327,50 @@ elif st.session_state.screen == "hpc_move":
 
                 print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging location")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
-                    cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_staging_input}" && pwd && ls']
+                    else:
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
                     print("View error on app")
-                    st.error("HPC Staging Location does not exist or is not accessible for this user")
+                    st.error("HPC Staging Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign location")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
-                    cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_campaign_input}" && pwd && ls']
+                    else:
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
                     print("View error on app")
-                    st.error("HPC Campaign Location does not exist or is not accessible for this user")
+                    st.error("HPC Campaign Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 4/{num_prompts}: validating DIANA endpoint")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
-                    cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{diana_endpoint_input}" && pwd && ls']
+                    else:
+                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
                     print("View error on app")
-                    st.error("DIANA Endpoint does not exist or is not accessible for this user")
+                    st.error("DIANA Catalog Endpoint Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 if user_group_input:
                     print(f" \nPassword prompt 5/{num_prompts}: validating user group is valid")
                     with st.spinner("Validating user group input — check the terminal for 4/{num_prompts} password prompts..."):
-                        cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
+                        if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                            cmd = [plink, "-no-antispoof", "-load", hpc_system_input, shlex.join(["getent", "group", user_group_input])]
+                        else:
+                            cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
                         print("View error on app")
@@ -3248,17 +3380,20 @@ elif st.session_state.screen == "hpc_move":
                 print(" \nGo back to app")
 
             col_names = locations_tbl.columns.tolist()
+            if "using_ssh" in col_names:
+                col_names.remove("using_ssh")
             new_values = list(updated_tier2_dict.values())
             store = get_db(tier2_db_path)
-            if locations_tbl.empty:
-                new_tier2_dict = row_dict = dict(zip(col_names, new_values))
-                store.read(new_tier2_dict, "Collection", table_name=TIER_2_TABLE)
-            else:
-                query = (f'UPDATE {TIER_2_TABLE} SET ' + ", ".join(f'"{k}" = ?' for k in col_names))
-                store.query(query, params=new_values)
+            # if locations_tbl.empty:
+            #     new_tier2_dict = row_dict = dict(zip(col_names, new_values))
+            #     store.read(new_tier2_dict, "Collection", table_name=TIER_2_TABLE)
+            # else:
+            query = (f'UPDATE {TIER_2_TABLE} SET ' + ", ".join(f'"{k}" = ?' for k in col_names))
+            store.query(query, params=new_values)
             store.close()
 
             st.session_state.render_hpc_move_btn = True
+            updated_tier2_dict["using_ssh"] = locations_tbl["using_ssh"].iloc[0]
             st.session_state.tier2_loc_dict = updated_tier2_dict
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
@@ -3279,6 +3414,7 @@ elif st.session_state.screen == "hpc_move":
         access_permissions_code = locations_dict["access_permissions"]
         diana_endpoint = locations_dict["diana_endpoint"]
         contact_email = locations_dict["contact_email"]
+        using_ssh = locations_dict["using_ssh"]
 
         back_col, other = st.columns([1, 4], width="stretch")
         with back_col:
@@ -3328,8 +3464,24 @@ elif st.session_state.screen == "hpc_move":
                     else:
                         print(" \nPassword prompt 1/1: checking existing folders on campaign")
                         with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
-                            cmd = ["ssh", f"{username}@{hpc_name}",
-                                f'find {shlex.quote(hpc_campaign)} -mindepth 1 -maxdepth 1 -type d -exec stat -c "%U %n" {{}} \\;']
+                            remote_script = (
+                                'id -un && '
+                                'if [ -f /etc/bashrc ]; then '
+                                '    printf "/etc/bashrc\\n"; '
+                                'elif [ -f /etc/bash.bashrc ]; then '
+                                '    printf "/etc/bash.bashrc\\n"; '
+                                'else '
+                                '    printf "\\n"; '
+                                'fi; '
+                                f'find {shlex.quote(hpc_campaign)} '
+                                '-mindepth 1 -maxdepth 1 -type d '
+                                '-exec stat -c "%U %n" {} \\;'
+                            )
+                            remote_command = f"sh -c {shlex.quote(remote_script)}"
+                            if using_ssh.lower() == "putty":
+                                cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
+                            else:
+                                cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                         print(" \nGo back to app")
                         if result.returncode != 0:
@@ -3337,8 +3489,19 @@ elif st.session_state.screen == "hpc_move":
                             st.code(result.stderr)
                             st.stop()
 
-                        curr_folders = {PurePosixPath(path).name: owner for line in result.stdout.strip().splitlines() if line.strip()
-                                        for owner, path in [line.split(" ", 1)]}
+                        username1, _, remaining = result.stdout.partition("\n")
+                        bashrc_path, _, directory_output = remaining.partition("\n")
+                        bashrc_path = bashrc_path.strip() or None
+                        if bashrc_path is None:
+                            st.error("HPC does not have necessary bashrc structure to be able to move data")
+                            st.stop()
+                        st.session_state.bashrc_path = bashrc_path
+
+                        if using_ssh.lower() == "putty":
+                            username = username1.strip()
+
+                        curr_folders = {PurePosixPath(path).name: owner for line in directory_output.splitlines() if line.strip()
+                                    for owner, path in [line.split(" ", 1)]}
 
                     # check if short_proj_name is in campaign folder
                     if short_proj_name in curr_folders:
@@ -3403,10 +3566,10 @@ elif st.session_state.screen == "hpc_move":
 
             if local_data.lower() == "n/a":
                 result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-                if "conduit/conduit-x86_64" in str(result.stderr):
-                    copy_tool = "conduit"
-                elif shutil.which("pfcp"):
+                if shutil.which("pfcp"):
                     copy_tool = "pfcp"
+                elif "conduit/conduit-x86_64" in str(result.stderr):
+                    copy_tool = "conduit"
                 else:
                     st.error("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                     st.stop()
@@ -3456,7 +3619,7 @@ elif st.session_state.screen == "hpc_move":
                 stdout, stderr = process.communicate()
                 if process.returncode != 0:
                     st.error("Registering this project in the DIANA catalog failed")
-                    if "SyntaxWarning: invalid escape sequence" in stdout:
+                    if any("SyntaxWarning: invalid escape sequence" in text for text in (stdout, stderr)):
                         st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                     else:
                         st.code(stderr)
@@ -3465,14 +3628,23 @@ elif st.session_state.screen == "hpc_move":
             else:
                 if not st.session_state.local_to_staging_moved:
                     local_move_error = None
-                    with st.spinner("Moving local data to HPC staging space - check the terminal for 3 password prompts..."):
-                        print(" \n \nMoving local data to HPC staging space - 3 password prompts expected:\n ")
+                    with st.spinner("Moving local data to HPC staging space - check the terminal for 3-4 password prompts..."):
+                        print(" \n \nMoving local data to HPC staging space - 3-4 password prompts expected:\n ")
                         try:
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
-                            s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
+                            if using_ssh.lower() == "putty":
+                                s.index(local_data, hpc_staging)
+                            else:
+                                s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
                             shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
-                            s.copy("rsync")
+                            if using_ssh.lower() == "putty":
+                                s.copy("putty", putty_session=hpc_name) # use putty command for windows-putty users
+                            else:
+                                if os.name == "nt":
+                                    s.copy("scp") # windows does not have rsync
+                                else:
+                                    s.copy("rsync") # linux/mac supports rsync
                         except Exception as e:
                             local_move_error = e
                             print(" \nGo back to app")
@@ -3487,7 +3659,7 @@ elif st.session_state.screen == "hpc_move":
                 if not st.session_state.staging_to_campaign_moved:
                     # run remote script to move from scratch to campaign
                     script = REMOTE_MOVE_SCRIPT
-                    full_staging_path = os.path.join(hpc_staging, proj_name)
+                    full_staging_path = posixpath.join(hpc_staging, proj_name)
                     script = script.replace('00000', repr(full_staging_path)) # staging folder
                     script = script.replace('11111', repr(t1_db_name)) # t1 db name
                     script = script.replace('22222', repr(temp_t2_db_name)) # t2 db name
@@ -3497,7 +3669,11 @@ elif st.session_state.screen == "hpc_move":
 
                     with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
                         print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
-                        cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
+                        remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
+                        if using_ssh.lower() == "putty":
+                            cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
+                        else:
+                            cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                         remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
                     print(" \nGo back to app")
                     if remote_run.returncode != 0:
@@ -3510,8 +3686,13 @@ elif st.session_state.screen == "hpc_move":
                                 st.code("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
                             elif "conduit get" in output and ("no credentials" in output or "failed" in output):
                                 st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
-                            elif "SyntaxWarning: invalid escape sequence" in output:
+                            elif any("SyntaxWarning: invalid escape sequence" in text for text in (remote_run.stdout, remote_run.stderr)):
                                 st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
+                            elif "bash: /etc/bashrc: No such file or directory" in remote_run.stderr:
+                                if using_ssh.lower() == "putty":
+                                    st.code(f"Please ensure your putty session '{hpc_name}' represents an HPC transfer node")
+                                else:
+                                    st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                             else:
                                 st.code(remote_run.stderr)
                         st.stop()
@@ -3539,7 +3720,7 @@ elif st.session_state.screen == "hpc_move":
                     st.session_state.staging_to_campaign_moved = True
 
                 endpoint_script = REMOTE_REGISTER_ENDPOINT_SCRIPT
-                full_staging_path = os.path.join(hpc_staging, proj_name)
+                full_staging_path = posixpath.join(hpc_staging, proj_name)
                 endpoint_script = endpoint_script.replace('00000', repr(full_staging_path)) # staging folder
                 endpoint_script = endpoint_script.replace('11111', repr(fed_line))
                 endpoint_script = endpoint_script.replace('22222', repr(proj_name))
@@ -3547,7 +3728,11 @@ elif st.session_state.screen == "hpc_move":
 
                 with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
                     print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
-                    cmd = ["ssh", f"{username}@{hpc_name}", "python3", "-"]
+                    remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
+                    if using_ssh.lower() == "putty":
+                        cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
+                    else:
+                        cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                     remote_endpoint_run = subprocess.run(cmd, input=endpoint_script, text=True, capture_output=True, check=False)
 
                 if remote_endpoint_run.returncode != 0:
@@ -3561,6 +3746,11 @@ elif st.session_state.screen == "hpc_move":
                                 st.code(f"Unable to register '{proj_name}' in {diana_endpoint}. Verify you have write permissions.")
                             else:
                                 st.code(remote_endpoint_run.stdout.split("Endpoint error", 1)[1])
+                        elif "bash: /etc/bashrc: No such file or directory" in remote_endpoint_run.stderr:
+                            if using_ssh.lower() == "putty":
+                                st.code(f"Please ensure your putty session '{hpc_name}' represents an HPC transfer node")
+                            else:
+                                st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                         else:
                             st.code(remote_endpoint_run.stderr)
                             st.code(output)
@@ -3593,8 +3783,12 @@ elif st.session_state.screen == "hpc_move":
                 if user_group and access_permissions_code:
                     print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
                     with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
-                        cmd = ["ssh", f"{username}@{hpc_name}",
-                            f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
+                        if using_ssh.lower() == "putty":
+                            cmd = [plink, "-load", hpc_name,
+                                f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
+                        else:
+                            cmd = ["ssh", f"{username}@{hpc_name}",
+                                f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
