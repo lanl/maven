@@ -400,6 +400,10 @@ def delete_project(qid: int) -> None:
     if os.path.exists(tier2_path):
         os.remove(tier2_path)
 
+    tier2_temp_path = "".join(tier2_path.rsplit("_tier2", 1))
+    if os.path.exists(tier2_temp_path):
+        os.remove(tier2_temp_path)
+
     store = get_db(get_master_db_name())
     projects_df = store.get_table(PROJECTS_TABLE, True, True)
 
@@ -1010,6 +1014,12 @@ def apply_section_updates(section_idx: int, qid_token: str) -> Dict[str, Any]:
             if key not in st.session_state:
                 continue
             val = st.session_state[key]
+
+            if section_idx == 0 and qid_token != "draft" and col == "project_name":
+                maven_db_store = get_db(get_master_db_name())
+                maven_db_store.query(f"UPDATE {PROJECTS_TABLE} SET project_name = ? WHERE project_id = ?", 
+                                     params=[val.upper(), qid_token[3:]])
+                maven_db_store.close()
 
             # check to ensure short title is not None
             if col == "short_project_title":
