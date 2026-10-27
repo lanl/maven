@@ -8,10 +8,9 @@ Items below are where the generator had to choose. Check them, then record any c
 ## Dropdown options: schema enum differs from the template comment (schema used) (0)
 
 
-## Extra 'nothing applies' option added to a required dropdown (Vedant's rule 2) (7)
+## Extra 'nothing applies' option added to a required dropdown (Vedant's rule 2) (6)
 
 - `discoverability.datacard.sensitivity.overall_sensitivity`: added `None`
-- `discoverability.product_type`: added `None`
 - `discoverability.release_status`: added `None`
 - `discoverability.sensitivity.overall_sensitivity`: added `None`
 - `accessibility.access_policy.access_level`: added `None`
@@ -44,8 +43,9 @@ Items below are where the generator had to choose. Check them, then record any c
 
 - `xCard` (template line 182)
 
-## Manual overrides applied from the config (3)
+## Manual overrides applied from the config (4)
 
 - `discoverability.identification.name`: {'required': True}
 - `discoverability.identification.primary_id.type`: {'required': True}
 - `discoverability.identification.primary_id.value`: {'required': True}
+- `discoverability.contact.person.email`: {'required': True}

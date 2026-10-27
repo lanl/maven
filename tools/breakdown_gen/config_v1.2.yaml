@@ -32,4 +32,7 @@ guide_for_top_level: true
 exclude_top_level: [_repository]
 
 # Manual decisions, applied last: field path -> keys to set.
-overrides: {}
+# Vedant (2026-10-28): the __...__ placeholders on these two fields are wrong; they should be required.
+overrides:
+  discoverability.identification.primary_id.value: {required: true}
+  discoverability.contact.person.email: {required: true}

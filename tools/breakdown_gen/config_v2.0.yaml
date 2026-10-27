@@ -32,3 +32,4 @@ overrides:
   discoverability.identification.name: {required: true}            # D1: required by the schema, untagged in template
   discoverability.identification.primary_id.type: {required: true}  # D2: required block needs the ID type ('unregistered' exists)
   discoverability.identification.primary_id.value: {required: true} # D3: type and value go together; 'not_applicable' when unregistered
+  discoverability.contact.person.email: {required: true}            # Vedant (2026-10-28): the primary contact needs an email
