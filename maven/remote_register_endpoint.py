@@ -12,21 +12,24 @@ diana_endpoint = 33333
 os.chdir(staging_folder)
 
 # create txt file
-Path(f"{proj_name}_endpoint.txt").write_text(endpoint_line, encoding="utf-8")
-Path(f"{proj_name}_endpoint.txt").chmod(0o644)
+endpoint_txt_name = f"{proj_name}_endpoint.txt"
+Path(endpoint_txt_name).write_text(endpoint_line, encoding="utf-8")
+Path(endpoint_txt_name).chmod(0o644)
 
-result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-if shutil.which("pfcp"):
-    copy_command = ["pfcp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")]
+shell = os.environ.get("SHELL")
+pfcp_result = subprocess.run(["module avail marfs"], shell=True, executable=shell, capture_output=True)
+conduit_result = subprocess.run(["module avail conduit"], shell=True, executable=shell, capture_output=True)
+if "marfs-x86_64" in str(pfcp_result.stderr):
+    copy_command = ["bash", "-lc", f"pfcp {endpoint_txt_name} {os.path.join(diana_endpoint, endpoint_txt_name)}"]
 
-elif "conduit/conduit-x86_64" in str(result.stderr):
+elif "conduit/conduit-x86_64" in str(conduit_result.stderr):
     result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
     copy_command = str(result.stdout).split()
     for idx, s in enumerate(copy_command):
         if "/" in s:
             copy_command = copy_command[idx:idx+3]
             break
-    copy_command.extend(["cp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")])
+    copy_command.extend(["cp", endpoint_txt_name, os.path.join(diana_endpoint, endpoint_txt_name)])
 
 else:
     print("Only testing on this HPC for now")

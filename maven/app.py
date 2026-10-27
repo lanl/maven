@@ -3575,10 +3575,12 @@ elif st.session_state.screen == "hpc_move":
             fed_line = f"HPC,{hpc_name},{os.path.join(hpc_campaign, proj_name, t1_db_name)},data,{username},{contact_email},{datetime.now(UTC).time()}"
 
             if local_data.lower() == "n/a":
-                result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-                if shutil.which("pfcp"):
+                shell = os.environ.get("SHELL")
+                pfcp_result = subprocess.run(["module avail marfs"], shell=True, executable=shell, capture_output=True)
+                conduit_result = subprocess.run(["module avail conduit"], shell=True, executable=shell, capture_output=True)
+                if "marfs-x86_64" in str(pfcp_result.stderr):
                     copy_tool = "pfcp"
-                elif "conduit/conduit-x86_64" in str(result.stderr):
+                elif "conduit/conduit-x86_64" in str(conduit_result.stderr):
                     copy_tool = "conduit"
                 else:
                     st.error("Data transfer not supported on this HPC system. Ensure you are on a transfer node, not head node.")
@@ -3613,8 +3615,9 @@ elif st.session_state.screen == "hpc_move":
                     st.stop()
 
                 # register project in diana endpoint
-                Path(f"{proj_name}_endpoint.txt").write_text(fed_line, encoding="utf-8")
-                Path(f"{proj_name}_endpoint.txt").chmod(0o644)
+                endpoint_txt_name = f"{proj_name}_endpoint.txt"
+                Path(endpoint_txt_name).write_text(fed_line, encoding="utf-8")
+                Path(endpoint_txt_name).chmod(0o644)
                 if copy_tool == "conduit":
                     result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
                     copy_command = str(result.stdout).split()
@@ -3622,9 +3625,9 @@ elif st.session_state.screen == "hpc_move":
                         if "/" in s:
                             copy_command = copy_command[idx:idx+3]
                             break
-                    copy_command.extend(["cp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")])
+                    copy_command.extend(["cp", endpoint_txt_name, os.path.join(diana_endpoint, endpoint_txt_name)])
                 else:
-                    copy_command = ["pfcp", f"{proj_name}_endpoint.txt", os.path.join(diana_endpoint, f"{proj_name}_endpoint.txt")]
+                    copy_command = ["bash", "-lc", f"pfcp {endpoint_txt_name} {os.path.join(diana_endpoint, endpoint_txt_name)}"]
                 process = subprocess.Popen(copy_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='latin-1')
                 stdout, stderr = process.communicate()
                 if process.returncode != 0:
