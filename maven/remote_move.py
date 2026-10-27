@@ -5,7 +5,6 @@ try:
 except Exception:
     print("Add the DSI HPC module to your shell config file")
 
-import shutil
 import os
 import subprocess
 
