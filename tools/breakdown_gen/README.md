@@ -18,6 +18,9 @@ change and a re-run instead of a hand conversion.
 | `generate_breakdown.py` | The generator. Reads a config, writes a breakdown YAML and a review report. |
 | `compare_breakdowns.py` | Checks a breakdown against MAVEN's form rules, and optionally compares it field by field with a reference breakdown. |
 | `test_generate.py` | Regression test: regenerates v1.2 and checks it against Vedant's v1.2 breakdown. |
+| `validate_breakdown.py` | Independent check that a breakdown (hand-made, LLM-made or generated) matches its template, section by section. Does not use the generator's code. |
+| `test_validate.py` | Tests for the validator, including deliberately broken copies. |
+| `validation_v1.2.md`, `validation_v2.0.md` | Validation reports for the generated files. |
 | `config_v1.2.yaml` | Inputs and decisions for datacard v1.2. |
 | `config_v2.0.yaml` | Inputs and decisions for datacard v2.0. |
 | `genesis_dc_v1.2_breakdown.generated.yaml` | Generated v1.2 breakdown. |
@@ -94,6 +97,33 @@ python compare_breakdowns.py genesis_dc_v1.2_breakdown.generated.yaml \
 ```
 
 (On Windows PowerShell, put the command on one line or replace `\` with a backtick.)
+
+### 3.1 Validate a breakdown
+
+`validate_breakdown.py` answers "was anything lost or invented when this template was converted?" It works on
+any breakdown, however it was produced, and does not reuse the generator's code: it reads the template with
+plain `yaml.safe_load` and its own comment reader.
+
+```bash
+python validate_breakdown.py ../../maven/metadata_template/genesis_dc_v1.2_YAML.yaml     genesis_dc_v1.2_breakdown.generated.yaml --report validation_v1.2.md
+python validate_breakdown.py "inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml"     genesis_dc_v2.0_breakdown.generated.yaml --allow-missing xCard --report validation_v2.0.md
+```
+
+It prints one row per section (template keys, breakdown fields, errors, warnings) and exits with code 1 if there
+is any error.
+
+| Severity | Check |
+|---|---|
+| ERROR | A template key is missing from the breakdown, or the breakdown has a key the template does not have |
+| ERROR | A leaf's placeholder value differs from the template |
+| ERROR | MAVEN's form rules fail (same check as `compare_breakdowns.py`) |
+| WARNING | A `[*_required]` field is not required; a comment lists choices but there is no dropdown; a dropdown option does not appear in the template comment |
+| EXPECTED | Blocks tagged `[reference_only…]` or named with `--allow-missing`; discriminators added next to one-of blocks |
+
+Run on Vedant's v1.2 file, it reports 0 errors and 14 warnings, which are the known mistakes in that file
+(`Resourcesm`, the copied `classification_category` options, missing dropdowns). The generated v1.2 file has 0
+errors and 0 warnings; the generated v2.0 file has 0 errors and 2 warnings (required-tagged fields inside optional
+blocks, which are `false` on purpose).
 
 To try a generated file in MAVEN, copy it over `maven/metadata_template/genesis_dc_breakdown.yaml` (the file
 `app.py` loads). Keep a copy of the original first.
@@ -198,8 +228,8 @@ The template decides everything by default, the same way the v1.2 breakdown was 
 |---|---|
 | structure | Template keys, in template order. YAML lists (`- item:`) are flattened: the first item's keys become children. |
 | `value` | The template's placeholder, verbatim (`${…}`, `__…__`, `[]`, or a literal). A key followed by `- __X__` takes `__X__`. |
-| `required` | A `[*_required]` tag, or a `${…}` placeholder unless a `[required if …]` tag makes it conditional. An untagged folder is required when one of its children is (agent blocks and discriminators excluded). Inside a person/organization/ai_model/software block, `[situational_required]`, `${…}` or a key in `alternatives.required_keys` means "required if this block is chosen" (Vedant's email). A discriminator is required when its block is present. A field is only required if its enclosing block is. |
-| `type` / `options` | A `${"A\|B"}` placeholder, or a vocabulary written in the comment: `A \| B \| "C d"` anywhere (`select one from list:`, `use vocabulary:`, `Allowed values:`), a bullet list `- A: meaning`, or aligned rows `GD  Genome/Genetic Data  — …`. Lists after `e.g.` are examples for a free-text field and are skipped. Exactly Yes/No becomes `radio`, anything else `dropdown`. A required dropdown with no none/n/a/other choice gets `extra_option` (rule 2 in Vedant's email). Top-level `supports_*` get no type: MAVEN always renders them as Yes/No. |
+| `required` | A `[*_required]` tag, or a `${…}` placeholder unless a `[required if …]` tag makes it conditional. An untagged folder is required when one of its children is (agent blocks and discriminators excluded). Inside a person/organization/ai_model/software block, `[situational_required]`, `${…}` or a key in `alternatives.required_keys` means "required if this block is chosen" (Vedant's email). A discriminator is required when its block is present. A field inside an optional block is not required (MAVEN would otherwise force it whenever the capability is "Yes"), except inside a one-of block: MAVEN enforces those fields only when the discriminator selects that block (`app.py`, `render_tier1_yaml_form`). |
+| `type` / `options` | A `${"A\|B"}` placeholder, or a vocabulary written in the comment: `A \| B \| "C d"` anywhere (`select one from list:`, `use vocabulary:`, `Allowed values:`), a bullet list `- A: meaning`, or aligned rows `GD  Genome/Genetic Data  — …`. Lists after `e.g.`, and lists inside a commented-out YAML example, are skipped. Exactly Yes/No becomes `radio`, anything else `dropdown`. A required dropdown with no none/n/a/other choice gets `extra_option` (rule 2 in Vedant's email). Top-level `supports_*` get no type: MAVEN always renders them as Yes/No. |
 | `description` | The template comment without its `[tag]` and `###---X---###` heading; otherwise the comment lines above the key. Quoted as `" …"`, or `' …'` when the text contains `"`. With `guide_for_top_level: true`, top-level keys are prefixed with the guide's table text. |
 | `conditional_context` / `condition_discriminator` | When a block has two or more agent sub-blocks: use the existing sibling key from `discriminator_keys`, or add one named `synthesize_as` (v2.0 has none). |
 | `overrides` | Applied last. |
@@ -216,21 +246,20 @@ The template decides everything by default, the same way the v1.2 breakdown was 
 | `value` | 379 / 379 (100%) |
 | `conditional_context` / discriminator | 379 / 379 (100%) |
 | `required` | 367 / 379 (97%) |
-| `type` | 367 / 379 (97%) |
-| `options` | 347 / 379 (92%) |
+| `type` | 370 / 379 (98%) |
+| `options` | 349 / 379 (92%) |
 | `description` | 280 / 379 (74%, at ≥ 80% text similarity) |
 | MAVEN form rule check | 0 problems |
 
 Every remaining difference is listed in `v1.2_vs_vedant.diff.md`. Most of them are not generator errors:
 
-- **`required` (12):** per-field choices with no tag or placeholder behind them (`source_data.*`,
-  `maintainer.*`, `contact.person.email`, `organization.ror_id`, `primary_id.value`). Several follow the
-  sub-field lists in the reference guide, but the guide is not followed consistently, so no rule reproduces
-  them. Add them as `overrides` if an exact match is wanted.
-- **`type` (12):** 10 fields have a vocabulary in their comment but were not made dropdowns in the v1.2 file
-  (e.g. `workflow.state`, `checksum_type`, `agreement_type`). Two are generator mistakes:
-  `additional_contacts` and `features`, whose comments contain example YAML with `type: a | b`.
-- **`options` (32):** mostly the extra `None`. The generator adds it to *required* dropdowns, as Vedant's
+- **`required` (12):** places where the v1.2 file is not consistent, which Vedant confirmed (2026-10-28) are
+  quick choices rather than rules: `organization.ror_id` should be `false`; fields inside an optional block
+  (`source_data.*`, `maintainer.*`, `reviewed_by.*`) follow the rule in section 6. `contact.person.email` and
+  `primary_id.value` are set to `true` with `overrides`, as Vedant asked.
+- **`type` (9):** fields that have a vocabulary in their comment but were not made dropdowns in the v1.2 file
+  (e.g. `workflow.state`, `checksum_type`, `agreement_type`).
+- **`options` (30):** the 9 fields above, and mostly the extra `None`. The generator adds it to *required* dropdowns, as Vedant's
   email asks. The v1.2 file added it to some *optional* dropdowns instead. Also a typo in the v1.2 file
   (`Resourcesm`) and the classification levels copied into `classification_category`.
 - **`description` (99):** wording only; the v1.2 file often left the text empty or merged guide text.

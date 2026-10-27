@@ -185,21 +185,31 @@ def load_guide_table(text):
 # ----------------------------------------------------------------------------- field rules
 ITEM = r'(?:"[^"|]+"|[\w\-]+)'
 PIPE_LIST_RE = re.compile(rf"{ITEM}(?:\s*\|\s*{ITEM})+")
-BULLET_RE = re.compile(r"(?:^|\s)-\s+([A-Z][\w\-]*)(?::\s*([^.]*))?")
-ROW_RE = re.compile(r"\b(\w+)(?:\s{2,}([^\s—][^—]*?))?\s+—")
+BULLET_RE = re.compile(r"(?:^|\s)-\s+\"?([A-Z][\w\-]*)\"?(?::\s*([^.]*))?")
+ROW_RE = re.compile(r"\b([A-Z]\w*)(?:\s{2,}([^\s—][^—]*?))?\s+—")  # codes are capitalized: 'Draft —', 'GD  Genome… —' 
 
 
 def comment_vocab(text):
     """Controlled vocabulary written in a template comment, in the forms the v1.2 breakdown used:
     'A | B | "C d"' anywhere in the comment ('select one from list: ...', 'use vocabulary: ...');
     a bullet list '- A: meaning. - B: meaning.'; or aligned rows 'GD  Genome/Genetic Data  — ...'."""
+    allowed = re.search(r"Allowed values:\s*([^|]+(?:\|[^|]+)+)", text)  # v2.0: items may be several words
+    if allowed:
+        vals = [v.strip().strip('"').strip(".") for v in allowed.group(1).split("|")]
+        vals[-1] = re.split(r"\.\s|\s{2,}", vals[-1])[0].strip()  # the list ends at the next sentence
+        return vals
     for m in PIPE_LIST_RE.finditer(text):
         before = text[:m.start()].rstrip()
         if re.search(r"(e\.g\.|example)[^:;]*$", before, re.I) or re.search(r"\w$", before):
             continue  # 'e.g., a b | c d' lists examples of free text, not a vocabulary
+        if re.search(r"(#|-\s+\w+:)\s*$", before):
+            continue  # inside a commented-out YAML example ('- type: a | b', '  # a | b'), not this field's vocabulary
         return [v.strip().strip('"') for v in m.group(0).split("|")]
     for rx, fmt in ((BULLET_RE, "{}: {}"), (ROW_RE, "{}: {}")):
         rows = rx.findall(text)
+        first = rx.search(text)
+        if first and re.search(r"(e\.g\.|example)[^:;]*$", text[:first.start()].rstrip(), re.I):
+            continue  # 'e.g., - "NOFORN" - "CNWDI"' lists examples of free text, not a vocabulary
         if len(rows) >= 2:
             return [fmt.format(k, d.strip()) if d and d.strip() else k for k, d in rows]
     return None
@@ -254,16 +264,19 @@ class Builder:
         return any(parts[i] in self.alt_blocks for i in range(len(parts) - 1))
 
     def required(self, n):
-        """Requirements nest: a field required inside an optional block is only required when that block is
-        filled in, and MAVEN's form has no such nesting, so it is marked required only if every ancestor is
-        required. Agent blocks count as required here because their one-of logic decides it."""
+        """Requirements nest: MAVEN enforces a required leaf whenever its capability is "Yes", whatever its
+        parents say, so a field inside an optional block is marked required only if that block is required.
+        Exception: inside a one-of block MAVEN enforces it only when the discriminator selects that block
+        (app.py render_tier1_yaml_form), i.e. only once the user chose to fill it in, so nesting stops there."""
         if n["path"] in self._req:
             return self._req[n["path"]]
         req = self.own_required(n)
         parent = n["path"].rpartition(".")[0]
         while req and parent in self.by_path:
+            if parent in self.conditional:  # selected one-of block: required is enforced only when chosen
+                break
             pnode = self.by_path[parent]
-            if pnode["key"] not in self.alt_blocks:  # skip over agent blocks, check the block that holds them
+            if pnode["key"] not in self.alt_blocks:  # a lone agent block (no alternatives) is skipped over
                 req = self.required(pnode)
                 break
             parent = parent.rpartition(".")[0]

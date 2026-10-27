@@ -239,6 +239,8 @@ discoverability:
                 needs interpretation for governance purposes. Entries should use this
                 controlled vocabulary: - "Classified" - "CUI" - "UCNI" -
                 "Public_Release_Approved" - "Legacy_Needs_Mapping" - "Other_Controlled"'
+              type: dropdown
+              options: [Classified, CUI, UCNI, Public_Release_Approved, Legacy_Needs_Mapping, Other_Controlled]
               value: __BASIS__
         created_date:
           required: true
@@ -523,7 +525,7 @@ discoverability:
               options: [doi, ark, handle, url, osti, local, other, unregistered]
               value: ${TYPE}
             value:
-              required: false
+              required: true
               description: ""
               value: __VALUE__
         additional_ids:
@@ -756,7 +758,7 @@ discoverability:
                 employee/contractor author policy applies, if locally applicable"
               value: __ORCID__
             email:
-              required: false
+              required: true
               description: ""
               value: __EMAIL__
             affiliation:
@@ -789,8 +791,6 @@ discoverability:
         employee/contractor author policy applies, if locally applicable email: __EMAIL__
         affiliation: name: __ORG_NAME__ ror_id: __ROR_ID__ valid_until: __YYYY-MM-DD__
         succession_note: __NOTE__"
-      type: dropdown
-      options: [person, organization]
       value: []
     authors:
       required: true
@@ -1339,8 +1339,6 @@ interoperability:
             temperature: data_type: float # float | int | string | boolean | datetime |
             other unit: Kelvin description: Sample temperature at time of measurement
             range: "273.15 - 373.15"'
-          type: dropdown
-          options: [float, int, string, boolean, datetime, other]
           value: []
         splits:
           required: false
@@ -1700,11 +1698,11 @@ reusability:
               condition_discriminator: "type"
               value:
                 given_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __GIVEN_NAME__
                 family_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __FAMILY_NAME__
                 orcid:
@@ -1717,11 +1715,11 @@ reusability:
                   description: ""
                   value: __EMAIL__
                 affiliation:
-                  required: false
+                  required: true
                   description: ""
                   value:
                     name:
-                      required: false
+                      required: true
                       description: ""
                       value: __ORG_NAME__
                     ror_id:
@@ -1735,7 +1733,7 @@ reusability:
               condition_discriminator: "type"
               value:
                 name:
-                  required: false
+                  required: true
                   description: ""
                   value: __ORG_NAME__
                 ror_id:
@@ -2106,11 +2104,11 @@ governed_use:
               condition_discriminator: "type"
               value:
                 given_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __GIVEN_NAME__
                 family_name:
-                  required: false
+                  required: true
                   description: ""
                   value: __FAMILY_NAME__
                 email:
@@ -2128,7 +2126,7 @@ governed_use:
               condition_discriminator: "type"
               value:
                 name:
-                  required: false
+                  required: true
                   description: ""
                   value: __ORG_NAME__
                 ror_id:

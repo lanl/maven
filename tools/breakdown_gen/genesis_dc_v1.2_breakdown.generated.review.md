@@ -117,5 +117,7 @@ Items below are where the generator had to choose. Check them, then record any c
 
 - `_repository` (template line 1117)
 
-## Manual overrides applied from the config (0)
+## Manual overrides applied from the config (2)
 
+- `discoverability.identification.primary_id.value`: {'required': True}
+- `discoverability.contact.person.email`: {'required': True}
