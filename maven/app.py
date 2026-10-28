@@ -2989,7 +2989,7 @@ elif st.session_state.screen == "hpc_move":
             using_ssh = locations_tbl["using_ssh"].iloc[0] if not locations_tbl.empty else ""
             default_index = options.index(str(using_ssh)) if str(using_ssh) in options else None
             st.write("Are you using SSH or PuTTY to connect to HPC?")
-            st.caption("**Recommended for Windows users.** If unsure, contact maven-help@lanl.gov.")
+            st.caption("**PuTTY is recommended for Windows users.** If unsure, contact maven-help@lanl.gov.")
             new_using_ssh_value = st.radio("radio_label", options, index=default_index, key="windows_using_ssh_btn", 
                     label_visibility="collapsed", horizontal=True)
             if new_using_ssh_value is not None:
