@@ -19,7 +19,7 @@ shell = os.environ.get("SHELL")
 pfcp_result = subprocess.run(["module avail marfs"], shell=True, executable=shell, capture_output=True)
 conduit_result = subprocess.run(["module avail conduit"], shell=True, executable=shell, capture_output=True)
 if "marfs-x86_64" in str(pfcp_result.stderr):
-    copy_command = ["bash", "-lc", f"pfcp {endpoint_txt_name} {os.path.join(diana_endpoint, endpoint_txt_name)}"]
+    copy_command = ["bash", "-lc", f"module load marfs && pfcp {endpoint_txt_name} {os.path.join(diana_endpoint, endpoint_txt_name)}"]
 
 elif "conduit/conduit-x86_64" in str(conduit_result.stderr):
     result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)

@@ -3257,12 +3257,13 @@ elif st.session_state.screen == "hpc_move":
                 updated_tier2_dict["username"] = getpass.getuser()
                 updated_tier2_dict["hpc_system"] = socket.getfqdn()
 
-                import grp
-                try:
-                    grp.getgrnam(user_group_input)
-                except KeyError:
-                    st.error("User Group does not exist on this HPC")
-                    st.stop()
+                if user_group_input:
+                    import grp
+                    try:
+                        grp.getgrnam(user_group_input)
+                    except KeyError:
+                        st.error("User Group does not exist on this HPC")
+                        st.stop()
             else:
                 if not (local_path.is_absolute() and local_path.is_dir() and os.access(local_path, os.R_OK | os.W_OK | os.X_OK)):
                     st.error("Local Data Location must be an absolute path to data you can access")
@@ -3614,22 +3615,25 @@ elif st.session_state.screen == "hpc_move":
                         st.code(str(scratch_move_error))
                     st.stop()
 
-                # register project in diana endpoint
-                endpoint_txt_name = f"{proj_name}_endpoint.txt"
-                Path(endpoint_txt_name).write_text(fed_line, encoding="utf-8")
-                Path(endpoint_txt_name).chmod(0o644)
-                if copy_tool == "conduit":
-                    result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
-                    copy_command = str(result.stdout).split()
-                    for idx, s in enumerate(copy_command):
-                        if "/" in s:
-                            copy_command = copy_command[idx:idx+3]
-                            break
-                    copy_command.extend(["cp", endpoint_txt_name, os.path.join(diana_endpoint, endpoint_txt_name)])
-                else:
-                    copy_command = ["bash", "-lc", f"pfcp {endpoint_txt_name} {os.path.join(diana_endpoint, endpoint_txt_name)}"]
-                process = subprocess.Popen(copy_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='latin-1')
-                stdout, stderr = process.communicate()
+                with st.spinner("Registering project in DIANA Catalog"):
+                    # register project in diana endpoint
+                    endpoint_txt_name = f"{proj_name}_endpoint.txt"
+                    Path(endpoint_txt_name).write_text(fed_line, encoding="utf-8")
+                    Path(endpoint_txt_name).chmod(0o644)
+
+                    if copy_tool == "conduit":
+                        result = subprocess.run(["bash", "-lc", "type conduit"], capture_output=True, text=True)
+                        copy_command = str(result.stdout).split()
+                        for idx, s in enumerate(copy_command):
+                            if "/" in s:
+                                copy_command = copy_command[idx:idx+3]
+                                break
+                        copy_command.extend(["cp", endpoint_txt_name, os.path.join(diana_endpoint, endpoint_txt_name)])
+                    else:
+                        copy_command = ["bash", "-lc", f"module load marfs && pfcp {endpoint_txt_name} {os.path.join(diana_endpoint, endpoint_txt_name)}"]
+                    process = subprocess.Popen(copy_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='latin-1')
+                    stdout, stderr = process.communicate()
+
                 if process.returncode != 0:
                     st.error("Registering this project in the DIANA catalog failed")
                     if any("SyntaxWarning: invalid escape sequence" in text for text in (stdout, stderr)):
