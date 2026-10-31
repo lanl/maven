@@ -3006,8 +3006,8 @@ elif st.session_state.screen == "hpc_move":
                 st.stop()
 
             if new_using_ssh_value.lower() == "putty" and (not plink or not pscp):
-                    st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
-                    st.stop()
+                st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
+                st.stop()
         
         else:
             tier2_store = get_db(tier2_db_path)
@@ -3692,7 +3692,6 @@ elif st.session_state.screen == "hpc_move":
                         else:
                             cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                         remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
-                    print(" \nGo back to app")
                     if remote_run.returncode != 0:
                         st.error("HPC Staging to Campaign Move Error:")
                         if remote_run.stderr:
@@ -3712,6 +3711,7 @@ elif st.session_state.screen == "hpc_move":
                                     st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                             else:
                                 st.code(remote_run.stderr)
+                        print(" \nGo back to app")
                         st.stop()
 
                     if "Only testing on this HPC for now" in remote_run.stdout:
@@ -3771,7 +3771,7 @@ elif st.session_state.screen == "hpc_move":
                         else:
                             st.code(remote_endpoint_run.stderr)
                             st.code(output)
-                        print(" \nGo back to app")
+                    print(" \nGo back to app")
                     st.stop()                
 
             # set user group and access permissions after move
@@ -3784,8 +3784,8 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting user group for data on Campaign")
                         st.code(result.stderr)
-                        st.stop()
                         print(" \nGo back to app")
+                        st.stop()
 
                 if access_permissions_code:
                     with st.spinner("Updating data access permissions on Campaign"):
@@ -3794,8 +3794,8 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting access permissions for data on Campaign")
                         st.code(result.stderr)
-                        st.stop()
                         print(" \nGo back to app")
+                        st.stop()
             else:
                 if user_group and access_permissions_code:
                     print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
@@ -3810,8 +3810,8 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
-                        st.stop()
                         print(" \nGo back to app")
+                        st.stop()
 
             print(" \nGo back to app")
 
