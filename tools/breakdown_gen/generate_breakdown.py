@@ -427,12 +427,19 @@ class Builder:
                     field["type"], field["options"] = typ, opts
                 field["value"] = RawValue(n["raw_value"])
             made[parent][n["key"]] = field
+        missing = []
         for path, patch in (self.cfg.get("overrides") or {}).items():
             node = root
-            for part in path.split("."):
-                node = node[part] if node is root else node["value"][part]
+            try:
+                for part in path.split("."):
+                    node = node[part] if node is root else node["value"][part]
+            except (KeyError, TypeError):  # renamed or removed in a new template version: list them all, not just the first
+                missing.append(path)
+                continue
             node.update(patch)
             self.report["overrides"].append(f"`{path}`: {patch}")
+        if missing:
+            raise KeyError(f"override paths not in the template: {missing}")
         unknown = sorted(self.no_extra - set(self.by_path))  # a renamed field would otherwise silently get `None` back
         if unknown:
             raise KeyError(f"no_extra_option paths not in the template: {unknown}")
