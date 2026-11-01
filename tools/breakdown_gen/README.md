@@ -301,7 +301,9 @@ schema is what the datacard validator uses.
 3. Update `title`, `output`, `template` and `guide`. Open the archive to find the exact file paths inside it.
 4. Run `python generate_breakdown.py config_v2.1.yaml`.
 5. Read the `.review.md` report. For every decision, add an entry under `overrides:` and re-run.
-   A path in `overrides` or `no_extra_option` that is not in the new template stops the run with a `KeyError`: the field was renamed or moved, so update the path (or drop the entry).
+   A path in `overrides` or `no_extra_option` that is not in the new template stops the run with a `KeyError`
+   that lists every such path (`override paths not in the template: [...]`): the field was renamed or moved, so
+   update the path (or drop the entry).
 6. Run `python compare_breakdowns.py <output>.yaml`. It must report 0 problems.
 7. Optional: compare with the previous version's breakdown (`--reference`) to see what changed.
 
