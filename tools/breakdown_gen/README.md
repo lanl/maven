@@ -191,6 +191,9 @@ alternatives:                                       # one-of agent blocks
   discriminator_keys: [agent_type, type]            # existing sibling keys that pick a block
   synthesize_as: agent_type                         # add this discriminator when the template has none (v2.0)
   required_keys: [given_name, family_name, name, version, affiliation, type, value]
+  choice_hint:                                      # optional (v2.0): append "Fill in only if <role> is <kind>; leave <others> empty."
+    roles: {creator: the creator, authors: this author}   # keyed by the group's key; default "this entry"
+    kinds: {person: a person, organization: an organization, ai_model: an AI model, software: a software tool}
 
 extra_option: None                                  # added to a required dropdown with no none/other choice
 no_extra_option:                                    # fields that must not get it
@@ -228,9 +231,9 @@ The template decides everything by default, the same way the v1.2 breakdown was 
 |---|---|
 | structure | Template keys, in template order. YAML lists (`- item:`) are flattened: the first item's keys become children. |
 | `value` | The template's placeholder, verbatim (`${…}`, `__…__`, `[]`, or a literal). A key followed by `- __X__` takes `__X__`. |
-| `required` | A `[*_required]` tag, or a `${…}` placeholder unless a `[required if …]` tag makes it conditional. An untagged folder is required when one of its children is (agent blocks and discriminators excluded). Inside a person/organization/ai_model/software block, `[situational_required]`, `${…}` or a key in `alternatives.required_keys` means "required if this block is chosen" (Vedant's email). A discriminator is required when its block is present. A field inside an optional block is not required (MAVEN would otherwise force it whenever the capability is "Yes"), except inside a one-of block: MAVEN enforces those fields only when the discriminator selects that block (`app.py`, `render_tier1_yaml_form`). |
+| `required` | A `[*_required]` tag, or a `${…}` placeholder unless a `[required if …]` tag makes it conditional. An untagged folder is required when one of its children is (agent blocks and discriminators excluded). Inside a person/organization/ai_model/software block, `[situational_required]`, `${…}` a key in `alternatives.required_keys`, or a `[required for <block>]` tag naming that block means "required if this block is chosen" (Vedant's email). A discriminator is required when its block is present. A field inside an optional block is not required (MAVEN would otherwise force it whenever the capability is "Yes"), except inside a one-of block: MAVEN enforces those fields only when the discriminator selects that block (`app.py`, `render_tier1_yaml_form`). |
 | `type` / `options` | A `${"A\|B"}` placeholder, or a vocabulary written in the comment: `A \| B \| "C d"` anywhere (`select one from list:`, `use vocabulary:`, `Allowed values:`), a bullet list `- A: meaning`, or aligned rows `GD  Genome/Genetic Data  — …`. Lists after `e.g.`, and lists inside a commented-out YAML example, are skipped. Exactly Yes/No becomes `radio`, anything else `dropdown`. A required dropdown with no none/n/a/other choice gets `extra_option` (rule 2 in Vedant's email). Top-level `supports_*` get no type: MAVEN always renders them as Yes/No. |
-| `description` | The template comment without its `[tag]` and `###---X---###` heading; otherwise the comment lines above the key. Quoted as `" …"`, or `' …'` when the text contains `"`. With `guide_for_top_level: true`, top-level keys are prefixed with the guide's table text. |
+| `description` | The template comment without its `[tag]` and `###---X---###` heading, except that a condition written in the tag (`[required if …]`, `[either … or … is required]`, `[at least one … required if …]`) is kept at the front, because MAVEN does not enforce it; otherwise the comment lines above the key. Quoted as `" …"`, or `' …'` when the text contains `"`. With `guide_for_top_level: true`, top-level keys are prefixed with the guide's table text. A `[situational_required]` field in an optional list item whose comment states no condition gets "Required if an entry is added." in front (MAVEN cannot enforce it). With `alternatives.choice_hint`, each one-of block gets "Fill in only if <role> is <kind>; leave <others> empty." |
 | `conditional_context` / `condition_discriminator` | When a block has two or more agent sub-blocks: use the existing sibling key from `discriminator_keys`, or add one named `synthesize_as` (v2.0 has none). |
 | `overrides` | Applied last. |
 
@@ -245,15 +248,16 @@ The template decides everything by default, the same way the v1.2 breakdown was 
 | Field paths | 379 / 379 (100%), none missing or extra |
 | `value` | 379 / 379 (100%) |
 | `conditional_context` / discriminator | 379 / 379 (100%) |
-| `required` | 367 / 379 (97%) |
+| `required` | 365 / 379 (96%) |
 | `type` | 370 / 379 (98%) |
-| `options` | 349 / 379 (92%) |
-| `description` | 280 / 379 (74%, at ≥ 80% text similarity) |
+| `options` | 356 / 379 (94%) |
+| `description` | 290 / 379 (77%, at ≥ 80% text similarity) |
 | MAVEN form rule check | 0 problems |
 
 Every remaining difference is listed in `v1.2_vs_vedant.diff.md`. Most of them are not generator errors:
 
-- **`required` (12):** places where the v1.2 file is not consistent, which Vedant confirmed (2026-10-28) are
+- **`required` (14):** `creator.ai_model.relationship` and `creator.software.relationship` are `true` because their
+  tags say `[required for ai_model]` / `[required for software]` (the v1.2 file has `false`). The other 12 are places where the v1.2 file is not consistent, which Vedant confirmed (2026-10-28) are
   quick choices rather than rules: `organization.ror_id` should be `false`; fields inside an optional block
   (`source_data.*`, `maintainer.*`, `reviewed_by.*`) follow the rule in section 6. `contact.person.email` and
   `primary_id.value` are set to `true` with `overrides`, as Vedant asked.
@@ -297,6 +301,7 @@ schema is what the datacard validator uses.
 3. Update `title`, `output`, `template` and `guide`. Open the archive to find the exact file paths inside it.
 4. Run `python generate_breakdown.py config_v2.1.yaml`.
 5. Read the `.review.md` report. For every decision, add an entry under `overrides:` and re-run.
+   A path in `overrides` or `no_extra_option` that is not in the new template stops the run with a `KeyError`: the field was renamed or moved, so update the path (or drop the entry).
 6. Run `python compare_breakdowns.py <output>.yaml`. It must report 0 problems.
 7. Optional: compare with the previous version's breakdown (`--reference`) to see what changed.
 

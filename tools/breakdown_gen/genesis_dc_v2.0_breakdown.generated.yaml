@@ -137,7 +137,7 @@ discoverability:
                 values: Public | Unclassified_Uncontrolled | CUI | UCNI | Classified |
                 Legacy_Controlled | Mixed | Other_Controlled'
               type: dropdown
-              options: [Public, Unclassified_Uncontrolled, CUI, UCNI, Classified, Legacy_Controlled, Mixed, Other_Controlled, None]
+              options: [Public, Unclassified_Uncontrolled, CUI, UCNI, Classified, Legacy_Controlled, Mixed, Other_Controlled]
               value: ${OVERALL_SENSITIVITY}
             source_marking_string:
               required: true
@@ -358,7 +358,8 @@ discoverability:
                   value: ${TYPE}
                 person:
                   required: false
-                  description: " A human individual."
+                  description: " A human individual. Fill in only if the creator is a person; leave
+                    organization, ai_model and software empty."
                   conditional_context: "one_of_alternatives"
                   condition_discriminator: "agent_type"
                   value:
@@ -411,7 +412,9 @@ discoverability:
                       value: []
                 organization:
                   required: false
-                  description: " An organization or group of individuals."
+                  description: " An organization or group of individuals. Fill in only if the
+                    creator is an organization; leave person, ai_model and software
+                    empty."
                   conditional_context: "one_of_alternatives"
                   condition_discriminator: "agent_type"
                   value:
@@ -443,7 +446,8 @@ discoverability:
                       value: []
                 ai_model:
                   required: false
-                  description: " An AI model."
+                  description: " An AI model. Fill in only if the creator is an AI model; leave
+                    person, organization and software empty."
                   conditional_context: "one_of_alternatives"
                   condition_discriminator: "agent_type"
                   value:
@@ -523,7 +527,9 @@ discoverability:
                   description: " Software associated with this dataset, if any. This can include
                     links to software tools, libraries, or frameworks that were used to
                     generate, process, or analyze the dataset, which can provide users
-                    with additional context and insights about the dataset."
+                    with additional context and insights about the dataset. Fill in only
+                    if the creator is a software tool; leave person, organization and
+                    ai_model empty."
                   conditional_context: "one_of_alternatives"
                   condition_discriminator: "agent_type"
                   value:
@@ -824,6 +830,8 @@ discoverability:
       description: ' OSTI DOE Dataset Type code. Only valid value is "Instrument" for datasets that
         are instrument data products. If the dataset is not an instrument data product,
         this field should be null. Allowed values: Instrument'
+      type: dropdown
+      options: [Instrument]
       value: __DATASET_TYPE__
     release_status:
       required: true
@@ -831,7 +839,7 @@ discoverability:
         lifecycle stage of the dataset and can inform users about its readiness for use.
         Allowed values: Draft | Under_Review | Approved | Published | Deprecated"
       type: dropdown
-      options: [Draft, Under_Review, Approved, Published, Deprecated, None]
+      options: [Draft, Under_Review, Approved, Published, Deprecated]
       value: ${RELEASE_STATUS}
     dataset_publisher:
       required: false
@@ -868,7 +876,8 @@ discoverability:
           value: ${TYPE}
         person:
           required: false
-          description: " A human individual."
+          description: " A human individual. Fill in only if the contact is a person; leave
+            organization empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -920,7 +929,8 @@ discoverability:
               value: []
         organization:
           required: false
-          description: " An organization or group of individuals."
+          description: " An organization or group of individuals. Fill in only if the contact is an
+            organization; leave person empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -973,7 +983,8 @@ discoverability:
           value: ${TYPE}
         person:
           required: false
-          description: " A human individual."
+          description: " A human individual. Fill in only if this contact is a person; leave
+            organization empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1025,7 +1036,8 @@ discoverability:
               value: []
         organization:
           required: false
-          description: " An organization or group of individuals."
+          description: " An organization or group of individuals. Fill in only if this contact is an
+            organization; leave person empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1078,7 +1090,8 @@ discoverability:
           value: ${TYPE}
         person:
           required: false
-          description: " A human individual."
+          description: " A human individual. Fill in only if this author is a person; leave
+            organization, ai_model and software empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1130,7 +1143,8 @@ discoverability:
               value: []
         organization:
           required: false
-          description: " An organization or group of individuals."
+          description: " An organization or group of individuals. Fill in only if this author is an
+            organization; leave person, ai_model and software empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1161,7 +1175,8 @@ discoverability:
               value: []
         ai_model:
           required: false
-          description: " An AI model."
+          description: " An AI model. Fill in only if this author is an AI model; leave person,
+            organization and software empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1237,7 +1252,8 @@ discoverability:
           description: " Software associated with this dataset, if any. This can include links to
             software tools, libraries, or frameworks that were used to generate, process,
             or analyze the dataset, which can provide users with additional context and
-            insights about the dataset."
+            insights about the dataset. Fill in only if this author is a software tool;
+            leave person, organization and ai_model empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1318,7 +1334,8 @@ discoverability:
           value: ${TYPE}
         person:
           required: false
-          description: " A human individual."
+          description: " A human individual. Fill in only if this contributor is a person; leave
+            organization, ai_model and software empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1370,7 +1387,8 @@ discoverability:
               value: []
         organization:
           required: false
-          description: " An organization or group of individuals."
+          description: " An organization or group of individuals. Fill in only if this contributor
+            is an organization; leave person, ai_model and software empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1401,7 +1419,8 @@ discoverability:
               value: []
         ai_model:
           required: false
-          description: " An AI model."
+          description: " An AI model. Fill in only if this contributor is an AI model; leave person,
+            organization and software empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1477,7 +1496,8 @@ discoverability:
           description: " Software associated with this dataset, if any. This can include links to
             software tools, libraries, or frameworks that were used to generate, process,
             or analyze the dataset, which can provide users with additional context and
-            insights about the dataset."
+            insights about the dataset. Fill in only if this contributor is a software
+            tool; leave person, organization and ai_model empty."
           conditional_context: "one_of_alternatives"
           condition_discriminator: "agent_type"
           value:
@@ -1624,7 +1644,8 @@ discoverability:
       value:
         name:
           required: false
-          description: " Human-readable name or local string key for the entity."
+          description: " Required if an entry is added. Human-readable name or local string key for
+            the entity."
           value: ${NAME}
         ror_id:
           required: false
@@ -1683,7 +1704,7 @@ discoverability:
             Unclassified_Uncontrolled | CUI | UCNI | Classified | Legacy_Controlled |
             Mixed | Other_Controlled'
           type: dropdown
-          options: [Public, Unclassified_Uncontrolled, CUI, UCNI, Classified, Legacy_Controlled, Mixed, Other_Controlled, None]
+          options: [Public, Unclassified_Uncontrolled, CUI, UCNI, Classified, Legacy_Controlled, Mixed, Other_Controlled]
           value: ${OVERALL_SENSITIVITY}
         source_marking_string:
           required: true
@@ -1840,6 +1861,8 @@ discoverability:
           required: false
           description: ' Whether this dataset is an intermediate output, as opposed to a final
             deliverable. "No" if this is final.'
+          type: radio
+          options: ["Yes", "No"]
           value: __"Yes|No"__
         pipeline_stage:
           required: false
@@ -1877,7 +1900,7 @@ accessibility:
             which should still be filled out based on the authoritative source markings.
             Allowed values: Open | Restricted | Controlled"
           type: dropdown
-          options: [Open, Restricted, Controlled, None]
+          options: [Open, Restricted, Controlled]
           value: ${ACCESS_LEVEL}
         access_restrictions:
           required: false
@@ -1988,6 +2011,8 @@ accessibility:
                 users identify the most reliable or official source for accessing the
                 dataset, especially if there are multiple access points or repositories
                 where the data is available."
+              type: radio
+              options: ["Yes", "No"]
               value: __"Yes|No"__
             date_deposited:
               required: false
@@ -2058,6 +2083,8 @@ accessibility:
           required: false
           description: " The unit of measurement for the record count, such as samples, files,
             records, timesteps, images, tokens, other)."
+          type: dropdown
+          options: [samples, files, records, timesteps, images, tokens, other]
           value: __RECORD_UNIT__
         compressed_bytes:
           required: false
@@ -2125,6 +2152,8 @@ interoperability:
                 vocabulary from (e.g., float, int, string, boolean, datetime, other).
                 This can provide important information about the nature of the data and
                 can inform users about how to interpret and work with the dataset."
+              type: dropdown
+              options: [float, int, string, boolean, datetime, other]
               value: __DATA_TYPE__
             unit:
               required: false
@@ -2329,8 +2358,6 @@ interoperability:
               description: " Containerization technology used in the software environment for
                 generating or processing this dataset. e.g., docker://registry/image:tag
                 | singularity://registry/image:tag | Docker 20.10.12 | Singularity 3.8.7"
-              type: dropdown
-              options: [tag, singularity]
               value: __CONTAINER__
             hpc_environment:
               required: false
@@ -2507,7 +2534,8 @@ interoperability:
           value:
             name:
               required: false
-              description: " Human-readable name or local string key for the entity."
+              description: " Required if an entry is added. Human-readable name or local string key
+                for the entity."
               value: ${NAME}
             version:
               required: false
@@ -2534,36 +2562,37 @@ interoperability:
                   value: __VALUE__
             role:
               required: false
-              description: " The function of an entity or agent with respect to another entity or
-                resource. Allowed values: Conceptualization | Contact_Person |
-                Contributor | Creator | Data_Curator | Data_Manager | Distributor |
-                Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution |
-                Investigation | Methodology | Producer | Project_Administration |
-                Project_Leader | Project_Manager | Project_Member | Publisher |
-                Registration_Agency | Registration_Authority | Related_Person |
-                Researcher | Research_Group | Resources | Rights_Holder | Software |
-                Sponsor | Supervision | Translator | Validation | Visualization |
-                Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing |
-                Other"
+              description: " Required if an entry is added. The function of an entity or agent with
+                respect to another entity or resource. Allowed values: Conceptualization
+                | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager |
+                Distributor | Editor | Formal_Analysis | Funding_Acquisition |
+                Hosting_Institution | Investigation | Methodology | Producer |
+                Project_Administration | Project_Leader | Project_Manager |
+                Project_Member | Publisher | Registration_Agency | Registration_Authority
+                | Related_Person | Researcher | Research_Group | Resources |
+                Rights_Holder | Software | Sponsor | Supervision | Translator |
+                Validation | Visualization | Work_Package_Leader | Writing_Original_Draft
+                | Writing_Review_Editing | Other"
               type: dropdown
               options: [Conceptualization, Contact_Person, Contributor, Creator, Data_Curator, Data_Manager, Distributor, Editor, Formal_Analysis, Funding_Acquisition, Hosting_Institution, Investigation, Methodology, Producer, Project_Administration, Project_Leader, Project_Manager, Project_Member, Publisher, Registration_Agency, Registration_Authority, Related_Person, Researcher, Research_Group, Resources, Rights_Holder, Software, Sponsor, Supervision, Translator, Validation, Visualization, Work_Package_Leader, Writing_Original_Draft, Writing_Review_Editing, Other]
               value: []
             relationship:
               required: false
-              description: " The relationship of this software to the datacard or dataset. Allowed
-                values: is_cited_by | cites | in_series | is_supplement_to |
-                is_supplemented_by | is_continued_by | continues | describes |
-                is_described_by | has_metadata | is_metadata_for | has_version |
-                is_version_of | is_previous_version_of | is_part_of | has_part |
-                is_published_in | is_referenced_by | references | is_documented_by |
-                documents | is_compiled_by | compiles | is_variant_form_of |
-                is_original_form_of | is_identical_to | is_reviewed_by | reviews |
-                is_derived_from | is_source_of | is_required_by | requires | obsoletes |
-                is_obsoleted_by | is_collected_by | collects | is_translation_of |
-                has_translation | other | generates | is_generated_by | processes |
-                is_processed_by | analyzes | is_analyzed_by | is_trained_on |
-                is_used_for_training | is_evaluated_on | is_used_for_evaluation |
-                tested_on | validated_on | fine_tuned_from | has_evaluation"
+              description: " Required if an entry is added. The relationship of this software to the
+                datacard or dataset. Allowed values: is_cited_by | cites | in_series |
+                is_supplement_to | is_supplemented_by | is_continued_by | continues |
+                describes | is_described_by | has_metadata | is_metadata_for |
+                has_version | is_version_of | is_previous_version_of | is_part_of |
+                has_part | is_published_in | is_referenced_by | references |
+                is_documented_by | documents | is_compiled_by | compiles |
+                is_variant_form_of | is_original_form_of | is_identical_to |
+                is_reviewed_by | reviews | is_derived_from | is_source_of |
+                is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by
+                | collects | is_translation_of | has_translation | other | generates |
+                is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by
+                | is_trained_on | is_used_for_training | is_evaluated_on |
+                is_used_for_evaluation | tested_on | validated_on | fine_tuned_from |
+                has_evaluation"
               type: dropdown
               options: [is_cited_by, cites, in_series, is_supplement_to, is_supplemented_by, is_continued_by, continues, describes, is_described_by, has_metadata, is_metadata_for, has_version, is_version_of, is_previous_version_of, is_part_of, has_part, is_published_in, is_referenced_by, references, is_documented_by, documents, is_compiled_by, compiles, is_variant_form_of, is_original_form_of, is_identical_to, is_reviewed_by, reviews, is_derived_from, is_source_of, is_required_by, requires, obsoletes, is_obsoleted_by, is_collected_by, collects, is_translation_of, has_translation, other, generates, is_generated_by, processes, is_processed_by, analyzes, is_analyzed_by, is_trained_on, is_used_for_training, is_evaluated_on, is_used_for_evaluation, tested_on, validated_on, fine_tuned_from, has_evaluation]
               value: ${RELATIONSHIP}
@@ -2576,7 +2605,8 @@ interoperability:
           value:
             name:
               required: false
-              description: " Human-readable name or local string key for the entity."
+              description: " Required if an entry is added. Human-readable name or local string key
+                for the entity."
               value: ${NAME}
             version:
               required: false
@@ -2584,8 +2614,8 @@ interoperability:
               value: __VERSION__
             accessed_date:
               required: false
-              description: " The ISO 8601 date when the AI model was accessed for use in creating or
-                updating the datacard."
+              description: " Required if an entry is added. The ISO 8601 date when the AI model was
+                accessed for use in creating or updating the datacard."
               value: ${ACCESSED_DATE}
             identifier:
               required: false
@@ -2624,20 +2654,21 @@ interoperability:
               value: []
             relationship:
               required: false
-              description: " The relationship of this AI model to the datacard or dataset Allowed
-                values: is_cited_by | cites | in_series | is_supplement_to |
-                is_supplemented_by | is_continued_by | continues | describes |
-                is_described_by | has_metadata | is_metadata_for | has_version |
-                is_version_of | is_previous_version_of | is_part_of | has_part |
-                is_published_in | is_referenced_by | references | is_documented_by |
-                documents | is_compiled_by | compiles | is_variant_form_of |
-                is_original_form_of | is_identical_to | is_reviewed_by | reviews |
-                is_derived_from | is_source_of | is_required_by | requires | obsoletes |
-                is_obsoleted_by | is_collected_by | collects | is_translation_of |
-                has_translation | other | generates | is_generated_by | processes |
-                is_processed_by | analyzes | is_analyzed_by | is_trained_on |
-                is_used_for_training | is_evaluated_on | is_used_for_evaluation |
-                tested_on | validated_on | fine_tuned_from | has_evaluation"
+              description: " Required if an entry is added. The relationship of this AI model to the
+                datacard or dataset Allowed values: is_cited_by | cites | in_series |
+                is_supplement_to | is_supplemented_by | is_continued_by | continues |
+                describes | is_described_by | has_metadata | is_metadata_for |
+                has_version | is_version_of | is_previous_version_of | is_part_of |
+                has_part | is_published_in | is_referenced_by | references |
+                is_documented_by | documents | is_compiled_by | compiles |
+                is_variant_form_of | is_original_form_of | is_identical_to |
+                is_reviewed_by | reviews | is_derived_from | is_source_of |
+                is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by
+                | collects | is_translation_of | has_translation | other | generates |
+                is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by
+                | is_trained_on | is_used_for_training | is_evaluated_on |
+                is_used_for_evaluation | tested_on | validated_on | fine_tuned_from |
+                has_evaluation"
               type: dropdown
               options: [is_cited_by, cites, in_series, is_supplement_to, is_supplemented_by, is_continued_by, continues, describes, is_described_by, has_metadata, is_metadata_for, has_version, is_version_of, is_previous_version_of, is_part_of, has_part, is_published_in, is_referenced_by, references, is_documented_by, documents, is_compiled_by, compiles, is_variant_form_of, is_original_form_of, is_identical_to, is_reviewed_by, reviews, is_derived_from, is_source_of, is_required_by, requires, obsoletes, is_obsoleted_by, is_collected_by, collects, is_translation_of, has_translation, other, generates, is_generated_by, processes, is_processed_by, analyzes, is_analyzed_by, is_trained_on, is_used_for_training, is_evaluated_on, is_used_for_evaluation, tested_on, validated_on, fine_tuned_from, has_evaluation]
               value: ${RELATIONSHIP}
@@ -2702,23 +2733,29 @@ interoperability:
           value:
             name:
               required: false
-              description: " Human-readable name or local string key for the entity."
+              description: " Required if an entry is added. Human-readable name or local string key
+                for the entity."
               value: ${NAME}
             field_value:
               required: false
-              description: " The value for a specific domain metadata field."
+              description: " Required if an entry is added. The value for a specific domain metadata
+                field."
               value: ${FIELD_VALUE}
             data_type:
               required: false
-              description: " The data type of a feature or variable, following a controlled
-                vocabulary from (e.g., float, int, string, boolean, datetime, other).
-                This can provide important information about the nature of the data and
-                can inform users about how to interpret and work with the dataset."
+              description: " Required if an entry is added. The data type of a feature or variable,
+                following a controlled vocabulary from (e.g., float, int, string,
+                boolean, datetime, other). This can provide important information about
+                the nature of the data and can inform users about how to interpret and
+                work with the dataset."
+              type: dropdown
+              options: [float, int, string, boolean, datetime, other]
               value: __DATA_TYPE__
             unit:
               required: false
-              description: " The unit of measurement for a feature. This can provide important
-                context for interpreting the values of the feature."
+              description: " Required if an entry is added. The unit of measurement for a feature.
+                This can provide important context for interpreting the values of the
+                feature."
               value: __UNIT__
             description:
               required: false
@@ -2846,7 +2883,8 @@ reusability:
               value: ${TYPE}
             person:
               required: false
-              description: " A human individual."
+              description: " A human individual. Fill in only if the maintainer is a person; leave
+                organization empty."
               conditional_context: "one_of_alternatives"
               condition_discriminator: "agent_type"
               value:
@@ -2898,7 +2936,8 @@ reusability:
                   value: []
             organization:
               required: false
-              description: " An organization or group of individuals."
+              description: " An organization or group of individuals. Fill in only if the maintainer
+                is an organization; leave person empty."
               conditional_context: "one_of_alternatives"
               condition_discriminator: "agent_type"
               value:
@@ -2974,8 +3013,6 @@ reusability:
             accuracy of measurements after June 2023 | Data from Facility X may have
             quality issues due to known equipment problems during the data collection
             period | not_applicable'
-          type: dropdown
-          options: [00Z, Sensor, None]
           value: ${KNOWN_ISSUES}
         validation_methods:
           required: true
@@ -3015,12 +3052,13 @@ reusability:
           value:
             code:
               required: false
-              description: " The code used in the dataset to indicate a missing or null value. e.g.,
-                -9999 | NULL"
+              description: " Required if an entry is added. The code used in the dataset to indicate
+                a missing or null value. e.g., -9999 | NULL"
               value: ${CODE}
             description:
               required: false
-              description: " A description of what the missing data code represents."
+              description: " Required if an entry is added. A description of what the missing data
+                code represents."
               value: ${DESCRIPTION}
     citation:
       required: false
@@ -3122,6 +3160,8 @@ reusability:
           required: false
           description: " Whether a checksum is available for this dataset, which can be used to
             verify the integrity of the data after transfer or storage."
+          type: radio
+          options: ["Yes", "No"]
           value: __"Yes|No"__
         checksum_type:
           required: false
@@ -3310,7 +3350,7 @@ governed_use:
               description: " The public release status of the dataset. Allowed values: Approved |
                 Pending | Not_Approved | Requires_STI_Review"
               type: dropdown
-              options: [Approved, Pending, Not_Approved, Requires_STI_Review, None]
+              options: [Approved, Pending, Not_Approved, Requires_STI_Review, not_applicable]
               value: ${PUBLIC_RELEASE_STATUS}
             record_status:
               required: true
@@ -3412,7 +3452,8 @@ governed_use:
               value: ${TYPE}
             person:
               required: false
-              description: " A human individual."
+              description: " A human individual. Fill in only if the reviewer is a person; leave
+                organization, ai_model and software empty."
               conditional_context: "one_of_alternatives"
               condition_discriminator: "agent_type"
               value:
@@ -3464,7 +3505,8 @@ governed_use:
                   value: []
             organization:
               required: false
-              description: " An organization or group of individuals."
+              description: " An organization or group of individuals. Fill in only if the reviewer
+                is an organization; leave person, ai_model and software empty."
               conditional_context: "one_of_alternatives"
               condition_discriminator: "agent_type"
               value:
@@ -3495,7 +3537,8 @@ governed_use:
                   value: []
             ai_model:
               required: false
-              description: " An AI model."
+              description: " An AI model. Fill in only if the reviewer is an AI model; leave person,
+                organization and software empty."
               conditional_context: "one_of_alternatives"
               condition_discriminator: "agent_type"
               value:
@@ -3572,7 +3615,8 @@ governed_use:
               description: " Software associated with this dataset, if any. This can include links
                 to software tools, libraries, or frameworks that were used to generate,
                 process, or analyze the dataset, which can provide users with additional
-                context and insights about the dataset."
+                context and insights about the dataset. Fill in only if the reviewer is a
+                software tool; leave person, organization and ai_model empty."
               conditional_context: "one_of_alternatives"
               condition_discriminator: "agent_type"
               value:

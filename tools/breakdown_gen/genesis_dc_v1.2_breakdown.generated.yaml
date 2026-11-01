@@ -131,7 +131,7 @@ discoverability:
                 have specific handling requirements based on other controls; access
                 controls required."
               type: dropdown
-              options: ["Public: No sensitivity; publicly shareable", "Unclassified_Uncontrolled: Unclassified but uncontrolled; may have minimal sensitivity; generally shareable with minimal controls", "CUI: CUI (Controlled Unclassified Information); requires handling per CUI guidelines; access controls required", "UCNI: UCNI (Unclassified Controlled Nuclear Information); requires handling per UCNI guidelines; strict access controls required", "Classified: Classified information; requires handling per classification level and guide; strict access controls required", "Legacy_Controlled: Legacy controlled information; may have specific handling requirements based on legacy controls; access controls required", "Mixed: Mixed sensitivity; contains a combination of sensitive and non-sensitive information; handling requirements depend on the specific content; access controls required", "Other_Controlled: Other controlled information; may have specific handling requirements based on other controls; access controls required", None]
+              options: ["Public: No sensitivity; publicly shareable", "Unclassified_Uncontrolled: Unclassified but uncontrolled; may have minimal sensitivity; generally shareable with minimal controls", "CUI: CUI (Controlled Unclassified Information); requires handling per CUI guidelines; access controls required", "UCNI: UCNI (Unclassified Controlled Nuclear Information); requires handling per UCNI guidelines; strict access controls required", "Classified: Classified information; requires handling per classification level and guide; strict access controls required", "Legacy_Controlled: Legacy controlled information; may have specific handling requirements based on legacy controls; access controls required", "Mixed: Mixed sensitivity; contains a combination of sensitive and non-sensitive information; handling requirements depend on the specific content; access controls required", "Other_Controlled: Other controlled information; may have specific handling requirements based on other controls; access controls required"]
               value: ${OVERALL_SENSITIVITY}
             source_marking_string:
               required: true
@@ -186,15 +186,18 @@ discoverability:
               value: ${STATUS}
             cui_basic_categories:
               required: false
-              description: " For CUI, list the basic category or categories that apply, if any. use
-                DOE/ISOO-authoritative CUI Basic categories or subcategories. provide as
-                a list of unique entries if multiple categories apply."
+              description: ' At least one basic or specified category is required if cui_status =
+                "Yes". For CUI, list the basic category or categories that apply, if any.
+                use DOE/ISOO-authoritative CUI Basic categories or subcategories. provide
+                as a list of unique entries if multiple categories apply.'
               value: []
             cui_specified_categories:
               required: false
-              description: " For CUI, list the specified category or categories that apply, if any.
-                use DOE/ISOO-authoritative CUI Specified categories or subcategories.
-                provide as a list of unique entries if multiple categories apply."
+              description: ' At least one basic or specified category is required if cui_status =
+                "Yes". For CUI, list the specified category or categories that apply, if
+                any. use DOE/ISOO-authoritative CUI Specified categories or
+                subcategories. provide as a list of unique entries if multiple categories
+                apply.'
               value: []
             cui_limited_dissemination_controls:
               required: false
@@ -425,7 +428,7 @@ discoverability:
                       options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology, Project_Administration, Resources, Software, Supervision, Validation, Visualization, Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value: __ROLE__
                     relationship:
-                      required: false
+                      required: true
                       description: ' select from: used_to_create | used_to_process | used_to_analyze
                         | recorded_by | trained_on | evaluated_on; relationship of AI
                         model to the data card creation process. e.g., "used_to_create"
@@ -435,7 +438,7 @@ discoverability:
                         to evaluate or validate the data card content, or "other" if none
                         of the predefined relationships apply.'
                       type: dropdown
-                      options: [used_to_create, used_to_process, used_to_analyze, recorded_by, trained_on, evaluated_on]
+                      options: [used_to_create, used_to_process, used_to_analyze, recorded_by, trained_on, evaluated_on, None]
                       value: __RELATIONSHIP__
                 software:
                   required: false
@@ -477,7 +480,7 @@ discoverability:
                       options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology, Project_Administration, Resources, Software, Supervision, Validation, Visualization, Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value: __ROLE__
                     relationship:
-                      required: false
+                      required: true
                       description: ' select from: used_to_create | used_to_process | used_to_analyze
                         | recorded_by | trained_on | evaluated_on; relationship of
                         software to the data card creation process. e.g.,
@@ -487,7 +490,7 @@ discoverability:
                         software was used to evaluate or validate the data card content,
                         or "other" if none of the predefined relationships apply.'
                       type: dropdown
-                      options: [used_to_create, used_to_process, used_to_analyze, recorded_by, trained_on, evaluated_on]
+                      options: [used_to_create, used_to_process, used_to_analyze, recorded_by, trained_on, evaluated_on, None]
                       value: __RELATIONSHIP__
     identification:
       required: true
@@ -659,10 +662,11 @@ discoverability:
               value: __TYPE__
         task_category:
           required: false
-          description: " Primary ML task category or categories for this dataset. Populate for
-            AI-ready data; helps ML practitioners find relevant datasets in the catalog.
-            e.g., classification | regression | segmentation | detection | generation |
-            translation | summarization | ranking | anomaly_detection | clustering |
+          description: " At least one value required if task_subcategory is present. Primary ML task
+            category or categories for this dataset. Populate for AI-ready data; helps ML
+            practitioners find relevant datasets in the catalog. e.g., classification |
+            regression | segmentation | detection | generation | translation |
+            summarization | ranking | anomaly_detection | clustering |
             reinforcement_learning | other"
           value: []
         task_subcategory:
@@ -688,7 +692,7 @@ discoverability:
         a dataset, but select the best fit if this data card describes a different type
         of product."
       type: dropdown
-      options: [Technical_Report, Paper_or_Proceedings, Journal_Article, Software_Manual, Data, Collection, Computer_Related, Model, Agent, None]
+      options: [Technical_Report, Paper_or_Proceedings, Journal_Article, Software_Manual, Data, Collection, Computer_Related, Model, Agent]
       value: ${TYPE}
     dataset_type:
       required: false
@@ -714,13 +718,13 @@ discoverability:
         Published — publicly released and accessible Deprecated — superseded or retired;
         no longer recommended for use"
       type: dropdown
-      options: [Draft, Under_Review, Approved, Published, Deprecated, None]
+      options: [Draft, Under_Review, Approved, Published, Deprecated]
       value: ${STATUS}
     dataset_publisher:
       required: false
-      description: " Entity responsible for making this dataset available. Often the same as the
-        primary research organization, but may differ if a separate publisher is
-        involved."
+      description: " Required when release_status = Approved | Published. Entity responsible for
+        making this dataset available. Often the same as the primary research
+        organization, but may differ if a separate publisher is involved."
       value:
         name:
           required: false
@@ -959,7 +963,7 @@ discoverability:
             controlled information; may have specific handling requirements based on
             other controls; access controls required."
           type: dropdown
-          options: ["Public: No sensitivity; publicly shareable", "Unclassified_Uncontrolled: Unclassified but uncontrolled; may have minimal sensitivity; generally shareable with minimal controls", "CUI: CUI (Controlled Unclassified Information); requires handling per CUI guidelines; access controls required", "UCNI: UCNI (Unclassified Controlled Nuclear Information); requires handling per UCNI guidelines; strict access controls required", "Classified: Classified information; requires handling per classification level and guide; strict access controls required", "Legacy_Controlled: Legacy controlled information; may have specific handling requirements based on legacy controls; access controls required", "Mixed: Mixed sensitivity; contains a combination of sensitive and non-sensitive information; handling requirements depend on the specific content; access controls required", "Other_Controlled: Other controlled information; may have specific handling requirements based on other controls; access controls required", None]
+          options: ["Public: No sensitivity; publicly shareable", "Unclassified_Uncontrolled: Unclassified but uncontrolled; may have minimal sensitivity; generally shareable with minimal controls", "CUI: CUI (Controlled Unclassified Information); requires handling per CUI guidelines; access controls required", "UCNI: UCNI (Unclassified Controlled Nuclear Information); requires handling per UCNI guidelines; strict access controls required", "Classified: Classified information; requires handling per classification level and guide; strict access controls required", "Legacy_Controlled: Legacy controlled information; may have specific handling requirements based on legacy controls; access controls required", "Mixed: Mixed sensitivity; contains a combination of sensitive and non-sensitive information; handling requirements depend on the specific content; access controls required", "Other_Controlled: Other controlled information; may have specific handling requirements based on other controls; access controls required"]
           value: ${OVERALL_SENSITIVITY}
         source_marking_string:
           required: true
@@ -1008,15 +1012,17 @@ discoverability:
           value: ${STATUS}
         cui_basic_categories:
           required: false
-          description: " For CUI, list the basic category or categories that apply, if any. use
+          description: ' At least one basic or specified category is required if cui_status = "Yes".
+            For CUI, list the basic category or categories that apply, if any. use
             DOE/ISOO-authoritative CUI Basic categories or subcategories. provide as a
-            list of unique entries if multiple categories apply."
+            list of unique entries if multiple categories apply.'
           value: []
         cui_specified_categories:
           required: false
-          description: " For CUI, list the specified category or categories that apply, if any. use
+          description: ' At least one basic or specified category is required if cui_status = "Yes".
+            For CUI, list the specified category or categories that apply, if any. use
             DOE/ISOO-authoritative CUI Specified categories or subcategories. provide as
-            a list of unique entries if multiple categories apply."
+            a list of unique entries if multiple categories apply.'
           value: []
         cui_limited_dissemination_controls:
           required: false
@@ -1077,7 +1083,7 @@ discoverability:
             Archived — preserved; no longer actively maintained not_applicable - use when
             workflow state is not applicable or not yet determined"
           type: dropdown
-          options: [Raw, Processing, QA, Analysis, Review, Embargo, Published, Archived, None]
+          options: [Raw, Processing, QA, Analysis, Review, Embargo, Published, Archived, not_applicable]
           value: ${STATE}
         is_intermediate:
           required: false
@@ -1129,7 +1135,7 @@ accessibility:
           required: true
           description: " Open | Restricted | Controlled"
           type: dropdown
-          options: [Open, Restricted, Controlled, None]
+          options: [Open, Restricted, Controlled]
           value: ${LEVEL}
         access_restrictions:
           required: false
@@ -1802,32 +1808,37 @@ reusability:
           value:
             author:
               required: false
-              description: ' e.g., "Smith, John A.; Doe, Jane B."'
+              description: ' Required if preferred_citation is included. e.g., "Smith, John A.; Doe,
+                Jane B."'
               value: __AUTHOR__
             title:
               required: false
-              description: ' e.g., "Neutron Scattering Data from SNS Beamline 1B, April 2023"'
+              description: ' Required if preferred_citation is included. e.g., "Neutron Scattering
+                Data from SNS Beamline 1B, April 2023"'
               value: __DATASET_NAME__
             year:
               required: false
-              description: " e.g., 2024"
+              description: " Required if preferred_citation is included. e.g., 2024"
               value: __YEAR__
             publisher:
               required: false
-              description: ' e.g., "Oak Ridge National Laboratory" | "DOE NNSA" | "University of X"'
+              description: ' Either preferred_citation or howpublished is required. e.g., "Oak Ridge
+                National Laboratory" | "DOE NNSA" | "University of X"'
               value: __PUBLISHER__
             howpublished:
               required: false
-              description: ' e.g., "(Version v1) [Data set]. Zenodo" | "Available at
+              description: ' Either preferred_citation or howpublished is required. e.g., "(Version
+                v1) [Data set]. Zenodo" | "Available at
                 https://doi.org/10.1234/zenodo.1234567"'
               value: __HOWPUBLISHED__
             doi:
               required: false
-              description: ' e.g., "10.1234/zenodo.1234567"'
+              description: ' Either doi or url is required. e.g., "10.1234/zenodo.1234567"'
               value: __DOI__
             url:
               required: false
-              description: ' e.g., "https://doi.org/10.1234/zenodo.1234567"'
+              description: ' Either doi or url is required. e.g.,
+                "https://doi.org/10.1234/zenodo.1234567"'
               value: __URL__
             eprinttype:
               required: false
@@ -1860,15 +1871,15 @@ reusability:
           value: "__Yes|No__"
         checksum_type:
           required: false
-          description: " sha256 | sha512 | md5 | other sha256 recommended; md5 not recommended for
-            new datasets"
+          description: ' Required if checksum_available="Yes". sha256 | sha512 | md5 | other sha256
+            recommended; md5 not recommended for new datasets'
           type: dropdown
           options: [sha256, sha512, md5, other]
           value: __TYPE__
         checksum_value:
           required: false
-          description: " Checksum of primary data file(s). For multi-file datasets, provide a
-            checksum manifest and link here."
+          description: ' Required if checksum_available="Yes". Checksum of primary data file(s). For
+            multi-file datasets, provide a checksum manifest and link here.'
           value: __VALUE__
         fixity_policy:
           required: false
@@ -1948,8 +1959,8 @@ governed_use:
               value: ${EXPORT_CONTROL_STATUS}
             export_control_basis:
               required: false
-              description: " select one from: ITAR | EAR | DOE_Nuclear_Export_Control | Other |
-                not_applicable"
+              description: ' Required if export_control_status = "Yes". select one from: ITAR | EAR
+                | DOE_Nuclear_Export_Control | Other | not_applicable'
               type: dropdown
               options: [ITAR, EAR, DOE_Nuclear_Export_Control, Other, not_applicable]
               value: __EXPORT_CONTROL_BASIS__
@@ -2017,7 +2028,8 @@ governed_use:
               value: ${AGREEMENT_REQUIRED}
             agreement_type:
               required: false
-              description: " list all that apply: DUA | CRADA | MOU | NDA | LICENSE | WFO | OTHER"
+              description: ' Required if agreement_required = "Yes". list all that apply: DUA |
+                CRADA | MOU | NDA | LICENSE | WFO | OTHER'
               type: dropdown
               options: [DUA, CRADA, MOU, NDA, LICENSE, WFO, OTHER]
               value: []
@@ -2026,7 +2038,7 @@ governed_use:
               description: ' select one from list: "Approved" | "Pending" | "Not_Approved" |
                 "Requires_STI_Review"'
               type: dropdown
-              options: [Approved, Pending, Not_Approved, Requires_STI_Review, None]
+              options: [Approved, Pending, Not_Approved, Requires_STI_Review]
               value: ${PUBLIC_RELEASE_STATUS}
             record_status:
               required: true
@@ -2168,8 +2180,8 @@ ai_usability:
           value: ${TRAINING_USE_STATUS}
         training_use_conditions:
           required: false
-          description: ' e.g., "Only for non-commercial research" | "Requires citation of
-            SAND2024-XXXXX"'
+          description: ' Required if training_use_status is "Conditional". e.g., "Only for
+            non-commercial research" | "Requires citation of SAND2024-XXXXX"'
           value: ${TRAINING_USE_CONDITIONS}
         inference_use_status:
           required: true
@@ -2179,8 +2191,8 @@ ai_usability:
           value: ${INFERENCE_USE_STATUS}
         inference_use_conditions:
           required: false
-          description: ' e.g., "Only for non-commercial research" | "Requires citation of
-            SAND2024-XXXXX"'
+          description: ' Required if inference_use_status is "Conditional". e.g., "Only for
+            non-commercial research" | "Requires citation of SAND2024-XXXXX"'
           value: ${INFERENCE_USE_CONDITIONS}
         evaluation_use_status:
           required: true
@@ -2190,8 +2202,8 @@ ai_usability:
           value: ${EVALUATION_USE_STATUS}
         evaluation_use_conditions:
           required: false
-          description: ' e.g., "Only for non-commercial research" | "Requires citation of
-            SAND2024-XXXXX"'
+          description: ' Required if evaluation_use_status is "Conditional". e.g., "Only for
+            non-commercial research" | "Requires citation of SAND2024-XXXXX"'
           value: ${EVALUATION_USE_CONDITIONS}
         restrictions:
           required: true

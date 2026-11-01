@@ -8,15 +8,11 @@ Items below are where the generator had to choose. Check them, then record any c
 ## Dropdown options: schema enum differs from the template comment (schema used) (0)
 
 
-## Extra 'nothing applies' option added to a required dropdown (Vedant's rule 2) (7)
+## Extra 'nothing applies' option added to a required dropdown (Vedant's rule 2) (3)
 
-- `discoverability.datacard.sensitivity.overall_sensitivity`: added `None`
-- `discoverability.product_type`: added `None`
-- `discoverability.release_status`: added `None`
-- `discoverability.sensitivity.overall_sensitivity`: added `None`
+- `discoverability.datacard.created_by.creator.ai_model.relationship`: added `None`
+- `discoverability.datacard.created_by.creator.software.relationship`: added `None`
 - `discoverability.workflow.state`: added `None`
-- `accessibility.access_policy.access_level`: added `None`
-- `governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status`: added `None`
 
 ## List fields rendered as a single-choice dropdown (MAVEN has no multiselect) (0)
 
@@ -117,7 +113,9 @@ Items below are where the generator had to choose. Check them, then record any c
 
 - `_repository` (template line 1117)
 
-## Manual overrides applied from the config (2)
+## Manual overrides applied from the config (4)
 
 - `discoverability.identification.primary_id.value`: {'required': True}
 - `discoverability.contact.person.email`: {'required': True}
+- `discoverability.datacard.created_by.creator.organization.ror_id`: {'required': False}
+- `discoverability.workflow.state`: {'options': ['Raw', 'Processing', 'QA', 'Analysis', 'Review', 'Embargo', 'Published', 'Archived', 'not_applicable']}
