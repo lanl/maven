@@ -15,6 +15,7 @@ import re
 import tarfile
 import textwrap
 import zipfile
+from itertools import accumulate
 from pathlib import Path
 
 import yaml
@@ -185,6 +186,8 @@ def load_guide_table(text):
 # ----------------------------------------------------------------------------- field rules
 ITEM = r'(?:"[^"|]+"|[\w\-]+)'
 PIPE_LIST_RE = re.compile(rf"{ITEM}(?:\s*\|\s*{ITEM})+")
+# an 'e.g.' still applies unless a label colon ('values: ') or ';' follows it; '12:00:00Z' is not a label
+EG_BEFORE_RE = re.compile(r"(e\.g\.|example)(?:(?!:\s|;).)*$", re.I)
 BULLET_RE = re.compile(r"(?:^|\s)-\s+\"?([A-Z][\w\-]*)\"?(?::\s*([^.]*))?")
 ROW_RE = re.compile(r"\b([A-Z]\w*)(?:\s{2,}([^\s—][^—]*?))?\s+—")  # codes are capitalized: 'Draft —', 'GD  Genome… —' 
 
@@ -200,7 +203,7 @@ def comment_vocab(text):
         return vals
     for m in PIPE_LIST_RE.finditer(text):
         before = text[:m.start()].rstrip()
-        if re.search(r"(e\.g\.|example)[^:;]*$", before, re.I) or re.search(r"\w$", before):
+        if EG_BEFORE_RE.search(before) or re.search(r"\w$", before):
             continue  # 'e.g., a b | c d' lists examples of free text, not a vocabulary
         if re.search(r"(#|-\s+\w+:)\s*$", before):
             continue  # inside a commented-out YAML example ('- type: a | b', '  # a | b'), not this field's vocabulary
@@ -208,7 +211,7 @@ def comment_vocab(text):
     for rx, fmt in ((BULLET_RE, "{}: {}"), (ROW_RE, "{}: {}")):
         rows = rx.findall(text)
         first = rx.search(text)
-        if first and re.search(r"(e\.g\.|example)[^:;]*$", text[:first.start()].rstrip(), re.I):
+        if first and EG_BEFORE_RE.search(text[:first.start()].rstrip()):
             continue  # 'e.g., - "NOFORN" - "CNWDI"' lists examples of free text, not a vocabulary
         if len(rows) >= 2:
             return [fmt.format(k, d.strip()) if d and d.strip() else k for k, d in rows]
@@ -227,6 +230,7 @@ class Builder:
         self.disc_keys = alt.get("discriminator_keys", [])
         self.synth = alt.get("synthesize_as")
         self.block_required_keys = set(alt.get("required_keys", []))
+        self.hint = alt.get("choice_hint")
         self.extra = cfg.get("extra_option", "None")
         self.no_extra = set(cfg.get("no_extra_option", []))
         self.report = {k: [] for k in ("required_schema_vs_tag", "options_schema_vs_comment", "extra_option_added",
@@ -257,6 +261,15 @@ class Builder:
             if disc and len(alts) >= 2:
                 for a in alts:
                     self.conditional[a["path"]] = disc
+
+    def choice_hint(self, n):
+        """'Fill in only if the creator is a person; leave organization empty.' (no discriminator name: it may
+        not be in the template). Only blocks that have a sibling alternative get here."""
+        parent = n["path"].rpartition(".")[0]
+        role = self.hint["roles"].get(parent.rpartition(".")[2], "this entry")
+        others = [a for a in self.alt_blocks if a != n["key"] and f"{parent}.{a}" in self.conditional]
+        listed = others[0] if len(others) == 1 else ", ".join(others[:-1]) + " and " + others[-1]
+        return f"Fill in only if {role} is {self.hint['kinds'][n['key']]}; leave {listed} empty."
 
     def inside_alternative(self, path):
         """True when an ancestor is an agent block (person / organization / ...), chosen or not."""
@@ -312,16 +325,20 @@ class Builder:
             if req != tag_req and n["tags"] and "situational_required" not in n["tags"]:
                 self.report["required_schema_vs_tag"].append(
                     f"`{n['path']}`: schema says {req}, template tag [{', '.join(n['tags'])}]")
-        # v1.2 convention: inside a one-of alternative, required means "required if this block is chosen"
+        # v1.2 convention: inside a one-of alternative, required means "required if this block is chosen".
+        # A '[required for ai_model]' tag on a field inside the ai_model block says the same thing in words.
+        blocks = [b for b in n["path"].split(".")[:-1] if b in self.alt_blocks]
         if not req and self.inside_alternative(n["path"]) and (
                 "situational_required" in n["tags"] or tag_req or n["raw_value"].strip('"').startswith("${")
-                or n["key"] in self.block_required_keys):
+                or n["key"] in self.block_required_keys
+                or any(t == f"required for {b}" for t in n["tags"] for b in blocks)):
             req = True
         return bool(req)
 
     def options(self, n, req):
         sch = self.schema.get(n["path"]) or {}
-        placeholder = re.fullmatch(r'\$\{"([^"]+\|[^"]+)"\}', n["raw_value"])  # v2.0: ${"Yes|No"}
+        # v2.0 writes the choices only in the placeholder: ${"Yes|No"} (required) or __"Yes|No"__ (optional)
+        placeholder = re.fullmatch(r'(?:\$\{|__)"([^"]+\|[^"]+)"(?:\}|__)', n["raw_value"])
         vocab = placeholder.group(1).split("|") if placeholder else comment_vocab(n["text"])
         vals = sch.get("values")
         if vals and vocab and {v.lower() for v in vals} != {v.lower() for v in vocab}:
@@ -352,6 +369,13 @@ class Builder:
             sch = self.schema.get(n["path"]) or {}
             text = sch.get("description", "")
             self.report["no_description"].append(f"`{n['path']}`: " + ("used schema description" if text else "empty"))
+        # Conditions written in the tag ('[required if X = "Yes"]', '[either A or B is required]') are not
+        # enforced by MAVEN, so keep them in front of the text; 'required for <block>' inside that block is enforced.
+        blocks = n["path"].split(".")[:-1]
+        conds = [t for t in n["tags"] if re.search(r"\brequired\b", t) and " " in t
+                 and not any(t == f"required for {b}" for b in blocks)]
+        if conds:
+            text = " ".join(c[0].upper() + c[1:] + "." for c in conds) + " " + text
         return " ".join(text.split())
 
     def build(self):
@@ -375,9 +399,18 @@ class Builder:
                 made[parent + "." + disc] = None
             req = self.required(n)
             field = {"required": req, "description": self.description(n)}
+            # '[situational_required]' in an optional list item: MAVEN cannot enforce "required once an entry
+            # exists", so say it in the description unless the comment already says 'required'
+            # ('if' / 'when' are not enough: "the date when the AI model was accessed" states no condition)
+            if (not req and "situational_required" in n["tags"] and self.by_path.get(parent, {}).get("is_list")
+                    and not any(a in self.conditional for a in accumulate(n["path"].split("."), lambda x, y: f"{x}.{y}"))
+                    and not re.search(r"\brequired\b", field["description"], re.I)):
+                field["description"] = f"Required if an entry is added. {field['description']}"
             if n["path"] in self.conditional:
                 field["conditional_context"] = "one_of_alternatives"
                 field["condition_discriminator"] = self.conditional[n["path"]]
+                if self.hint:
+                    field["description"] = f"{field['description']} {self.choice_hint(n)}".strip()
             if n["has_children"]:
                 field["value"] = {}
                 made[n["path"]] = field["value"]
@@ -400,6 +433,9 @@ class Builder:
                 node = node[part] if node is root else node["value"][part]
             node.update(patch)
             self.report["overrides"].append(f"`{path}`: {patch}")
+        unknown = sorted(self.no_extra - set(self.by_path))  # a renamed field would otherwise silently get `None` back
+        if unknown:
+            raise KeyError(f"no_extra_option paths not in the template: {unknown}")
         return root
 
 

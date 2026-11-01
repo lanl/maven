@@ -8,14 +8,8 @@ Items below are where the generator had to choose. Check them, then record any c
 ## Dropdown options: schema enum differs from the template comment (schema used) (0)
 
 
-## Extra 'nothing applies' option added to a required dropdown (Vedant's rule 2) (6)
+## Extra 'nothing applies' option added to a required dropdown (Vedant's rule 2) (0)
 
-- `discoverability.datacard.sensitivity.overall_sensitivity`: added `None`
-- `discoverability.release_status`: added `None`
-- `discoverability.sensitivity.overall_sensitivity`: added `None`
-- `accessibility.access_policy.access_level`: added `None`
-- `reusability.data_quality.known_issues`: added `None`
-- `governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status`: added `None`
 
 ## List fields rendered as a single-choice dropdown (MAVEN has no multiselect) (0)
 
@@ -43,9 +37,14 @@ Items below are where the generator had to choose. Check them, then record any c
 
 - `xCard` (template line 182)
 
-## Manual overrides applied from the config (4)
+## Manual overrides applied from the config (9)
 
 - `discoverability.identification.name`: {'required': True}
 - `discoverability.identification.primary_id.type`: {'required': True}
 - `discoverability.identification.primary_id.value`: {'required': True}
 - `discoverability.contact.person.email`: {'required': True}
+- `interoperability.data_structure.features.data_type`: {'type': 'dropdown', 'options': ['float', 'int', 'string', 'boolean', 'datetime', 'other']}
+- `interoperability.domain_metadata.fields.data_type`: {'type': 'dropdown', 'options': ['float', 'int', 'string', 'boolean', 'datetime', 'other']}
+- `discoverability.dataset_type`: {'type': 'dropdown', 'options': ['Instrument']}
+- `accessibility.dataset_scale.record_unit`: {'type': 'dropdown', 'options': ['samples', 'files', 'records', 'timesteps', 'images', 'tokens', 'other']}
+- `governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status`: {'options': ['Approved', 'Pending', 'Not_Approved', 'Requires_STI_Review', 'not_applicable']}

@@ -24,6 +24,13 @@ alternatives:
 extra_option: None
 no_extra_option:
   - discoverability.datacard.creation_method
+  # 2026-10-28: an existing option already means 'nothing' / best fit (Public, Draft, Data); None would only confuse
+  - discoverability.datacard.sensitivity.overall_sensitivity
+  - discoverability.sensitivity.overall_sensitivity
+  - discoverability.product_type
+  - discoverability.release_status
+  - accessibility.access_policy.access_level   # `Open` already means "no restriction"
+  - governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status   # Pending / Not_Approved cover "not released"
 
 # Prefix top-level descriptions (supports_*) with the reference-guide table text, as v1.2 did.
 guide_for_top_level: true
@@ -36,3 +43,6 @@ exclude_top_level: [_repository]
 overrides:
   discoverability.identification.primary_id.value: {required: true}
   discoverability.contact.person.email: {required: true}
+  discoverability.datacard.created_by.creator.organization.ror_id: {required: false}   # Vedant 2026-10-28: ror_id stays optional (line 283)
+  # template line 596 writes "not_applicable - …" (hyphen, lowercase), so the row reader misses it
+  discoverability.workflow.state: {options: [Raw, Processing, QA, Analysis, Review, Embargo, Published, Archived, not_applicable]}

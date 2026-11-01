@@ -17,10 +17,22 @@ alternatives:
   discriminator_keys: [agent_type, type]
   synthesize_as: agent_type
   required_keys: [given_name, family_name, name, version, affiliation, type, value]  # same convention as v1.2
+  # 2026-10-30: each one-of block keeps the template definition and gets one sentence on how to choose.
+  # It does not name agent_type: that key is not in the v2.0 template and is dropped on export.
+  choice_hint:
+    roles: {creator: the creator, contact: the contact, additional_contacts: this contact, authors: this author,
+            contributors: this contributor, maintainer: the maintainer, reviewed_by: the reviewer}
+    kinds: {person: a person, organization: an organization, ai_model: an AI model, software: a software tool}
 
 extra_option: None
 no_extra_option:
   - discoverability.datacard.creation_method
+  # 2026-10-28: an existing option already means 'nothing' / best fit (Public, Draft, Data); None would only confuse
+  - discoverability.datacard.sensitivity.overall_sensitivity
+  - discoverability.sensitivity.overall_sensitivity
+  - discoverability.release_status
+  - accessibility.access_policy.access_level   # `Open` already means "no restriction"
+  - governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status   # Pending / Not_Approved cover "not released"
 
 guide_for_top_level: false
 
@@ -33,3 +45,12 @@ overrides:
   discoverability.identification.primary_id.type: {required: true}  # D2: required block needs the ID type ('unregistered' exists)
   discoverability.identification.primary_id.value: {required: true} # D3: type and value go together; 'not_applicable' when unregistered
   discoverability.contact.person.email: {required: true}            # Vedant (2026-10-28): the primary contact needs an email
+  # 2026-10-29: the comment calls this a controlled vocabulary but lists it after 'e.g.', so no dropdown is made
+  interoperability.data_structure.features.data_type: {type: dropdown, options: [float, int, string, boolean, datetime, other]}
+  interoperability.domain_metadata.fields.data_type: {type: dropdown, options: [float, int, string, boolean, datetime, other]}
+  # 2026-10-29: 'Allowed values: Instrument' is a one-value list; a dropdown avoids typos (field stays optional)
+  discoverability.dataset_type: {type: dropdown, options: [Instrument]}
+  # 2026-10-30: same list as v1.2 (dropdown there), now written as 'such as samples, files, ..., other)'
+  accessibility.dataset_scale.record_unit: {type: dropdown, options: [samples, files, records, timesteps, images, tokens, other]}
+  # 2026-10-29: all four values describe a release request; datasets never submitted for public release need not_applicable
+  governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status: {options: [Approved, Pending, Not_Approved, Requires_STI_Review, not_applicable]}

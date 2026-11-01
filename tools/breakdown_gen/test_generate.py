@@ -25,6 +25,28 @@ def test_v12_matches_reference():
     assert score["type"][0] / score["type"][1] >= 0.95                      # rest are vocabularies he did not use
 
 
+def test_examples_after_eg_are_not_a_vocabulary():
+    from generate_breakdown import comment_vocab
+    # v2.0 known_issues: the colons inside the timestamp must not end the 'e.g.'
+    assert comment_vocab("Be explicit. e.g., drift after 2023-06-01T12:00:00Z | Sensor drift | not_applicable") is None
+    assert comment_vocab("select one from list: Open | Restricted") == ["Open", "Restricted"]
+
+
+def test_oneof_blocks_say_how_to_choose():
+    out = HERE / "genesis_dc_v2.0_breakdown.generated.yaml"
+    subprocess.run([sys.executable, str(HERE / "generate_breakdown.py"), str(HERE / "config_v2.0.yaml")], check=True)
+    creator = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["datacard"]["value"]["created_by"]["value"]["creator"]["value"]
+    assert creator["organization"]["description"].strip() == ("An organization or group of individuals. Fill in only if the "
+                                                      "creator is an organization; leave person, ai_model and software empty.")
+    facility = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["facilities"]["value"]["name"]
+    is_intermediate = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["workflow"]["value"]["is_intermediate"]
+    assert (is_intermediate["type"], is_intermediate["options"]) == ("radio", ["Yes", "No"])  # from __"Yes|No"__
+    assert facility["description"].strip() ==("Required if an entry is added. Human-readable name or local string "
+                                               "key for the entity.")
+
+
 if __name__ == "__main__":
     test_v12_matches_reference()
+    test_examples_after_eg_are_not_a_vocabulary()
+    test_oneof_blocks_say_how_to_choose()
     print("ok")
