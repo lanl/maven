@@ -5,7 +5,6 @@ try:
 except Exception:
     print("Add the DSI HPC module to your shell config file")
 
-import shutil
 import os
 import subprocess
 
@@ -19,11 +18,13 @@ tier2_table = 55555
 # change cwd to that scratch folder which has t1 db, t2 db, and data/
 os.chdir(staging_folder)
 
-result = subprocess.run(["module avail conduit"], shell=True, executable="/bin/bash", capture_output=True)
-if "conduit/conduit-x86_64" in str(result.stderr):
-    copy_tool = "conduit"
-elif shutil.which("pfcp"):
+shell = os.environ.get("SHELL")
+pfcp_result = subprocess.run(["module avail marfs"], shell=True, executable=shell, capture_output=True)
+conduit_result = subprocess.run(["module avail conduit"], shell=True, executable=shell, capture_output=True)
+if "marfs-x86_64" in str(pfcp_result.stderr):
     copy_tool = "pfcp"
+elif "conduit/conduit-x86_64" in str(conduit_result.stderr):
+    copy_tool = "conduit"
 else:
     print("Only testing on this HPC for now")
     assert False

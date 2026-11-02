@@ -60,7 +60,7 @@ When first launching the app, you will be required to complete 3 fields:
 For further instructions on setting up an AI API Key for LANL users, please contact a MAVEN team member.
 
 ## HPC & DSI Setup
-To move data to an HPC campaign space using [DSI](https://github.com/lanl/dsi), contact a MAVEN team member for setup details.
+To move data to an HPC Campaign space using [DSI](https://github.com/lanl/dsi), contact a MAVEN team member for more information.
 
 
 

@@ -13,11 +13,12 @@ def main():
     env["PYTHONUNBUFFERED"] = "1"
 
     if os.name != "nt":
-        subprocess.run(f"lsof -t -i:{PORT} | xargs -r kill -9", shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(f"lsof -t -iTCP:{PORT} -sTCP:LISTEN | xargs -r kill -9", shell=True, 
+                       check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         from colorama import Fore, Style, init
         init(autoreset=True)
-        subprocess.run(f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{PORT}\') do taskkill /F /PID %a >nul 2>&1',
+        subprocess.run(f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{PORT} ^| findstr LISTENING\') do taskkill /F /PID %a >nul 2>&1',
                        shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     is_remote = any(os.environ.get(x) for x in ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"])
