@@ -13,13 +13,15 @@ on Windows.
 """
 import dataclasses
 import os
-import pty
 import re
 import signal
 import threading
 import time
 import types
 from typing import Any, Callable, Literal
+
+if os.name != "nt":
+    import pty
 
 import streamlit as st
 
