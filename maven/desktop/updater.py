@@ -82,11 +82,27 @@ logger = get_logger("updater")
 _update_lock = threading.Lock()
 
 
+def _parse_version(version_string):
+    """Splits a version string into its numeric part and an optional track
+    suffix, e.g. "1.0.5-standalone" -> (Version("1.0.5"), "standalone"),
+    "1.0.5" -> (Version("1.0.5"), None). The suffix identifies a separate
+    release lane (e.g. "standalone") that must never be offered as an update
+    to, or treated as an update source from, the plain numbered track - each
+    track only updates within itself. Raises InvalidVersion if the numeric
+    part itself isn't a valid version, same as Version() would."""
+    numeric_part, _, suffix = version_string.partition("-")
+    return Version(numeric_part), (suffix or None)
+
+
 def get_latest_release():
-    """Returns the release with the highest semantic version, not GitHub's
-    notion of "latest" (/releases/latest returns the most recently
-    *published* release, which silently goes stale/wrong whenever an older
-    tag gets deleted and re-published, e.g. to ship a fix on top of it)."""
+    """Returns the release with the highest semantic version on the same
+    track as the running build (plain numbered, or a "-suffix" lane like
+    "-standalone"), not GitHub's notion of "latest" (/releases/latest
+    returns the most recently *published* release, which silently goes
+    stale/wrong whenever an older tag gets deleted and re-published, e.g. to
+    ship a fix on top of it)."""
+    _, own_track = _parse_version(__version__)
+
     url = API_URL.format(repo=GITHUB_REPO)
     headers = {"Accept": "application/vnd.github+json"}
     response = requests.get(url, headers=headers, timeout=10)
@@ -95,11 +111,19 @@ def get_latest_release():
 
     candidates = []
     for release in releases:
-        if release.get("draft") or release.get("prerelease"):
+        if release.get("draft"):
             continue
         try:
-            version = Version(release["tag_name"].lstrip("v"))
+            version, track = _parse_version(release["tag_name"].lstrip("v"))
         except InvalidVersion:
+            continue
+        if track != own_track:
+            continue
+        # The plain numbered track is published as a normal (non-pre)
+        # release; a "-suffix" track like "-standalone" is always published
+        # as a GitHub prerelease (see release.yml), so only the plain track
+        # needs to exclude prereleases here.
+        if own_track is None and release.get("prerelease"):
             continue
         candidates.append((version, release))
 
@@ -109,8 +133,9 @@ def get_latest_release():
 
 
 def is_newer(release):
-    remote_version = release["tag_name"].lstrip("v")
-    return Version(remote_version) > Version(__version__)
+    remote_version, _ = _parse_version(release["tag_name"].lstrip("v"))
+    current_version, _ = _parse_version(__version__)
+    return remote_version > current_version
 
 
 def update_deadline(release):
