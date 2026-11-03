@@ -50,6 +50,8 @@ def main():
         if os.name != "nt":
             print(f" \033[1mssh -L {PORT}:localhost:{PORT} {remote_user}@{remote_host}\033[0m")
         else:
+            from colorama import Fore, Style, init
+            init(autoreset=True)
             print(f" {Style.BRIGHT}ssh -L {PORT}:localhost:{PORT} {remote_user}@{remote_host}{Style.RESET_ALL}")
         print(" (Leave the new terminal running while using the app)")
 
