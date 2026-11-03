@@ -3,23 +3,43 @@ import subprocess
 import socket
 import getpass
 import sys
+import random
 
-PORT = 8505
-APP = os.path.join(os.path.dirname(__file__), "app.py")
+PORT_MIN = 7000
+PORT_MAX = 9000
 
+def find_available_port():
+    """Return an unused localhost port in the configured range."""
+    ports = list(range(PORT_MIN, PORT_MAX + 1))
+    random.SystemRandom().shuffle(ports)
+
+    for port in ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as test_socket:
+            try:
+                # Test the same interface Streamlit will use.
+                test_socket.bind(("127.0.0.1", port))
+                test_socket.listen(1)
+                return port
+            except OSError:
+                continue
+
+    raise RuntimeError(f"No available port found between {PORT_MIN} and {PORT_MAX}.")
 
 def main():
+    APP = os.path.join(os.path.dirname(__file__), "app.py")
+    PORT = find_available_port()
+
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
 
-    if os.name != "nt":
-        subprocess.run(f"lsof -t -iTCP:{PORT} -sTCP:LISTEN | xargs -r kill -9", shell=True, 
-                       check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    else:
-        from colorama import Fore, Style, init
-        init(autoreset=True)
-        subprocess.run(f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{PORT} ^| findstr LISTENING\') do taskkill /F /PID %a >nul 2>&1',
-                       shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # if os.name != "nt":
+    #     subprocess.run(f"lsof -t -iTCP:{PORT} -sTCP:LISTEN | xargs -r kill -9", shell=True, 
+    #                    check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # else:
+    #     from colorama import Fore, Style, init
+    #     init(autoreset=True)
+    #     subprocess.run(f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{PORT} ^| findstr LISTENING\') do taskkill /F /PID %a >nul 2>&1',
+    #                    shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     is_remote = any(os.environ.get(x) for x in ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"])
     if is_remote:
@@ -40,8 +60,8 @@ def main():
     print(" It may take a few minutes to load the first time")
     print("\nTo exit, press Ctrl+C here")
 
-    cmd = [sys.executable, "-m", "streamlit", "run", APP, f"--server.port={PORT}", "--server.headless=true",
-           "--browser.gatherUsageStats=false"]
+    cmd = [sys.executable, "-m", "streamlit", "run", APP, f"--server.port={PORT}", "--server.address=127.0.0.1", 
+           "--server.headless=true", "--browser.gatherUsageStats=false"]
     proc = subprocess.Popen(cmd, env=env, stdin=None, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
     try:
         for line in proc.stdout:
@@ -58,6 +78,7 @@ def main():
                 or "Could not bind IPv6 wildcard address" in line
                 or "Did not auto detect external IP" in line
                 or "debugging hints" in line
+                or "URL: " in line
                 or line == ""
             ):
                 continue
