@@ -6,3 +6,6 @@ hideTopBar = true
 
 [logger]
 level = "warning"
+
+[theme]
+base = "light"
