@@ -63,7 +63,7 @@ def main():
 
 
     if os.name != "nt":
-        print(f"\nOpen \033[1;34mhttp://localhost:{PORT}\033[0m in your browser to launch MAVEN")
+        print(f"\nOpen \033[1;34mhttp://localhost:{LOCAL_PORT}\033[0m in your browser to launch MAVEN")
     else:
         print(f"\nOpen {Fore.BLUE}{Style.BRIGHT}http://localhost:{PORT}{Style.RESET_ALL} in your browser to launch MAVEN")
     print(" It may take a few minutes to load the first time")
