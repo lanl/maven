@@ -1880,8 +1880,9 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
 # -----------------------------
 # App start
 # -----------------------------
+image_path = Path(__file__).parent / "images" / "logo.png"
 st.set_page_config(page_title="MAVEN",
-                   page_icon="📝", layout="wide")
+                   page_icon=image_path, layout="wide")
 
 st.markdown("""
 <style>

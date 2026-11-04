@@ -28,18 +28,10 @@ def find_available_port():
 def main():
     APP = os.path.join(os.path.dirname(__file__), "app.py")
     PORT = find_available_port()
+    LOCAL_PORT = 8505
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
-
-    # if os.name != "nt":
-    #     subprocess.run(f"lsof -t -iTCP:{PORT} -sTCP:LISTEN | xargs -r kill -9", shell=True, 
-    #                    check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    # else:
-    #     from colorama import Fore, Style, init
-    #     init(autoreset=True)
-    #     subprocess.run(f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{PORT} ^| findstr LISTENING\') do taskkill /F /PID %a >nul 2>&1',
-    #                    shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     is_remote = any(os.environ.get(x) for x in ["SSH_CONNECTION", "SSH_CLIENT", "SSH_TTY"])
     if is_remote:
@@ -48,15 +40,27 @@ def main():
 
         print("Open a new terminal window on your local machine and run:")
         if os.name != "nt":
-            print(f" \033[1mssh -L {PORT}:localhost:{PORT} {remote_user}@{remote_host}\033[0m")
+            print(f" \033[1mssh -L {LOCAL_PORT}:localhost:{PORT} {remote_user}@{remote_host}\033[0m")
         else:
             from colorama import Fore, Style, init
             init(autoreset=True)
-            print(f" {Style.BRIGHT}ssh -L {PORT}:localhost:{PORT} {remote_user}@{remote_host}{Style.RESET_ALL}")
+            print(f" {Style.BRIGHT}ssh -L {LOCAL_PORT}:localhost:{PORT} {remote_user}@{remote_host}{Style.RESET_ALL}")
         print(" (Leave the new terminal running while using the app)")
+    else:
+        PORT = 8505
+
+        if os.name != "nt":
+            subprocess.run(f"lsof -t -iTCP:{PORT} -sTCP:LISTEN | xargs -r kill -9", shell=True, 
+                            check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            from colorama import Fore, Style, init
+            init(autoreset=True)
+            subprocess.run(f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{PORT} ^| findstr LISTENING\') do taskkill /F /PID %a >nul 2>&1',
+                            shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 
     if os.name != "nt":
-        print(f"\nOpen \033[1;34mhttp://localhost:{PORT}\033[0m in your browser to launch MAVEN")
+        print(f"\nOpen \033[1;34mhttp://localhost:{LOCAL_PORT}\033[0m in your browser to launch MAVEN")
     else:
         print(f"\nOpen {Fore.BLUE}{Style.BRIGHT}http://localhost:{PORT}{Style.RESET_ALL} in your browser to launch MAVEN")
     print(" It may take a few minutes to load the first time")
