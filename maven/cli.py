@@ -40,14 +40,11 @@ def main():
 
         print("Open a new terminal window on your local machine and run:")
         if os.name != "nt":
-            print("Open a new terminal window on your local machine and run:")
             print(f" \033[1mssh -L {LOCAL_PORT}:localhost:{PORT} {remote_user}@{remote_host}\033[0m")
         else:
             from colorama import Fore, Style, init
             init(autoreset=True)
-            print("If using SSH, open a new terminal window on your local machine and run:")
             print(f" {Style.BRIGHT}ssh -L {LOCAL_PORT}:localhost:{PORT} {remote_user}@{remote_host}{Style.RESET_ALL}")
-            print(" If using PuTTY, set up a local port forwarding rule. Follow instructions in DIANA Support Pages")
         print(" (Leave the new terminal running while using the app)")
     else:
         PORT = 8505
