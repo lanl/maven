@@ -3227,23 +3227,23 @@ elif st.session_state.screen == "hpc_move":
 
             if local_data_input.lower() == "n/a":
                 if not (hpc_staging_path.is_absolute() and hpc_staging_path.is_dir()):
-                    st.error("HPC Staging Location must be an absolute path to the data you can access")
+                    st.error("HPC Staging Directory must be an absolute path to the data you can access")
                     st.stop()
                 try:
                     next(hpc_staging_path.iterdir(), None)
                     with tempfile.NamedTemporaryFile(dir=hpc_staging_path, delete=True):
                         pass
                 except (PermissionError, OSError):
-                    st.error("HPC Staging Location must be a directory you can access")
+                    st.error("HPC Staging Directory must be a directory you can access")
                     st.stop()
 
                 if not (hpc_campaign_path.is_absolute() and hpc_campaign_path.is_dir()):
-                    st.error("HPC Campaign Location must be an absolute path to a directory you can access")
+                    st.error("HPC Campaign Directory must be an absolute path to a directory you can access")
                     st.stop()
                 try:
                     next(hpc_campaign_path.iterdir(), None)
                 except (PermissionError, OSError):
-                    st.error("HPC Campaign Location must be a directory you can access")
+                    st.error("HPC Campaign Directory must be a directory you can access")
                     st.stop()
 
                 if not (diana_endpoint_path.is_absolute() and diana_endpoint_path.is_dir()):
@@ -3337,7 +3337,7 @@ elif st.session_state.screen == "hpc_move":
                     st.code(result.stderr)
                     st.stop()
 
-                print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging location")
+                print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging directory")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_staging_input}" && pwd && ls']
@@ -3350,7 +3350,7 @@ elif st.session_state.screen == "hpc_move":
                     st.code(result.stderr)
                     st.stop()
 
-                print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign location")
+                print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign directory")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_campaign_input}" && pwd && ls']
@@ -3470,7 +3470,7 @@ elif st.session_state.screen == "hpc_move":
                         try:
                             curr_folders = {p.name: p.owner() for p in hpc_path.iterdir() if p.is_dir()}
                         except Exception:
-                            st.error("HPC staging path does not exist. Go to previous screen and enter a valid path.")
+                            st.error("HPC Campaign Directory does not exist. Go to previous screen and enter a valid path.")
                             st.stop()
 
                     else:
@@ -3497,7 +3497,7 @@ elif st.session_state.screen == "hpc_move":
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                         print(" \nGo back to app")
                         if result.returncode != 0:
-                            st.error("Error checking existing folders in HPC Campaign Location")
+                            st.error("Error checking existing folders in HPC Campaign Directory")
                             st.code(result.stderr)
                             st.stop()
 
