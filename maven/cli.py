@@ -59,12 +59,12 @@ def main():
                             shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     import secrets
-    secret_url_component = secrets.token_urlsafe(24)
+    secret_url_component = secrets.token_urlsafe(12)
 
     if os.name != "nt":
         print(f"\nOpen \033[1;34mhttp://localhost:{LOCAL_PORT}/{secret_url_component}\033[0m in your browser to launch MAVEN")
     else:
-        print(f"\nOpen {Fore.BLUE}{Style.BRIGHT}http://localhost:{PORT}/{secret_url_component}{Style.RESET_ALL} in your browser to launch MAVEN")
+        print(f"\nOpen {Fore.BLUE}{Style.BRIGHT}http://localhost:{LOCAL_PORT}/{secret_url_component}{Style.RESET_ALL} in your browser to launch MAVEN")
     print(" It may take a few minutes to load the first time")
     print("\nTo exit, press Ctrl+C here")
 
@@ -73,7 +73,7 @@ def main():
             'STREAMLIT_SERVER_BASE_URL_PATH':f'/{secret_url_component}/',
             'STREAMLIT_SERVER_HEADLESS':'true',
             'STREAMLIT_BROWSER_GATHER_USAGE_STATS':'false'}
-    cmd = [sys.executable, "-m", "streamlit", "run", APP] 
+    cmd = [sys.executable, "-m", "streamlit", "run", APP]
     proc = subprocess.Popen(cmd, env=env, stdin=None, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
     try:
         for line in proc.stdout:
