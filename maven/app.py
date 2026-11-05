@@ -1923,8 +1923,9 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
 # -----------------------------
 # App start
 # -----------------------------
+image_path = Path(__file__).parent / "images" / "logo.png"
 st.set_page_config(page_title="MAVEN",
-                   page_icon="📝", layout="wide")
+                   page_icon=image_path, layout="wide")
 
 st.markdown("""
 <style>
@@ -3053,8 +3054,8 @@ elif st.session_state.screen == "hpc_move":
                 st.stop()
 
             if new_using_ssh_value.lower() == "putty" and (not plink or not pscp):
-                    st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
-                    st.stop()
+                st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
+                st.stop()
         
         else:
             tier2_store = get_db(tier2_db_path)
@@ -3290,27 +3291,23 @@ elif st.session_state.screen == "hpc_move":
 
             if local_data_input.lower() == "n/a":
                 if not (hpc_staging_path.is_absolute() and hpc_staging_path.is_dir()):
-                    st.error("HPC Staging Location must be an absolute path to the data you can access")
-                    st.session_state.validating_tier2 = False
+                    st.error("HPC Staging Directory must be an absolute path to the data you can access")
                     st.stop()
                 try:
                     next(hpc_staging_path.iterdir(), None)
                     with tempfile.NamedTemporaryFile(dir=hpc_staging_path, delete=True):
                         pass
                 except (PermissionError, OSError):
-                    st.error("HPC Staging Location must be a directory you can access")
-                    st.session_state.validating_tier2 = False
+                    st.error("HPC Staging Directory must be a directory you can access")
                     st.stop()
 
                 if not (hpc_campaign_path.is_absolute() and hpc_campaign_path.is_dir()):
-                    st.error("HPC Campaign Location must be an absolute path to a directory you can access")
-                    st.session_state.validating_tier2 = False
+                    st.error("HPC Campaign Directory must be an absolute path to a directory you can access")
                     st.stop()
                 try:
                     next(hpc_campaign_path.iterdir(), None)
                 except (PermissionError, OSError):
-                    st.error("HPC Campaign Location must be a directory you can access")
-                    st.session_state.validating_tier2 = False
+                    st.error("HPC Campaign Directory must be a directory you can access")
                     st.stop()
 
                 if not (diana_endpoint_path.is_absolute() and diana_endpoint_path.is_dir()):
@@ -3408,7 +3405,7 @@ elif st.session_state.screen == "hpc_move":
                     st.session_state.validating_tier2 = False
                     st.stop()
 
-                print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging location")
+                print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging directory")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_staging_input}" && pwd && ls']
@@ -3422,7 +3419,7 @@ elif st.session_state.screen == "hpc_move":
                     st.session_state.validating_tier2 = False
                     st.stop()
 
-                print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign location")
+                print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign directory")
                 with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_campaign_input}" && pwd && ls']
@@ -3555,8 +3552,7 @@ elif st.session_state.screen == "hpc_move":
                         try:
                             curr_folders = {p.name: p.owner() for p in hpc_path.iterdir() if p.is_dir()}
                         except Exception:
-                            st.error("HPC staging path does not exist. Go to previous screen and enter a valid path.")
-                            st.session_state.dsi_move_in_progress = False
+                            st.error("HPC Campaign Directory does not exist. Go to previous screen and enter a valid path.")
                             st.stop()
 
                     else:
@@ -3583,7 +3579,7 @@ elif st.session_state.screen == "hpc_move":
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                         print(" \nGo back to app")
                         if result.returncode != 0:
-                            st.error("Error checking existing folders in HPC Campaign Location")
+                            st.error("Error checking existing folders in HPC Campaign Directory")
                             st.code(result.stderr)
                             st.session_state.dsi_move_in_progress = False
                             st.stop()
@@ -3795,7 +3791,6 @@ elif st.session_state.screen == "hpc_move":
                         else:
                             cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                         remote_run = subprocess.run(cmd, input=script, text=True, capture_output=True, check=False)
-                    print(" \nGo back to app")
                     if remote_run.returncode != 0:
                         st.error("HPC Staging to Campaign Move Error:")
                         if remote_run.stderr:
@@ -3815,7 +3810,7 @@ elif st.session_state.screen == "hpc_move":
                                     st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                             else:
                                 st.code(remote_run.stderr)
-                        st.session_state.dsi_move_in_progress = False
+                        print(" \nGo back to app")
                         st.stop()
 
                     if "Only testing on this HPC for now" in remote_run.stdout:
@@ -3878,7 +3873,7 @@ elif st.session_state.screen == "hpc_move":
                         else:
                             st.code(remote_endpoint_run.stderr)
                             st.code(output)
-                    st.session_state.dsi_move_in_progress = False
+                    print(" \nGo back to app")
                     st.stop()
 
             # set user group and access permissions after move
@@ -3891,7 +3886,7 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting user group for data on Campaign")
                         st.code(result.stderr)
-                        st.session_state.dsi_move_in_progress = False
+                        print(" \nGo back to app")
                         st.stop()
 
                 if access_permissions_code:
@@ -3901,7 +3896,7 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting access permissions for data on Campaign")
                         st.code(result.stderr)
-                        st.session_state.dsi_move_in_progress = False
+                        print(" \nGo back to app")
                         st.stop()
             else:
                 if user_group and access_permissions_code:
@@ -3917,8 +3912,10 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
-                        st.session_state.dsi_move_in_progress = False
+                        print(" \nGo back to app")
                         st.stop()
+
+            print(" \nGo back to app")
 
             # after move, delete the temp t1 & t2 dbs that were actually moved
             os.remove(temp_t2_db_name)
