@@ -45,6 +45,14 @@ jobs:
           with open("maven/_version.py", "w") as f:
               f.write(f'__version__ = "{version}"\n')
 
+      - name: Generate Windows icon
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          pip install -q pillow
+          python -c "from PIL import Image; Image.open('packaging/icon.png').save('packaging/icon.ico', format='ICO')"
+          echo "MAVEN_ICON_PATH=packaging/icon.ico" >> "$GITHUB_ENV"
+
       - name: Build with PyInstaller
         run: pyinstaller packaging/maven.spec
 
@@ -69,17 +77,18 @@ jobs:
             echo "choco install nsis failed (attempt $i), retrying in 30s..."
             sleep 30
           done
-          pip install -q pillow
-          python -c "from PIL import Image; Image.open('packaging/icon.png').save('packaging/icon.ico', format='ICO')"
           exe_path="$(pwd -W)/release/${{ matrix.asset_name }}"
           out_dir="$(pwd -W)/release"
           exe_path="${exe_path//\//\\}"
           out_dir="${out_dir//\//\\}"
+          icon_path="$(pwd -W)/packaging/icon.ico"
+          icon_path="${icon_path//\//\\}"
           "/c/Program Files (x86)/NSIS/makensis.exe" \
             /NOCD \
             "/DVERSION=${APP_VERSION#v}" \
             "/DEXE_PATH=$exe_path" \
             "/DOUT_DIR=$out_dir" \
+            "/DICON_PATH=$icon_path" \
             packaging/windows/installer.nsi
 
       - name: Build macOS .dmg

@@ -12,6 +12,9 @@
 !ifndef OUT_DIR
   !define OUT_DIR "release"
 !endif
+!ifndef ICON_PATH
+  !define ICON_PATH "..\icon.ico"
+!endif
 
 Name "MAVEN"
 OutFile "${OUT_DIR}\maven-windows-installer.exe"
@@ -20,6 +23,11 @@ RequestExecutionLevel user
 SetCompressor /SOLID lzma
 
 !include "MUI2.nsh"
+
+Icon "${ICON_PATH}"
+UninstallIcon "${ICON_PATH}"
+!define MUI_ICON "${ICON_PATH}"
+!define MUI_UNICON "${ICON_PATH}"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
