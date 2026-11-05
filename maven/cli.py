@@ -68,8 +68,11 @@ def main():
     print(" It may take a few minutes to load the first time")
     print("\nTo exit, press Ctrl+C here")
 
-    cmd = [sys.executable, "-m", "streamlit", "run", APP, f"--server.port={PORT}", "--server.address=127.0.0.1", 
-           "--server.headless=true", "--browser.gatherUsageStats=false", f"--server.baseUrlPath=/{secret_url_component}/"]
+    from pathlib import Path
+    Path(".streamlit").mkdir(exist_ok=True,mode=0o700)
+    with open(".streamlit/config.toml","w") as file:
+         file.write(f"[server]\naddress=\"127.0.0.1\"\nport={PORT}\nbaseUrlPath=\"/{secret_url_component}/\"\n")
+    cmd = [sys.executable, "-m", "streamlit", "run", APP, "--server.headless=true", "--browser.gatherUsageStats=false"]
     proc = subprocess.Popen(cmd, env=env, stdin=None, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
     try:
         for line in proc.stdout:
