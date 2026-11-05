@@ -26,7 +26,7 @@ change and a re-run instead of a hand conversion.
 | `genesis_dc_v1.2_breakdown.generated.yaml` | Generated v1.2 breakdown. |
 | `genesis_dc_v1.2_breakdown.generated.review.md` | Review report for the v1.2 run. |
 | `v1.2_vs_vedant.diff.md` | Field-by-field differences between the generated v1.2 file and Vedant's hand-made one. |
-| `genesis_dc_v2.0_breakdown.generated.yaml` | Generated v2.0 breakdown (all 510 template fields). |
+| `genesis_dc_v2.0_breakdown.generated.yaml` | Generated v2.0 breakdown (380 of the 510 template fields: Vedant removed 130 on 2026-11-05, see `exclude` in the config). |
 | `genesis_dc_v2.0_breakdown.generated.review.md` | Review report for the v2.0 run: the items that need a human decision. |
 | `v2.0_vs_manual.diff.md` | Differences between the generated v2.0 file and the partial hand-made v2.0 breakdown (`maven/metadata_template/genesis_dc_v2.0_breakdown.yaml`). |
 | `inputs/` | Where you put the downloaded datacard archives. Ignored by git (see `.gitignore`). |
@@ -59,7 +59,12 @@ The datacard template and reference guide are not stored in this repository. Dow
 tools/breakdown_gen/inputs/
     data-cards-v1.2.0.tar.gz
     data-cards-v2.0.0.zip
+    genesis_datacard_v2.0.0_vedant.yaml
 ```
+
+`genesis_datacard_v2.0.0_vedant.yaml` is Vedant's edited copy of the zip template (received 2026-11-05, saved as
+`diana_genesis_v2.0.yaml`): 7 list blocks made single entries (`change_log`, `created_by`, `additional_ids`, `contact`,
+`intended_repositories`, `data_services`, `source_data`) and the `Perfer` typo fixed. `config_v2.0.yaml` reads it.
 
 The scripts read the files they need directly from inside the archives, in memory. Nothing is extracted and
 nothing inside the archives is executed. If you keep the archives somewhere else, edit the `template:` and
@@ -106,7 +111,7 @@ plain `yaml.safe_load` and its own comment reader.
 
 ```bash
 python validate_breakdown.py ../../maven/metadata_template/genesis_dc_v1.2_YAML.yaml     genesis_dc_v1.2_breakdown.generated.yaml --report validation_v1.2.md
-python validate_breakdown.py "inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml"     genesis_dc_v2.0_breakdown.generated.yaml --allow-missing xCard --report validation_v2.0.md
+python validate_breakdown.py inputs/genesis_datacard_v2.0.0_vedant.yaml     genesis_dc_v2.0_breakdown.generated.yaml --allow-missing-from config_v2.0.yaml --report validation_v2.0.md
 ```
 
 It prints one row per section (template keys, breakdown fields, errors, warnings) and exits with code 1 if there
@@ -115,18 +120,20 @@ is any error.
 | Severity | Check |
 |---|---|
 | ERROR | A template key is missing from the breakdown, or the breakdown has a key the template does not have |
-| ERROR | A leaf's placeholder value differs from the template |
+| ERROR | A leaf's placeholder value differs from the template (in the v2 format an empty value is accepted, and a placeholder may be pre-filled, reported as EXPECTED; a pre-filled dropdown value must be one of its options) |
 | ERROR | MAVEN's form rules fail (same check as `compare_breakdowns.py`) |
 | WARNING | A `[*_required]` field is not required; a comment lists choices but there is no dropdown; a dropdown option does not appear in the template comment |
-| EXPECTED | Blocks tagged `[reference_only…]` or named with `--allow-missing`; discriminators added next to one-of blocks |
+| EXPECTED | Blocks tagged `[reference_only…]`, named with `--allow-missing` (`*` patterns allowed) or listed in the config given to `--allow-missing-from`; discriminators added next to one-of blocks |
 
-Run on Vedant's v1.2 file, it reports 0 errors and 14 warnings, which are the known mistakes in that file
-(`Resourcesm`, the copied `classification_category` options, missing dropdowns). The generated v1.2 file has 0
-errors and 0 warnings; the generated v2.0 file has 0 errors and 2 warnings (required-tagged fields inside optional
+Run on Vedant's v1.2 file, it reports 0 errors and 8 warnings, which are the known mistakes in that file
+(the copied `classification_category` options, missing dropdowns; the `Resourcesm` typo was fixed on 2026-11-04). The generated v1.2 file has 0
+errors and 0 warnings; the generated v2.0 file has 0 errors and 3 warnings (`processing_steps`, made optional by Vedant on 2026-11-05, and 2 required-tagged fields inside optional
 blocks, which are `false` on purpose).
 
 To try a generated file in MAVEN, copy it over `maven/metadata_template/genesis_dc_breakdown.yaml` (the file
-`app.py` loads). Keep a copy of the original first.
+`app.py` loads). Keep a copy of the original first. This works for v1.2 only: the v2.0 file uses Vedant's
+`output_format: v2` (types `string` / `list` / `int` / `float`, `visible`, `mapping`), which today's `app.py` does not
+render yet (it stops with `Unsupported type`).
 
 ---
 
@@ -160,11 +167,12 @@ python verify_v12_mapping.py
 | Version | Template | Reference guide |
 |---|---|---|
 | v1.2 | `data-cards-v1.2.0.tar.gz` → `data-cards-v1.2.0/template/latest/genesis_datacard_merged_shared.yaml` | `data-cards-v1.2.0.tar.gz` → `data-cards-v1.2.0/template/latest/data_card_field_reference_guide.md` |
-| v2.0 | `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml` | `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md` |
+| v2.0 | `inputs/genesis_datacard_v2.0.0_vedant.yaml` (Vedant's edit of `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml`) | `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md` |
 
 - The generator reads the **original** template and flattens the lists itself, the same way Vedant's
   `genesis_dc_v1.2_YAML.yaml` was flattened. No hand editing is needed.
-- The v2.0 template in the zip is line-for-line identical to `genesis_dc_v2.0_YAML.yaml`.
+- The v2.0 template in the zip is line-for-line identical to `genesis_dc_v2.0_YAML.yaml`; Vedant's copy differs only
+  in the 7 de-listed blocks, the typo and blank lines.
 - For v2.0 the guide is read but not used, because `guide_for_top_level` is `false` in `config_v2.0.yaml`.
 - The LinkML schema is optional. The `schema:` line is commented out in both configs (section 7.2).
 
@@ -181,7 +189,8 @@ path or a file inside an archive, written as `archive::path/inside/archive`.
 title: Genesis Data Card Breakdown Schema v2.0      # first line of the output file
 output: genesis_dc_v2.0_breakdown.generated.yaml    # output file name
 
-template: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml
+template: inputs/genesis_datacard_v2.0.0_vedant.yaml
+output_format: v2                                   # optional: Vedant's 2026-11-04 field format (section 6)
 guide: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md
 # schema: ...                                       # optional, see section 7.2
 root_class: GenesisDatacardClass                    # only used with a schema
@@ -200,10 +209,19 @@ no_extra_option:                                    # fields that must not get i
   - discoverability.datacard.creation_method
 
 guide_for_top_level: false                          # prefix supports_* descriptions with the guide text
-exclude_top_level: [xCard]                          # top-level blocks to leave out
+exclude_top_level: []                               # top-level blocks to leave out (xCard was, until 2026-11-05)
+exclude:                                           # any field (and its children); '*' matches any part of a path
+  - "*.orcid"
+  - discoverability.contributors
+hidden:                                            # output_format v2: visible: false on the field and everything under it
+  - "*.organization"
+map_from:                                          # output_format v2: {target block: source block}, leaf by leaf
+  discoverability.datacard.sensitivity: discoverability.sensitivity
 
 overrides:                                          # manual decisions, applied last
   discoverability.identification.name: {required: true}
+description_add:                                   # keep the template text, add a note before / after it
+  discoverability.contact.succession_note: {after: "Include both a person and a group."}
 ```
 
 ### 5.2 Recording a decision with `overrides`
@@ -229,13 +247,15 @@ The template decides everything by default, the same way the v1.2 breakdown was 
 
 | Breakdown key | Rule |
 |---|---|
-| structure | Template keys, in template order. YAML lists (`- item:`) are flattened: the first item's keys become children. |
+| structure | Template keys, in template order, minus `exclude` (applied first, so one-of groups and `required` see the reduced tree; a pattern that matches nothing, or that empties a block, stops the run). YAML lists (`- item:`) are flattened: the first item's keys become children. |
 | `value` | The template's placeholder, verbatim (`${…}`, `__…__`, `[]`, or a literal). A key followed by `- __X__` takes `__X__`. |
 | `required` | A `[*_required]` tag, or a `${…}` placeholder unless a `[required if …]` tag makes it conditional. An untagged folder is required when one of its children is (agent blocks and discriminators excluded). Inside a person/organization/ai_model/software block, `[situational_required]`, `${…}` a key in `alternatives.required_keys`, or a `[required for <block>]` tag naming that block means "required if this block is chosen" (Vedant's email). A discriminator is required when its block is present. A field inside an optional block is not required (MAVEN would otherwise force it whenever the capability is "Yes"), except inside a one-of block: MAVEN enforces those fields only when the discriminator selects that block (`app.py`, `render_tier1_yaml_form`). |
-| `type` / `options` | A `${"A\|B"}` placeholder, or a vocabulary written in the comment: `A \| B \| "C d"` anywhere (`select one from list:`, `use vocabulary:`, `Allowed values:`), a bullet list `- A: meaning`, or aligned rows `GD  Genome/Genetic Data  — …`. Lists after `e.g.`, and lists inside a commented-out YAML example, are skipped. Exactly Yes/No becomes `radio`, anything else `dropdown`. A required dropdown with no none/n/a/other choice gets `extra_option` (rule 2 in Vedant's email). Top-level `supports_*` get no type: MAVEN always renders them as Yes/No. |
+| `type` / `options` | A `${"A\|B"}` placeholder, or a vocabulary written in the comment: `A \| B \| "C d"` anywhere (`select one from list:`, `use vocabulary:`, `Allowed values:`), a bullet list `- A: meaning`, or aligned rows `GD  Genome/Genetic Data  — …`. Lists after `e.g.`, and lists inside a commented-out YAML example, are skipped. Exactly Yes/No becomes `radio`, anything else `dropdown`. A list match that starts inside a token (`openmpi/4.1 \| Summit`) is skipped. A required dropdown with no none/n/a/other choice gets `extra_option` (rule 2 in Vedant's email). Top-level `supports_*` get no type: MAVEN always renders them as Yes/No. |
 | `description` | The template comment without its `[tag]` and `###---X---###` heading, except that a condition written in the tag (`[required if …]`, `[either … or … is required]`, `[at least one … required if …]`) is kept at the front, because MAVEN does not enforce it; otherwise the comment lines above the key. Quoted as `" …"`, or `' …'` when the text contains `"`. With `guide_for_top_level: true`, top-level keys are prefixed with the guide's table text. A `[situational_required]` field in an optional list item whose comment states no condition gets "Required if an entry is added." in front (MAVEN cannot enforce it). With `alternatives.choice_hint`, each one-of block gets "Fill in only if <role> is <kind>; leave <others> empty." |
 | `conditional_context` / `condition_discriminator` | When a block has two or more agent sub-blocks: use the existing sibling key from `discriminator_keys`, or add one named `synthesize_as` (v2.0 has none). |
-| `overrides` | Applied last. |
+| `description_add` | Applied with the overrides: `{before: text, after: text}` is joined to the template description (a period is added before `after` when the text ends without one). |
+| `overrides` | Applied last. Any key can be set, e.g. `{type: int}`; with `output_format: v2` also `visible`, `mapping` and a pre-filled `value`. |
+| `output_format: v2` | Vedant's field format (2026-11-04), written after all rules above. Every field: `description`, `visible` (default `true`), `value`. A leaf also gets `type` (`int` \| `float` \| `string` \| `list` \| `dropdown`; `radio` and the top-level `supports_*` become a Yes/No `dropdown`; `[]` becomes `list`, anything else `string`), `options` (the list for a dropdown, otherwise `null`), `length` (`0` for a list, otherwise `null`), `required`, `value` (empty: `""`, or `[]` for a list, unless an override sets it) and `mapping` (`null` unless an override sets a field path). Parents get no `required`. `conditional_context` / `condition_discriminator` are kept. Then `hidden` (paths or `*` patterns) sets `visible: false` on a field and everything under it, and `map_from` sets each leaf's `mapping` to the same leaf in the source block; a path that matches nothing stops the run. Pre-filled values come from `overrides` (`{value: ...}`). |
 
 ---
 
@@ -265,7 +285,7 @@ Every remaining difference is listed in `v1.2_vs_vedant.diff.md`. Most of them a
   (e.g. `workflow.state`, `checksum_type`, `agreement_type`).
 - **`options` (30):** the 9 fields above, and mostly the extra `None`. The generator adds it to *required* dropdowns, as Vedant's
   email asks. The v1.2 file added it to some *optional* dropdowns instead. Also a typo in the v1.2 file
-  (`Resourcesm`) and the classification levels copied into `classification_category`.
+  (`Resourcesm`, fixed in the repo file on 2026-11-04) and the classification levels copied into `classification_category`.
 - **`description` (99):** wording only; the v1.2 file often left the text empty or merged guide text.
 
 How to read a line of the diff file:
@@ -285,7 +305,9 @@ schema is what the datacard validator uses.
 
 ### 7.3 v2.0
 
-- All 510 template fields are generated, and the file passes the MAVEN form rule check with 0 problems.
+- 380 template fields are generated (510 minus the 130 in `exclude`), plus 6 `agent_type`; 111 of the 297 leaves are hidden (part 4); the file passes the rule check with 0 problems (for the v2 format,
+  `compare_breakdowns.check_rules` checks Vedant's keys: every leaf has all 8, `options` only on dropdowns,
+  `length` only on lists, `mapping` points to an existing field).
 - Against the 59 fields built by hand so far (`supports_*`, `datacard`, `identification`): `required`, `type`,
   `description` and `conditional_context` match 100%. The `value` differences are the generator using v2.0's
   own placeholders (e.g. `${SOURCE_MARKING_STRING}`) where the hand copy kept v1.2's (`${STRING}`). The
@@ -326,5 +348,4 @@ schema is what the datacard validator uses.
   dropdowns.
 - The synthesized `agent_type` discriminator in v2.0 is not part of the v2.0 datacard; MAVEN should drop it
   when it writes the final datacard.
-- `xCard` is excluded in the v2.0 config because MAVEN's form requires a `supports_xCard` key, which v2.0
-  does not have.
+- `xCard` is included in v2.0 since 2026-11-05 (hidden, `card_type: dataset`); the v2 rule check has no `supports_xCard` rule.

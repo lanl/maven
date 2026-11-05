@@ -3,7 +3,11 @@
 title: Genesis Data Card Breakdown Schema v2.0
 output: genesis_dc_v2.0_breakdown.generated.yaml
 
-template: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml
+# 2026-11-05: Vedant's edited copy of the zip template (7 list blocks made single entries, 'Perfer' typo fixed).
+template: inputs/genesis_datacard_v2.0.0_vedant.yaml
+# Vedant's 2026-11-04 field format: description / visible / value on every field; type / options / length /
+# required / mapping on leaves; leaf values empty unless an override pre-fills them.
+output_format: v2
 # Template only, as the v1.2 breakdown was made: required, options and descriptions come from the template
 # tags, placeholders and comments. Uncomment to let the LinkML schema decide them instead (decision A).
 # schema: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/datacard_schema/src/genesis_datacard/schema/genesis_datacard.yaml
@@ -36,8 +40,70 @@ no_extra_option:
 
 guide_for_top_level: false
 
-# xCard has no supports_xCard key, which MAVEN's form requires (Q5 for Vedant). Left out until decided.
-exclude_top_level: [xCard]
+# 2026-11-05: xCard is included (Vedant, part 4): card_type is hidden and pre-filled with 'dataset' (Q5).
+exclude_top_level: []
+
+# 2026-11-05: fields Vedant asked to remove (part 2 of his notes). A path removes the field and its children;
+# '*' matches any part of the path. Applied before every other rule, so one-of groups lose the removed blocks.
+exclude:
+  - "*.ror_id"                      # ROR_ID leaf nodes anywhere
+  - "*.orcid"                       # ORCID leaf nodes anywhere
+  - "*.software.identifier"         # identifier under software
+  - "*.ai_model.identifier"         # identifier under ai_model
+  - "*.ai_models.identifier"        # related_resources.ai_models is a list of ai_model entries (to confirm)
+  - discoverability.contributors
+  - discoverability.dataset_type
+  - discoverability.contact.valid_until
+  - discoverability.authors.ai_model
+  - discoverability.authors.software
+  - interoperability.data_structure.features
+  - interoperability.data_structure.splits
+  - interoperability.data_structure.spatial_coverage
+  - interoperability.data_structure.temporal_coverage
+  - interoperability.provenance.software_environment
+  - interoperability.semantic_layer
+  - reusability.citation.preferred_citation.eprinttype
+  - reusability.citation.preferred_citation.eprint
+  - reusability.integrity
+  - reusability.additional_licenses
+
+# 2026-11-05: hidden fields (Vedant, part 4; output_format v2 only). A path hides the field and everything under it;
+# '*' matches any part of the path. Pre-filled values are in `overrides` below ({value: ...}).
+hidden:
+  - "*.organization"                                    # every organization block and its leaves
+  # 2026-11-05 (our inference, to confirm): with organization hidden, person is the only block left in these groups,
+  # so agent_type is hidden and pre-filled with person (overrides); MAVEN then still requires the person fields
+  - discoverability.contact.agent_type
+  - discoverability.additional_contacts.agent_type
+  - discoverability.authors.agent_type
+  - reusability.stewardship.maintainer.agent_type
+  - xCard
+  - discoverability.datacard.template_version
+  - discoverability.datacard.datacard_version
+  - discoverability.datacard.filename
+  - discoverability.datacard.language
+  - discoverability.datacard.id
+  - discoverability.datacard.sensitivity
+  - discoverability.datacard.change_log
+  - discoverability.datacard.created_by
+  - discoverability.identification.project
+  # Vedant: check whether Alexandria stores these; visible if so, removed if not (to confirm)
+  - discoverability.identification.additional_ids
+  - discoverability.identification.supersedes
+  - discoverability.identification.superseded_by
+  - discoverability.identification.parent_collection
+  - discoverability.dataset_description.task_subcategory
+  - discoverability.product_type
+  - discoverability.additional_contacts.valid_until    # contact.valid_until was removed in part 2
+  - interoperability.domain_metadata                   # until the AI-ready metadata is finished
+  - reusability.data_quality                           # until the AI-ready metadata is finished
+  - governed_use.compliance
+  - governed_use.review_provenance_companion            # Alexandria check, as above
+
+# 2026-11-05: {target block: source block}; every leaf of the target gets `mapping: <same leaf in the source>`.
+map_from:
+  discoverability.datacard.sensitivity: discoverability.sensitivity
+  discoverability.datacard.created_by.creator.person: discoverability.contact.person
 
 # Decisions recorded on 2026-10-19 (see MAVEN_overview.md section 8.4, D1-D3).
 overrides:
@@ -46,11 +112,61 @@ overrides:
   discoverability.identification.primary_id.value: {required: true} # D3: type and value go together; 'not_applicable' when unregistered
   discoverability.contact.person.email: {required: true}            # Vedant (2026-10-28): the primary contact needs an email
   # 2026-10-29: the comment calls this a controlled vocabulary but lists it after 'e.g.', so no dropdown is made
-  interoperability.data_structure.features.data_type: {type: dropdown, options: [float, int, string, boolean, datetime, other]}
   interoperability.domain_metadata.fields.data_type: {type: dropdown, options: [float, int, string, boolean, datetime, other]}
-  # 2026-10-29: 'Allowed values: Instrument' is a one-value list; a dropdown avoids typos (field stays optional)
-  discoverability.dataset_type: {type: dropdown, options: [Instrument]}
   # 2026-10-30: same list as v1.2 (dropdown there), now written as 'such as samples, files, ..., other)'
   accessibility.dataset_scale.record_unit: {type: dropdown, options: [samples, files, records, timesteps, images, tokens, other]}
   # 2026-10-29: all four values describe a release request; datasets never submitted for public release need not_applicable
   governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status: {options: [Approved, Pending, Not_Approved, Requires_STI_Review, not_applicable]}
+  # 2026-11-04: [situational_required] with no condition in the comment; the v2.0 reference guide (lines 73, 97, 130) says
+  # required when the parent block is present (tags) / when a preferred_citation is provided. Parents are optional, so false stays.
+  discoverability.dataset_description.tags.project:
+    description: " Required when tags is provided. Replace default value if necessary with a single human-readable name
+      from the project this dataset belongs to. May be a Genesis project or sub-project, or a non-Genesis project or
+      sub-project. Use the same name in the datacard filename. e.g., genesis | genesis-fusion | genesis-lightsource |
+      nuclear-physics"
+  # 2026-11-05: numeric leaves for the v2 format (int); the template only says "number of" / "in bytes"
+  accessibility.dataset_scale.record_count: {type: int}
+  accessibility.dataset_scale.compressed_bytes: {type: int}
+  accessibility.dataset_scale.uncompressed_bytes: {type: int}
+  reusability.citation.preferred_citation.year: {type: int}
+  reusability.citation.preferred_citation.howpublished:
+    description: " Required when a preferred_citation is provided. How the dataset was published or released.
+      how_published: is intended as a component of a bibtex citation when preferred_citation is provided e.g., Online |
+      In Repository | As Supplementary Material"
+  # 2026-11-05: pre-filled values of hidden fields (Vedant, part 4)
+  xCard.card_type: {value: dataset, description: "The xCard type (from the template header: for datasets, the xCard type is \"dataset\")."}
+  discoverability.datacard.template_version: {value: "2.0.0"}
+  discoverability.datacard.datacard_version: {value: "1.0.0"}
+  discoverability.datacard.language: {value: en}
+  discoverability.datacard.id.type: {value: unregistered}
+  discoverability.datacard.created_by.creator.ai_model.role: {value: Writing_Original_Draft}
+  discoverability.datacard.created_by.creator.ai_model.relationship: {value: generates}
+  discoverability.datacard.created_by.creator.software.role: {value: Software}
+  discoverability.datacard.created_by.creator.software.relationship: {value: processes}
+  discoverability.identification.project: {value: genesis}
+  discoverability.product_type: {value: Dataset}
+  discoverability.contact.agent_type: {value: person}
+  discoverability.additional_contacts.agent_type: {value: person}
+  discoverability.authors.agent_type: {value: person}
+  reusability.stewardship.maintainer.agent_type: {value: person}
+  # 2026-11-05: Vedant (part 5): not required, although tagged [interoperability_required]
+  interoperability.provenance.processing_steps: {required: false}
+  # 2026-11-05: Vedant (part 6): the dataset sensitivity now also fills the data card's (map_from above), so the template
+  # sentences "may differ ... not the data card" and "See NOTE ON SENSITIVITY above" are replaced
+  discoverability.sensitivity:
+    description: "Sensitivity of the DATASET and of the DATA CARD: the data card's sensitivity
+      (discoverability.datacard.sensitivity) is filled from these values. NOTE: Sensitivity terminology is still under
+      Genesis governance review. Vocabulary may evolve."
+
+# 2026-11-05: notes added to a template description (Vedant, part 6). The template text is kept; `before` / `after`
+# are joined to it. The datacard.sensitivity notes are also on discoverability.sensitivity, the copy users fill in.
+description_add:
+  discoverability.datacard.sensitivity.source_marking_string: {after: "If the data is open (public), enter None."}
+  discoverability.sensitivity.source_marking_string: {after: "If the data is open (public), enter None."}
+  discoverability.datacard.sensitivity.source_marking_scheme: {after: "If the data is open (public), select None."}
+  discoverability.sensitivity.source_marking_scheme: {after: "If the data is open (public), select None."}
+  discoverability.dataset_description.task_category:
+    before: "A task category is the kind of AI/ML task the dataset is meant to support, i.e. what a model trained or
+      evaluated on it is asked to do (e.g., classify images, predict a value, detect objects)."
+  discoverability.contact.succession_note: {after: "Include both a person and a group (e.g., a team or office) to contact, for clarity."}
+  accessibility.access.intended_repositories: {after: "If the project is moving to a DIANA Campaign, leave this empty."}

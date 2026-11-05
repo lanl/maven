@@ -17,7 +17,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 def fields(tree, path=""):
     out = {}
     for k, v in tree.items():
-        if isinstance(v, dict) and "required" in v:
+        if isinstance(v, dict) and "description" in v:  # v2 format: parents have no `required`
             p = f"{path}.{k}" if path else k
             out[p] = v
             if isinstance(v.get("value"), dict):
@@ -25,8 +25,34 @@ def fields(tree, path=""):
     return out
 
 
+V2_LEAF_KEYS = ("description", "visible", "type", "options", "length", "required", "value", "mapping")
+
+
+def check_v2_rules(tree):
+    """Vedant's 2026-11-04 field format (generate_breakdown.to_v2_format)."""
+    errs = []
+    f = fields(tree)
+    for p, n in f.items():
+        if isinstance(n.get("value"), dict):
+            errs += [f"{p}: missing '{k}'" for k in ("description", "visible") if k not in n]
+            continue
+        errs += [f"{p}: missing '{k}'" for k in V2_LEAF_KEYS if k not in n]
+        typ = n.get("type")
+        if typ not in ("int", "float", "string", "list", "dropdown"):
+            errs.append(f"{p}: unsupported type {typ!r}")
+        if (typ == "dropdown") != (isinstance(n.get("options"), list) and bool(n["options"])):
+            errs.append(f"{p}: options must be a non-empty list for a dropdown and null otherwise")
+        if (typ == "list") != isinstance(n.get("length"), int):
+            errs.append(f"{p}: length must be a number for a list and null otherwise")
+        if n.get("mapping") is not None and n["mapping"] not in f:
+            errs.append(f"{p}: mapping {n['mapping']!r} is not a field of this breakdown")
+    return errs
+
+
 def check_rules(tree):
     """MAVEN's form rules (app.py render_tier1_yaml_form / get_conditional_info / flattened_tier1_fields)."""
+    if any("visible" in n for n in tree.values()):
+        return check_v2_rules(tree)
     errs = []
     f = fields(tree)
     for p, n in f.items():

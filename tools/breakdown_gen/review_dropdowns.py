@@ -55,7 +55,7 @@ def main(template_spec, breakdown_path, config_path=None):
     def show(p, extra=""):
         f = bd[p]
         kind = f.get("type") or "text"
-        print(f"   line {line_of.get(p, '?'):>5}  {kind:8} req={str(bool(f['required'])):5}  {p}{extra}"
+        print(f"   line {line_of.get(p, '?'):>5}  {kind:8} req={str(bool(f.get('required'))):5}  {p}{extra}"
               + ("   <- decided in overrides" if p in decided else ""))
 
     def snippet(p, rx):
@@ -72,7 +72,7 @@ def main(template_spec, breakdown_path, config_path=None):
     print("\nSTEP 2. The comment mentions a vocabulary, but the field is free text (checklist 4.1, 4.2)")
     for p, f in leaves.items():
         c = comments.get(p) or ""
-        if "type" not in f and VOCAB_HINT.search(c):
+        if f.get("type") not in ("dropdown", "radio") and VOCAB_HINT.search(c):
             why = "4.1 list after e.g." if re.search(r"e\.g\.|for example", c, re.I) else (
                 "4.3 single value" if re.search(r"allowed values:\s*\w+\s*$", c.strip(), re.I) else "4.2 named only / not listed")
             show(p, f'   [{why}]  "{snippet(p, VOCAB_HINT)}"')
@@ -80,7 +80,7 @@ def main(template_spec, breakdown_path, config_path=None):
     print("\nSTEP 3. A choice list with a single value: no dropdown is made (checklist 4.3)")
     for p, f in leaves.items():
         m = re.search(r"allowed values:\s*([^|.]+?)\s*(?:\.|$)", comments.get(p) or "", re.I)
-        if "type" not in f and m and "|" not in m.group(1) and len(m.group(1).split()) <= 3:
+        if f.get("type") not in ("dropdown", "radio") and m and "|" not in m.group(1) and len(m.group(1).split()) <= 3:
             show(p, f'   "Allowed values: {m.group(1).strip()}"')
 
     print("\nSTEP 4. List fields shown as a single-choice dropdown: MAVEN has no multi-select (checklist 4.4)")
@@ -113,9 +113,9 @@ def main(template_spec, breakdown_path, config_path=None):
             continue
         has_none = "none" in opts
         in_template = "none" in ((comments.get(p) or "").lower())
-        if has_none and not in_template and not f["required"]:
+        if has_none and not in_template and not f.get("required"):
             show(p, "   <- CHECK: `None` added to an OPTIONAL dropdown (rule adds it to required ones only)")
-        elif not has_none and f["required"] and not (set(opts) & NONE_LIKE):
+        elif not has_none and f.get("required") and not (set(opts) & NONE_LIKE):
             if p in no_extra:
                 show(p, "   no `None`: listed in config `no_extra_option`")
             elif any(q.rpartition(".")[0] == p.rpartition(".")[0] and g.get("condition_discriminator") == p.rsplit(".", 1)[-1]
