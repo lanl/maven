@@ -68,6 +68,10 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+icon_path = os.environ.get("MAVEN_ICON_PATH")
+if icon_path and not os.path.isabs(icon_path):
+    icon_path = os.path.join(repo_root, icon_path)
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -80,5 +84,5 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
-    icon=os.environ.get("MAVEN_ICON_PATH"),
+    icon=icon_path,
 )
