@@ -1,6 +1,6 @@
 # Breakdown validation
 
-- Template: `inputs/genesis_datacard_v2.0.0_vedant.yaml`
+- Template: `templates/genesis_datacard_v2.0.0_vedant.yaml`
 - Breakdown: `genesis_dc_v2.0_breakdown.generated.yaml`
 
 | Section | Template keys | Breakdown fields | Errors | Warnings | Expected |

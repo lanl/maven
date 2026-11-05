@@ -30,6 +30,7 @@ change and a re-run instead of a hand conversion.
 | `genesis_dc_v2.0_breakdown.generated.review.md` | Review report for the v2.0 run: the items that need a human decision. |
 | `v2.0_vs_manual.diff.md` | Differences between the generated v2.0 file and the partial hand-made v2.0 breakdown (`maven/metadata_template/genesis_dc_v2.0_breakdown.yaml`). |
 | `inputs/` | Where you put the downloaded datacard archives. Ignored by git (see `.gitignore`). |
+| `templates/` | Templates kept in git: `genesis_datacard_v2.0.0_vedant.yaml`, Vedant's edited v2.0 template (read by `config_v2.0.yaml`). |
 | `../verify_v12_mapping.py` | The analysis script that established which sources the v1.2 breakdown was built from (section 4.1). |
 
 ---
@@ -59,10 +60,9 @@ The datacard template and reference guide are not stored in this repository. Dow
 tools/breakdown_gen/inputs/
     data-cards-v1.2.0.tar.gz
     data-cards-v2.0.0.zip
-    genesis_datacard_v2.0.0_vedant.yaml
 ```
 
-`genesis_datacard_v2.0.0_vedant.yaml` is Vedant's edited copy of the zip template (received 2026-11-05, saved as
+`templates/genesis_datacard_v2.0.0_vedant.yaml` (committed, no download needed) is Vedant's edited copy of the zip template (received 2026-11-05, saved as
 `diana_genesis_v2.0.yaml`): 7 list blocks made single entries (`change_log`, `created_by`, `additional_ids`, `contact`,
 `intended_repositories`, `data_services`, `source_data`) and the `Perfer` typo fixed. `config_v2.0.yaml` reads it.
 
@@ -111,7 +111,7 @@ plain `yaml.safe_load` and its own comment reader.
 
 ```bash
 python validate_breakdown.py ../../maven/metadata_template/genesis_dc_v1.2_YAML.yaml     genesis_dc_v1.2_breakdown.generated.yaml --report validation_v1.2.md
-python validate_breakdown.py inputs/genesis_datacard_v2.0.0_vedant.yaml     genesis_dc_v2.0_breakdown.generated.yaml --allow-missing-from config_v2.0.yaml --report validation_v2.0.md
+python validate_breakdown.py templates/genesis_datacard_v2.0.0_vedant.yaml     genesis_dc_v2.0_breakdown.generated.yaml --allow-missing-from config_v2.0.yaml --report validation_v2.0.md
 ```
 
 It prints one row per section (template keys, breakdown fields, errors, warnings) and exits with code 1 if there
@@ -167,7 +167,7 @@ python verify_v12_mapping.py
 | Version | Template | Reference guide |
 |---|---|---|
 | v1.2 | `data-cards-v1.2.0.tar.gz` → `data-cards-v1.2.0/template/latest/genesis_datacard_merged_shared.yaml` | `data-cards-v1.2.0.tar.gz` → `data-cards-v1.2.0/template/latest/data_card_field_reference_guide.md` |
-| v2.0 | `inputs/genesis_datacard_v2.0.0_vedant.yaml` (Vedant's edit of `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml`) | `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md` |
+| v2.0 | `templates/genesis_datacard_v2.0.0_vedant.yaml` (Vedant's edit of `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/genesis_datacard_merged_shared.yaml`) | `data-cards-v2.0.0.zip` → `data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md` |
 
 - The generator reads the **original** template and flattens the lists itself, the same way Vedant's
   `genesis_dc_v1.2_YAML.yaml` was flattened. No hand editing is needed.
@@ -189,7 +189,7 @@ path or a file inside an archive, written as `archive::path/inside/archive`.
 title: Genesis Data Card Breakdown Schema v2.0      # first line of the output file
 output: genesis_dc_v2.0_breakdown.generated.yaml    # output file name
 
-template: inputs/genesis_datacard_v2.0.0_vedant.yaml
+template: templates/genesis_datacard_v2.0.0_vedant.yaml
 output_format: v2                                   # optional: Vedant's 2026-11-04 field format (section 6)
 guide: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md
 # schema: ...                                       # optional, see section 7.2

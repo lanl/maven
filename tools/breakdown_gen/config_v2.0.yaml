@@ -4,7 +4,7 @@ title: Genesis Data Card Breakdown Schema v2.0
 output: genesis_dc_v2.0_breakdown.generated.yaml
 
 # 2026-11-05: Vedant's edited copy of the zip template (7 list blocks made single entries, 'Perfer' typo fixed).
-template: inputs/genesis_datacard_v2.0.0_vedant.yaml
+template: templates/genesis_datacard_v2.0.0_vedant.yaml
 # Vedant's 2026-11-04 field format: description / visible / value on every field; type / options / length /
 # required / mapping on leaves; leaf values empty unless an override pre-fills them.
 output_format: v2
