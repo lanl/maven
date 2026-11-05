@@ -409,7 +409,7 @@ discoverability:
                         Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other"
                       type: dropdown
                       options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
-                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Project_Administration, Resources, Software, Supervision, Validation, Visualization,
                                 Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
                         __ROLE__
@@ -435,7 +435,7 @@ discoverability:
                         Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other"
                       type: dropdown
                       options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
-                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Project_Administration, Resources, Software, Supervision, Validation, Visualization,
                                 Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
                         __ROLE__
@@ -479,7 +479,7 @@ discoverability:
                         Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other"
                       type: dropdown
                       options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
-                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Project_Administration, Resources, Software, Supervision, Validation, Visualization,
                                 Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
                         __ROLE__
@@ -530,7 +530,7 @@ discoverability:
                         Writing_Review_Editing | Data_Collection | Other"
                       type: dropdown
                       options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
-                                Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                                Project_Administration, Resources, Software, Supervision, Validation, Visualization,
                                 Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
                       value:
                         __ROLE__
@@ -957,7 +957,7 @@ discoverability:
                 Writing_Original_Draft | Writing_Review_Editing | Data_Collection | Other'
               type: dropdown
               options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
-                        Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                        Project_Administration, Resources, Software, Supervision, Validation, Visualization,
                         Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
               value: __ROLE__
         organization:
@@ -982,7 +982,7 @@ discoverability:
                 Writing_Review_Editing | Data_Collection | Other'
               type: dropdown
               options: [Conceptualization, Data_Curation, Formal_Analysis, Funding_Acquisition, Investigation, Methodology,
-                        Project_Administration, Resourcesm, Software, Supervision, Validation, Visualization,
+                        Project_Administration, Resources, Software, Supervision, Validation, Visualization,
                         Writing_Original_Draft, Writing_Review_Editing, Data_Collection, Other]
               value: __ROLE__
     contributors:

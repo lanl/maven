@@ -32,8 +32,16 @@ def test_real_breakdowns_pass():
 
 def test_annotation_warnings_find_known_v12_mistakes():
     found = {(p, m.split(" ")[1]) for _, _, p, m in warnings(VEDANT)}
-    assert ("discoverability.authors.person.role", "'Resourcesm'") in found              # typo
     assert ("discoverability.datacard.sensitivity.classification_category", "'Top_Secret'") in found  # copy mistake
+
+
+def test_option_typo_is_caught():
+    # The 'Resourcesm' typo was fixed in the repo file (2026-11-04); put it back in a copy to keep the check.
+    broken = copy.deepcopy(VEDANT)
+    role = broken["discoverability"]["value"]["authors"]["value"]["person"]["value"]["role"]
+    role["options"] = ["Resourcesm" if o == "Resources" else o for o in role["options"]]
+    found = {(p, m.split(" ")[1]) for _, _, p, m in warnings(broken)}
+    assert ("discoverability.authors.person.role", "'Resourcesm'") in found
 
 
 def test_missing_key_is_caught():
