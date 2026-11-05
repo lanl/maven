@@ -14,19 +14,14 @@ output_format: v2
 guide: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/template/latest/template/data_card_field_reference_guide_v2.0.0.md
 root_class: GenesisDatacardClass
 
-# v2.0 removed agent_type / type; the agent is identified by which sub-block is filled in.
-# MAVEN's form needs a sibling discriminator, so one is synthesized (Q1 for Vedant: must MAVEN strip it on export?).
+# 2026-11-05 (Vedant): no agent_type and no discriminator keys (conditional_context / condition_discriminator): they
+# are not in the v2.0 datacard. person / organization / ai_model / software are plain sub-blocks; `required` nests
+# through them to the group (e.g. contact.person.given_name follows contact). organization is hidden and blanked.
 alternatives:
   blocks: [person, organization, ai_model, software]
   discriminator_keys: [agent_type, type]
-  synthesize_as: agent_type
+  synthesize_as: null
   required_keys: [given_name, family_name, name, version, affiliation, type, value]  # same convention as v1.2
-  # 2026-10-30: each one-of block keeps the template definition and gets one sentence on how to choose.
-  # It does not name agent_type: that key is not in the v2.0 template and is dropped on export.
-  choice_hint:
-    roles: {creator: the creator, contact: the contact, additional_contacts: this contact, authors: this author,
-            contributors: this contributor, maintainer: the maintainer, reviewed_by: the reviewer}
-    kinds: {person: a person, organization: an organization, ai_model: an AI model, software: a software tool}
 
 extra_option: None
 no_extra_option:
@@ -71,12 +66,7 @@ exclude:
 # '*' matches any part of the path. Pre-filled values are in `overrides` below ({value: ...}).
 hidden:
   - "*.organization"                                    # every organization block and its leaves
-  # 2026-11-05 (our inference, to confirm): with organization hidden, person is the only block left in these groups,
-  # so agent_type is hidden and pre-filled with person (overrides); MAVEN then still requires the person fields
-  - discoverability.contact.agent_type
-  - discoverability.additional_contacts.agent_type
-  - discoverability.authors.agent_type
-  - reusability.stewardship.maintainer.agent_type
+  - "supports_*"                                       # 2026-11-05 (Vedant): the 6 capability flags, value Yes (overrides)
   - xCard
   - discoverability.datacard.template_version
   - discoverability.datacard.datacard_version
@@ -99,6 +89,11 @@ hidden:
   - reusability.data_quality                           # until the AI-ready metadata is finished
   - governed_use.compliance
   - governed_use.review_provenance_companion            # Alexandria check, as above
+
+# 2026-11-05 (Vedant): blocks whose description and options are emptied (the block and everything under it);
+# a dropdown left without options gets type null. Output_format v2 only.
+blank:
+  - "*.organization"
 
 # 2026-11-05: {target block: source block}; every leaf of the target gets `mapping: <same leaf in the source>`.
 map_from:
@@ -145,10 +140,13 @@ overrides:
   discoverability.datacard.created_by.creator.software.relationship: {value: processes}
   discoverability.identification.project: {value: genesis}
   discoverability.product_type: {value: Dataset}
-  discoverability.contact.agent_type: {value: person}
-  discoverability.additional_contacts.agent_type: {value: person}
-  discoverability.authors.agent_type: {value: person}
-  reusability.stewardship.maintainer.agent_type: {value: person}
+  # 2026-11-05 (Vedant): supports_* are not shown and are always Yes
+  supports_discoverability: {value: "Yes"}
+  supports_accessibility: {value: "Yes"}
+  supports_interoperability: {value: "Yes"}
+  supports_reusability: {value: "Yes"}
+  supports_governed_use: {value: "Yes"}
+  supports_ai_usability: {value: "Yes"}
   # 2026-11-05: Vedant (part 5): not required, although tagged [interoperability_required]
   interoperability.provenance.processing_steps: {required: false}
   # 2026-11-05: Vedant (part 6): the dataset sensitivity now also fills the data card's (map_from above), so the template

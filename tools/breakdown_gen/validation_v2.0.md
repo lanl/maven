@@ -6,12 +6,12 @@
 | Section | Template keys | Breakdown fields | Errors | Warnings | Expected |
 |---|---|---|---|---|---|
 | xCard | 2 | 2 | 0 | 0 | 0 |
-| intended capabilities (supports_*) | 6 | 6 | 0 | 0 | 0 |
-| discoverability | 242 | 173 | 0 | 1 | 82 |
+| intended capabilities (supports_*) | 6 | 6 | 0 | 0 | 6 |
+| discoverability | 242 | 169 | 0 | 1 | 78 |
 | accessibility | 29 | 29 | 0 | 1 | 0 |
 | interoperability | 94 | 61 | 0 | 1 | 33 |
-| reusability | 57 | 43 | 0 | 0 | 16 |
-| governed_use | 68 | 60 | 0 | 0 | 10 |
+| reusability | 57 | 42 | 0 | 0 | 15 |
+| governed_use | 68 | 59 | 0 | 0 | 9 |
 | ai_usability | 12 | 12 | 0 | 0 | 0 |
 
 ## ERROR (0)
@@ -155,12 +155,12 @@
 - `governed_use.review_provenance_companion.reviewed_by.software.identifier`: not in breakdown: excluded by --allow-missing
 - `governed_use.review_provenance_companion.reviewed_by.software.identifier.type`: not in breakdown: excluded by --allow-missing
 - `governed_use.review_provenance_companion.reviewed_by.software.identifier.value`: not in breakdown: excluded by --allow-missing
-- `discoverability.datacard.created_by.creator.agent_type`: discriminator added for the one-of blocks ['person', 'organization', 'ai_model', 'software']
-- `discoverability.contact.agent_type`: discriminator added for the one-of blocks ['person', 'organization']
-- `discoverability.additional_contacts.agent_type`: discriminator added for the one-of blocks ['person', 'organization']
-- `discoverability.authors.agent_type`: discriminator added for the one-of blocks ['person', 'organization']
-- `reusability.stewardship.maintainer.agent_type`: discriminator added for the one-of blocks ['person', 'organization']
-- `governed_use.review_provenance_companion.reviewed_by.agent_type`: discriminator added for the one-of blocks ['person', 'organization', 'ai_model', 'software']
+- `supports_discoverability`: pre-filled: template '${"Yes|No"}' -> breakdown 'Yes'
+- `supports_accessibility`: pre-filled: template '${"Yes|No"}' -> breakdown 'Yes'
+- `supports_interoperability`: pre-filled: template '${"Yes|No"}' -> breakdown 'Yes'
+- `supports_reusability`: pre-filled: template '${"Yes|No"}' -> breakdown 'Yes'
+- `supports_governed_use`: pre-filled: template '${"Yes|No"}' -> breakdown 'Yes'
+- `supports_ai_usability`: pre-filled: template '${"Yes|No"}' -> breakdown 'Yes'
 - `discoverability.datacard.id.type`: pre-filled: template '__TYPE__' -> breakdown 'unregistered'
 - `discoverability.datacard.created_by.creator.ai_model.role`: pre-filled: template [] -> breakdown 'Writing_Original_Draft'
 - `discoverability.datacard.created_by.creator.ai_model.relationship`: pre-filled: template '${RELATIONSHIP}' -> breakdown 'generates'

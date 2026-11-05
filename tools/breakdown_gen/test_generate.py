@@ -34,12 +34,23 @@ def test_examples_after_eg_are_not_a_vocabulary():
     assert comment_vocab("e.g., Orion: python/3.10, openmpi/4.1 | Summit: python/3.9") is None
 
 
-def test_oneof_blocks_say_how_to_choose():
+def test_v20_has_no_discriminators():
+    # Vedant (2026-11-05): no agent_type and no discriminator keys; organization blocks have no description / options
+    from compare_breakdowns import fields
     out = HERE / "genesis_dc_v2.0_breakdown.generated.yaml"
     subprocess.run([sys.executable, str(HERE / "generate_breakdown.py"), str(HERE / "config_v2.0.yaml")], check=True)
-    creator = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["datacard"]["value"]["created_by"]["value"]["creator"]["value"]
-    assert creator["organization"]["description"].strip() == ("An organization or group of individuals. Fill in only if the "
-                                                      "creator is an organization; leave person, ai_model and software empty.")
+    f = fields(yaml.safe_load(out.read_text(encoding="utf-8")))
+    assert not [p for p, n in f.items() if p.endswith(".agent_type") or "conditional_context" in n
+                or "condition_discriminator" in n or "Fill in only if" in n["description"]]
+    org = [p for p in f if ".organization" in p]
+    assert len(org) == 18 and all(f[p]["description"] == "" and not f[p]["visible"] for p in org)
+    assert all(f[p]["options"] is None for p in org if not isinstance(f[p]["value"], dict))
+    # required nests through the person block to its group: contact is required, additional_contacts is not
+    assert f["discoverability.contact.person.given_name"]["required"] is True
+    extra = f["discoverability.additional_contacts.person.given_name"]
+    assert extra["required"] is False and extra["description"].startswith("Required if an entry is added.")
+    # related_resources.software is itself a list (not a one-of sub-block): its fields keep the list note
+    assert f["interoperability.related_resources.software.name"]["description"].startswith("Required if an entry is added.")
     facility = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["facilities"]["value"]["name"]
     is_intermediate = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["workflow"]["value"]["is_intermediate"]
     assert (is_intermediate["type"], is_intermediate["options"]) == ("dropdown", ["Yes", "No"])  # from __"Yes|No"__
@@ -56,9 +67,13 @@ def test_v20_uses_vedants_field_format():
     datacard = tree["discoverability"]["value"]["datacard"]
     assert list(datacard) == ["description", "visible", "value"]  # a parent has no type / required
     keywords = tree["discoverability"]["value"]["dataset_description"]["value"]["keywords"]
+    # Vedant (2026-11-05): leaf sub-fields in this order, mapping right under visible
+    assert list(keywords) == ["description", "visible", "mapping", "type", "options", "length", "required", "value"]
     assert {k: keywords[k] for k in ("type", "options", "length", "required", "value", "mapping")} == \
         {"type": "list", "options": None, "length": 0, "required": True, "value": [], "mapping": None}
-    assert tree["supports_reusability"]["type"] == "dropdown" and tree["supports_reusability"]["value"] == ""
+    # Vedant (2026-11-05): the supports_* flags are not shown and are always Yes
+    flags = [k for k in tree if k.startswith("supports_")]
+    assert len(flags) == 6 and all((tree[k]["type"], tree[k]["visible"], tree[k]["value"]) == (None, False, "Yes") for k in flags)
 
 
 def test_v20_excluded_fields_are_gone():
@@ -69,7 +84,8 @@ def test_v20_excluded_fields_are_gone():
     paths = fields(yaml.safe_load(out.read_text(encoding="utf-8")))
     assert not [p for p in paths if p.rsplit(".", 1)[-1] in ("orcid", "ror_id") or p.startswith("discoverability.contributors")
                 or ".software.identifier" in p or ".ai_model.identifier" in p or p.startswith("reusability.integrity")]
-    assert paths["discoverability.authors.agent_type"]["options"] == ["person", "organization"]
+    assert {p.split(".")[2] for p in paths if p.startswith("discoverability.authors.")
+            and not isinstance(paths[p]["value"], str) and p.count(".") == 2} == {"person", "organization"}
     assert "interoperability.provenance.source_data.identifier.type" in paths  # identifiers elsewhere stay
 
 
@@ -82,7 +98,10 @@ def test_v20_single_value_fields():
     single = [p for p in f if p.endswith(".role")] + [
         "discoverability.datacard.sensitivity.classification_category",
         "governed_use.non_sensitivity_governance_metadata.privacy.privacy_control_basis"]
-    assert len(single) == 22 and all(f[p]["type"] == "dropdown" and isinstance(f[p]["value"], str) for p in single)
+    # creator.ai_model.role / software.role are hidden + pre-filled, so their type is null (Vedant, 2026-11-05)
+    filled = lambda p: not f[p]["visible"] and (f[p]["value"] or f[p]["mapping"] or ".organization." in p)  # noqa: E731
+    assert len(single) == 22 and all(f[p]["type"] == (None if filled(p) else "dropdown")
+                                     and isinstance(f[p]["value"], str) for p in single)
     assert f["discoverability.datacard.created_by.contribution_date"]["type"] == "string"
     for block in ("discoverability.contact.person", "interoperability.provenance.source_data",
                   "accessibility.access.intended_repositories"):  # single blocks (de-listed in Vedant's template)
@@ -103,8 +122,13 @@ def test_v20_hidden_prefilled_and_mapped():
     assert f["discoverability.datacard.sensitivity.cui_status"]["mapping"] == "discoverability.sensitivity.cui_status"
     assert f["discoverability.datacard.created_by.creator.person.affiliation.name"]["mapping"] == \
         "discoverability.contact.person.affiliation.name"
-    assert (f["discoverability.contact.agent_type"]["value"], hidden("discoverability.contact.agent_type")) == ("person", True)
+    assert hidden("discoverability.contact.organization.name") and not hidden("discoverability.contact.person.given_name")
     assert not hidden("discoverability.contact.person.email") and not hidden("discoverability.sensitivity.cui_status")
+    # Vedant (2026-11-05): hidden + pre-filled / mapped leaves have no type, options or description
+    for p, n in f.items():
+        if not isinstance(n["value"], dict) and hidden(p) and (n["value"] not in ("", []) or n["mapping"]):
+            assert (n["description"], n["type"], n["options"], n["length"]) == ("", None, None, None), p
+    assert f["discoverability.datacard.filename"]["type"] == "string"  # hidden but empty: unchanged
 
 
 def test_v20_description_notes():
@@ -113,11 +137,26 @@ def test_v20_description_notes():
     out = HERE / "genesis_dc_v2.0_breakdown.generated.yaml"
     subprocess.run([sys.executable, str(HERE / "generate_breakdown.py"), str(HERE / "config_v2.0.yaml")], check=True)
     f = fields(yaml.safe_load(out.read_text(encoding="utf-8")))
-    for p in ("discoverability.sensitivity.source_marking_string", "discoverability.datacard.sensitivity.source_marking_string"):
-        assert f[p]["description"].startswith("Exact marking/banner/control text")
-        assert f[p]["description"].endswith("OFFICIAL USE ONLY. If the data is open (public), enter None.")
+    p = "discoverability.sensitivity.source_marking_string"
+    assert f[p]["description"].startswith("Exact marking/banner/control text")
+    assert f[p]["description"].endswith("OFFICIAL USE ONLY. If the data is open (public), enter None.")
+    assert f["discoverability.datacard.sensitivity.source_marking_string"]["description"] == ""  # hidden + mapped
     assert f["discoverability.dataset_description.task_category"]["description"].startswith("A task category is")
     assert "DATA CARD" in f["discoverability.sensitivity"]["description"]
+
+
+def test_hidden_parent_hides_children():
+    # Vedant (2026-11-05): if a parent is not visible, its children are not visible either
+    from compare_breakdowns import check_v2_rules
+    from generate_breakdown import apply_hidden_and_mapping
+    leaf = lambda: {"description": "", "visible": True, "type": "string", "options": None, "length": None,  # noqa: E731
+                    "required": False, "value": "", "mapping": None}
+    tree = {"a": {"description": "", "visible": False, "value": {"b": {"description": "", "visible": True,
+                                                                         "value": {"c": leaf()}}}}}
+    assert check_v2_rules(tree)  # a visible child under a hidden parent is reported
+    apply_hidden_and_mapping(tree)  # parent hidden by an override, not by `hidden`
+    assert tree["a"]["value"]["b"]["visible"] is False and tree["a"]["value"]["b"]["value"]["c"]["visible"] is False
+    assert check_v2_rules(tree) == []
 
 
 def test_stale_hidden_path_stops_the_run():
@@ -162,12 +201,13 @@ def test_unknown_override_paths_are_listed():
 if __name__ == "__main__":
     test_v12_matches_reference()
     test_examples_after_eg_are_not_a_vocabulary()
-    test_oneof_blocks_say_how_to_choose()
+    test_v20_has_no_discriminators()
     test_v20_uses_vedants_field_format()
     test_v20_excluded_fields_are_gone()
     test_v20_single_value_fields()
     test_v20_hidden_prefilled_and_mapped()
     test_v20_description_notes()
+    test_hidden_parent_hides_children()
     test_stale_hidden_path_stops_the_run()
     test_stale_exclude_pattern_stops_the_run()
     test_unknown_override_paths_are_listed()
