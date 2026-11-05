@@ -6,7 +6,8 @@ then checks, section by section, that nothing was lost or invented in the conver
 
 Checks:
   ERROR    1. Completeness   every template key is in the breakdown at the same path, and no key was invented
-  ERROR    2. Values         every leaf keeps the template's placeholder value
+  ERROR    2. Values         every leaf keeps the template's placeholder value (v2 format: or is empty, or fills a
+                             placeholder with a value that is one of its dropdown options)
   ERROR    3. MAVEN rules    the breakdown can be rendered by MAVEN's Tier 1 form (compare_breakdowns.check_rules)
   WARNING  4. Annotations    a [*_required] tag is not required; a vocabulary in the comment has no dropdown;
                              a dropdown option does not appear in the template comment
@@ -15,7 +16,7 @@ Expected differences are reported, not counted as errors: template blocks tagged
 blocks named with --allow-missing, and a discriminator the generator adds next to one-of blocks (--allow-extra-key).
 
 Usage:
-    python validate_breakdown.py TEMPLATE BREAKDOWN [--allow-missing xCard] [--report report.md]
+    python validate_breakdown.py TEMPLATE BREAKDOWN [--allow-missing xCard] [--allow-missing-from CONFIG] [--report report.md]
 TEMPLATE may be a file or "archive.zip::path/inside/archive". Exit code 1 if there is any ERROR.
 """
 import argparse
@@ -23,6 +24,7 @@ import re
 import sys
 import tarfile
 import zipfile
+from fnmatch import fnmatch
 from pathlib import Path
 
 import yaml
@@ -30,6 +32,7 @@ import yaml
 from compare_breakdowns import check_rules
 
 sys.stdout.reconfigure(encoding="utf-8")
+PLACEHOLDER = re.compile(r"\$\{.*\}|__.*__|\[\]")  # ${X}, __X__ or an empty list in the template
 NONE_LIKE = {"none", "not_applicable", "n/a", "na", "no", "other", "unknown"}
 KEY_LINE = re.compile(r"^(\s*)(-\s+)?([A-Za-z_]\w*):(.*)$")
 VOCAB_RE = re.compile(r"(?:vocabulary|select one(?: from)?(?: list)?|select from|select all that apply|list all that apply|"
@@ -117,7 +120,7 @@ def vocabulary(comment):
 def breakdown_fields(tree, path="", out=None):
     out = {} if out is None else out
     for k, v in tree.items():
-        if isinstance(v, dict) and "required" in v:
+        if isinstance(v, dict) and "description" in v:  # v2 format: parents have no `required`
             p = f"{path}.{k}" if path else k
             out[p] = v
             if isinstance(v.get("value"), dict):
@@ -149,7 +152,7 @@ def validate(template_text, breakdown, allow_missing=(), allow_extra_keys=("agen
         top = p.split(".")[0]
         reason = next((q for q in (p.rsplit(".", i)[0] for i in range(p.count(".") + 1))
                        if any("reference_only" in t for t in tags_of(comments.get(q)))), None)
-        if reason or top in allow_missing or any(p.startswith(a + ".") or p == a for a in allow_missing):
+        if reason or top in allow_missing or any(fnmatch(p, a) or fnmatch(p, a + ".*") for a in allow_missing):
             add("EXPECTED", p, "not in breakdown: " + (f"[reference_only] block ({reason})" if reason else "excluded by --allow-missing"))
         else:
             add("ERROR", p, "missing from the breakdown")
@@ -169,6 +172,12 @@ def validate(template_text, breakdown, allow_missing=(), allow_extra_keys=("agen
         bv = bd[p].get("value")
         if isinstance(bv, dict):
             add("ERROR", p, "template has a value, breakdown has a group")
+        elif "visible" in bd[p] and bv in ("", []):
+            pass  # v2 format: leaf values start empty
+        elif "visible" in bd[p] and bd[p].get("type") == "dropdown" and bv not in bd[p].get("options", []):
+            add("ERROR", p, f"pre-filled value {bv!r} is not one of the options")
+        elif "visible" in bd[p] and PLACEHOLDER.fullmatch(str(tv).strip()) and not same_value(tv, bv):
+            add("EXPECTED", p, f"pre-filled: template {tv!r} -> breakdown {bv!r}")  # v2: a placeholder may be filled in
         elif not same_value(tv, bv):
             add("ERROR", p, f"value changed: template {tv!r} -> breakdown {bv!r}")
 
@@ -182,16 +191,16 @@ def validate(template_text, breakdown, allow_missing=(), allow_extra_keys=("agen
         if any(t == "required" or (t.endswith("_required") and t != "situational_required") for t in tags) \
                 and not f.get("required"):
             parents = [p.rsplit(".", i)[0] for i in range(1, p.count(".") + 1)]
-            optional = next((q for q in parents if q in bd and not bd[q].get("required")), None)
+            optional = next((q for q in parents if q in bd and bd[q].get("required") is False), None)
             add("WARNING", p, f"tagged [{', '.join(tags)}] but required: false"
                 + (f" (inside optional block `{optional}`; MAVEN would otherwise force it)" if optional else ""))
         vocab = vocabulary(comments.get(p))
-        if vocab and "type" not in f and "." in p:  # top-level supports_* are drawn as Yes/No by MAVEN itself
+        if vocab and f.get("type") not in ("dropdown", "radio") and "." in p:  # top-level supports_* are drawn as Yes/No by MAVEN itself
             add("WARNING", p, f"comment lists choices {vocab[:6]}{'…' if len(vocab) > 6 else ''} but there is no dropdown")
         text = ((comments.get(p) or "") + " " + str(tmpl[p])).lower()  # choices may sit in the placeholder: ${"Yes|No"}
         for o in f.get("options") or []:
             code = str(o).split(":")[0].strip().strip('"')
-            if code.lower() not in NONE_LIKE and code.lower() not in text and "type" in f and p in comments \
+            if code.lower() not in NONE_LIKE and code.lower() not in text and f.get("type") in ("dropdown", "radio") and p in comments \
                     and not any(code == b for b in ("person", "organization", "ai_model", "software")):
                 add("WARNING", p, f"option {code!r} does not appear in the template comment")
     return tmpl, bd, findings
@@ -218,9 +227,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("template")
     ap.add_argument("breakdown")
-    ap.add_argument("--allow-missing", nargs="*", default=[], help="template blocks deliberately left out (e.g. xCard)")
+    ap.add_argument("--allow-missing", nargs="*", default=[],
+                    help="template blocks deliberately left out (e.g. xCard); '*' matches any part of a path")
+    ap.add_argument("--allow-missing-from", metavar="CONFIG",
+                    help="also allow the generator config's exclude_top_level and exclude lists")
     ap.add_argument("--report", help="write the full findings as markdown")
     a = ap.parse_args()
+    if a.allow_missing_from:  # reads only the two lists; the generator's code is still not used
+        cfg = yaml.safe_load(Path(a.allow_missing_from).read_text(encoding="utf-8"))
+        a.allow_missing += (cfg.get("exclude_top_level") or []) + (cfg.get("exclude") or [])
     tmpl, bd, findings = validate(read_text(a.template), yaml.safe_load(Path(a.breakdown).read_text(encoding="utf-8")),
                                   a.allow_missing)
     rows = summarize(tmpl, bd, findings)

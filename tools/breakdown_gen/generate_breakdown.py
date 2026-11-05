@@ -15,6 +15,7 @@ import re
 import tarfile
 import textwrap
 import zipfile
+from fnmatch import fnmatch
 from itertools import accumulate
 from pathlib import Path
 
@@ -121,6 +122,22 @@ def parse_template(text):
     return nodes, by_path
 
 
+def apply_exclude(nodes, patterns):
+    """Drop every node matching a config `exclude` pattern (a path, or fnmatch with '*', e.g. '*.orcid'),
+    with its children. Done before any rule runs, so one-of groups and `required` see the reduced tree."""
+    hit = {p: [n["path"] for n in nodes if fnmatch(n["path"], p) or fnmatch(n["path"], p + ".*")] for p in patterns}
+    stale = [p for p, h in hit.items() if not h]
+    if stale:
+        raise KeyError(f"exclude patterns not in the template: {stale}")
+    gone = {x for h in hit.values() for x in h}
+    kept = [n for n in nodes if n["path"] not in gone]
+    by_path = {n["path"]: n for n in kept}
+    emptied = [n["path"] for n in kept if n["has_children"] and not any(m["path"].startswith(n["path"] + ".") for m in kept)]
+    if emptied:
+        raise ValueError(f"exclude removes every child of {emptied}; exclude the block itself")
+    return kept, by_path, [f"`{p}`: {len(h)} template fields" for p, h in hit.items()]
+
+
 # ----------------------------------------------------------------------------- LinkML schema
 def load_schema(text, root_class=None):
     """LinkML schema -> {field path: slot info}. Walks classes from the tree root (is_a, mixins,
@@ -207,6 +224,8 @@ def comment_vocab(text):
             continue  # 'e.g., a b | c d' lists examples of free text, not a vocabulary
         if re.search(r"(#|-\s+\w+:)\s*$", before):
             continue  # inside a commented-out YAML example ('- type: a | b', '  # a | b'), not this field's vocabulary
+        if re.search(r"[\w./]$", text[:m.start()]):
+            continue  # starts inside a token: 'openmpi/4.1 | Summit' gave options [1, Summit]
         return [v.strip().strip('"') for v in m.group(0).split("|")]
     for rx, fmt in ((BULLET_RE, "{}: {}"), (ROW_RE, "{}: {}")):
         rows = rx.findall(text)
@@ -235,7 +254,7 @@ class Builder:
         self.no_extra = set(cfg.get("no_extra_option", []))
         self.report = {k: [] for k in ("required_schema_vs_tag", "options_schema_vs_comment", "extra_option_added",
                                        "multivalued_dropdown", "fallback_to_comment", "not_in_schema",
-                                       "discriminator", "no_description", "excluded", "overrides")}
+                                       "discriminator", "no_description", "excluded", "overrides", "hidden_mapping")}
         self.conditional = {}  # alt block path -> discriminator key
         self._req, self._own = {}, {}
 
@@ -395,7 +414,7 @@ class Builder:
                 disc, alts = self.synthetic[parent]
                 made[parent][disc] = {"required": self.by_path[parent] is not None and self.required(self.by_path[parent]),
                                       "description": f" {' | '.join(alts)}. Selects which agent block applies.",
-                                      "type": "dropdown", "options": alts, "value": "${TYPE}"}
+                                      "type": "dropdown", "options": alts, "value": RawValue("${TYPE}")}
                 made[parent + "." + disc] = None
             req = self.required(n)
             field = {"required": req, "description": self.description(n)}
@@ -428,7 +447,8 @@ class Builder:
                 field["value"] = RawValue(n["raw_value"])
             made[parent][n["key"]] = field
         missing = []
-        for path, patch in (self.cfg.get("overrides") or {}).items():
+        adds = {p: {"description_add": a} for p, a in (self.cfg.get("description_add") or {}).items()}
+        for path, patch in list((self.cfg.get("overrides") or {}).items()) + list(adds.items()):
             node = root
             try:
                 for part in path.split("."):
@@ -436,10 +456,16 @@ class Builder:
             except (KeyError, TypeError):  # renamed or removed in a new template version: list them all, not just the first
                 missing.append(path)
                 continue
-            node.update(patch)
+            if "description_add" in patch:  # {before: text, after: text}: keeps the template text, adds a note
+                a, d = patch["description_add"], node["description"].strip()
+                if a.get("after") and d and d[-1] not in ".!?)":
+                    d += "."  # template text often ends with an 'e.g.' list
+                node["description"] = " ".join(x for x in (a.get("before"), d, a.get("after")) if x)
+            else:
+                node.update(patch)
             self.report["overrides"].append(f"`{path}`: {patch}")
         if missing:
-            raise KeyError(f"override paths not in the template: {missing}")
+            raise KeyError(f"override paths not in the template (overrides, description_add): {missing}")
         unknown = sorted(self.no_extra - set(self.by_path))  # a renamed field would otherwise silently get `None` back
         if unknown:
             raise KeyError(f"no_extra_option paths not in the template: {unknown}")
@@ -448,6 +474,65 @@ class Builder:
 
 class RawValue(str):
     """A template value written back verbatim (it already is valid YAML in the template)."""
+
+
+LEAF_TYPES = ("int", "float", "string", "list", "dropdown")
+
+
+def to_v2_format(tree, top=True):
+    """Vedant's field format (2026-11-04, `output_format: v2`): every field has description / visible / value; a
+    leaf also has type (int | float | string | list | dropdown), options, length, required and mapping. A leaf
+    value starts empty; only a value set in the config overrides (a hidden, pre-filled field) is kept."""
+    out = {}
+    for key, f in tree.items():
+        g = {"description": " ".join(f["description"].split()), "visible": f.get("visible", True)}
+        g.update({k: f[k] for k in ("conditional_context", "condition_discriminator") if k in f})
+        v = f["value"]
+        if isinstance(v, dict):
+            g["value"] = to_v2_format(v, False)
+        else:
+            typ = "dropdown" if f.get("type") == "radio" else f.get("type")
+            if typ is None:  # top-level supports_* flags are Yes/No; '[]' in the template is a list
+                typ = "dropdown" if top else "list" if v.strip() == "[]" else "string"
+            if typ not in LEAF_TYPES:
+                raise ValueError(f"{key}: type {typ!r} is not one of {LEAF_TYPES}")
+            g.update(type=typ, options=f.get("options", ["Yes", "No"]) if typ == "dropdown" else None,
+                     length=0 if typ == "list" else None, required=bool(f["required"]),
+                     value=([] if typ == "list" else "") if isinstance(v, RawValue) else v,  # RawValue = placeholder
+                     mapping=f.get("mapping"))
+        out[key] = g
+    return out
+
+
+def apply_hidden_and_mapping(tree, hidden=(), map_from=None):
+    """v2 format: `hidden` patterns (path or fnmatch '*') set visible: false on the field and everything under it;
+    `map_from` {target block: source block} points every leaf of the target at the same leaf of the source.
+    Returns report lines; a pattern or block that matches nothing stops the run."""
+    map_from = map_from or {}
+    hits = {p: 0 for p in list(hidden) + list(map_from)}
+
+    def walk(node, path, hide):
+        for k, f in node.items():
+            p = f"{path}.{k}" if path else k
+            matched = [pat for pat in hidden if fnmatch(p, pat)]
+            for pat in matched:
+                hits[pat] += 1
+            h = hide or bool(matched)
+            if h:
+                f["visible"] = False
+            if isinstance(f["value"], dict):
+                walk(f["value"], p, h)
+                continue
+            src = next((t for t in map_from if p.startswith(t + ".")), None)
+            if src:
+                hits[src] += 1
+                f["mapping"] = map_from[src] + p[len(src):]
+
+    walk(tree, "", False)
+    stale = [p for p, n in hits.items() if not n]
+    if stale:
+        raise KeyError(f"hidden / map_from paths not in the breakdown: {stale}")
+    return [f"`{p}`: hidden" for p in hidden] + [f"`{t}`: leaves mapped from `{s}`" for t, s in map_from.items()]
 
 
 # ----------------------------------------------------------------------------- writer
@@ -503,8 +588,9 @@ def write_report(rep, path, cfg_name):
         "not_in_schema": "Field not found in the schema; `required` taken from the template tag",
         "discriminator": "Discriminators added for one-of blocks",
         "no_description": "No template comment; description fallback",
-        "excluded": "Top-level blocks excluded by config",
+        "excluded": "Blocks excluded by config (exclude_top_level, exclude)",
         "overrides": "Manual overrides applied from the config",
+        "hidden_mapping": "Hidden fields and mappings (output_format v2: config hidden, map_from)",
     }
     lines = [f"# Breakdown generation review: {cfg_name}", "",
              "Items below are where the generator had to choose. Check them, then record any change in the "
@@ -525,14 +611,25 @@ def main():
     base = cfg_path.parent
     tmpl_text = read_source(cfg["template"], base)
     nodes, by_path = parse_template(tmpl_text)
+    removed = []
+    if cfg.get("exclude"):
+        nodes, by_path, removed = apply_exclude(nodes, cfg["exclude"])
     schema = load_schema(read_source(cfg.get("schema"), base), cfg.get("root_class"))
     guide = load_guide_table(read_source(cfg.get("guide"), base))
     b = Builder(cfg, nodes, by_path, schema, guide)
+    b.report["excluded"] += removed
     tree = b.build()
     header = [f"# {cfg.get('title', 'Generated breakdown')}",
               "# GENERATED by tools/breakdown_gen/generate_breakdown.py; do not edit by hand.",
               "# Change the config (overrides) and regenerate instead.", "---"]
-    text = "\n".join(header + emit(tree)) + "\n"
+    if cfg.get("output_format") == "v2":
+        tree = to_v2_format(tree)
+        b.report["hidden_mapping"] = apply_hidden_and_mapping(tree, cfg.get("hidden") or [], cfg.get("map_from"))
+        body = [yaml.safe_dump({k: v}, sort_keys=False, allow_unicode=True, width=120, default_flow_style=None)
+                for k, v in tree.items()]
+    else:
+        body = emit(tree)
+    text = "\n".join(header + body) + "\n"
     yaml.safe_load(text)  # the output must be valid YAML
     out = Path(a.output or base / cfg.get("output", "breakdown.generated.yaml"))
     out.write_text(text, encoding="utf-8")

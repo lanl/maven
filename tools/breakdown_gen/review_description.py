@@ -50,7 +50,7 @@ def main(template_spec, breakdown_path, config_path=None):
     desc = {p: " ".join(str(f.get("description") or "").split()) for p, f in rows.items()}
 
     def show(p, extra=""):
-        print(f"   line {line_of.get(p, '?'):>5}  req={str(bool(rows[p]['required'])):5}  {p}{extra}"
+        print(f"   line {line_of.get(p, '?'):>5}  req={str(bool(rows[p].get('required'))):5}  {p}{extra}"
               + ("   <- decided in overrides" if p in decided else ""))
 
     print("STEP 1. Inventory")
@@ -87,7 +87,7 @@ def main(template_spec, breakdown_path, config_path=None):
     for p, f in rows.items():
         tags = tags_of(comments.get(p))
         cond = [t for t in tags if t == "situational_required" or (" " in t and re.search(r"\brequired\b", t))]
-        if cond and not f["required"] and not CONDITION.search(desc[p]):
+        if cond and not f.get("required") and not CONDITION.search(desc[p]):
             show(p, f"   [{cond[0][:40]}]  <- CHECK: description never says when it is required")
 
     print("\nSTEP 5. Headings, comment marks or YAML examples inside the description (checklist 5.4, 5.5)")

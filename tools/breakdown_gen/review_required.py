@@ -48,14 +48,14 @@ def main(template_spec, breakdown_path, config_path=None):
 
     rows = [(p, f, tags_of(comments.get(p))) for p, f in bd.items() if p in tmpl]
     decided = set((yaml.safe_load(open(config_path, encoding="utf-8")) or {}).get("overrides") or {}) if config_path else set()
-    show = lambda p, f, extra="": print(f"   line {line_of.get(p, '?'):>5}  required={str(bool(f['required'])):5}  {p}{extra}"
+    show = lambda p, f, extra="": print(f"   line {line_of.get(p, '?'):>5}  required={str(bool(f.get('required'))):5}  {p}{extra}"
                                         + ("   <- decided in overrides" if p in decided else ""))
 
     print("STEP 1. Tag inventory: every tag in the template and how the breakdown set `required`")
     table = defaultdict(Counter)
     for p, f, tags in rows:
         for t in tags or ["(no tag)"]:
-            table[(kind(t) if tags else "4 no tag", t)][bool(f["required"])] += 1
+            table[(kind(t) if tags else "4 no tag", t)][bool(f.get("required"))] += 1
     for (k, t), n in sorted(table.items()):
         print(f"   [{k:13}] {t[:55]:57} true={n[True]:3}  false={n[False]:3}")
 
@@ -67,14 +67,14 @@ def main(template_spec, breakdown_path, config_path=None):
 
     print("\nSTEP 2. Required tag but required: false (expected only inside an optional parent block)")
     for p, f, tags in groups["1 required"]:
-        if not f["required"]:
+        if not f.get("required"):
             parent = next((q for q in (p.rsplit(".", i)[0] for i in range(1, p.count(".") + 1))
-                           if q in bd and not bd[q]["required"]), None)
+                           if q in bd and not bd[q].get("required")), None)
             show(p, f, f"   <- parent `{parent}` is optional" if parent else "   <- CHECK: no optional parent")
 
     print("\nSTEP 3. Optional tag but required: true (expected only inside one-of blocks, i.e. 'required if chosen')")
     for p, f, tags in groups["2 optional"]:
-        if f["required"] and "1 required" not in {kind(t) for t in tags}:
+        if f.get("required") and "1 required" not in {kind(t) for t in tags}:
             inside = any(bd.get(q, {}).get("conditional_context") for q in (p.rsplit(".", i)[0] for i in range(1, p.count(".") + 1)))
             show(p, f, "   <- inside a one-of block" if inside else "   <- CHECK: not in a one-of block")
 
@@ -83,7 +83,7 @@ def main(template_spec, breakdown_path, config_path=None):
         cond = next(t for t in tags if kind(t) == "3 conditional")
         squash = lambda s: re.sub(r"[\s\"']+", "", s.lower())
         blocks = p.split(".")[:-1]
-        enforced = f["required"] and any(cond == f"required for {b}" for b in blocks)  # MAVEN enforces it when the block is chosen
+        enforced = f.get("required") and any(cond == f"required for {b}" for b in blocks)  # MAVEN enforces it when the block is chosen
         kept = enforced or cond == "situational_required" or squash(cond) in squash(str(f.get("description", "")))
         show(p, f, f"   [{cond[:50]}]" + ("" if kept else "   <- condition NOT in description"))
 
@@ -92,7 +92,7 @@ def main(template_spec, breakdown_path, config_path=None):
         v = str(tmpl.get(p))
         parent = p.rpartition(".")[0]
         siblings = [q for q in tmpl if q.rpartition(".")[0] == parent and q != p]
-        if v.startswith("__") and any(str(tmpl[q]).startswith("${") for q in siblings) and not f["required"]:
+        if v.startswith("__") and any(str(tmpl[q]).startswith("${") for q in siblings) and not f.get("required"):
             show(p, f, f"   value {v}")
 
     print("\nSTEP 6. Unknown tags: read their definition in the template's FIELD ANNOTATIONS")
@@ -126,7 +126,7 @@ def main(template_spec, breakdown_path, config_path=None):
     inside = defaultdict(list)
     for p, f in bd.items():
         parents = [p.rsplit(".", i)[0] for i in range(1, p.count(".") + 1)]
-        if any(bd.get(q, {}).get("conditional_context") for q in parents) and not f["required"] \
+        if any(bd.get(q, {}).get("conditional_context") for q in parents) and not f.get("required") \
                 and not isinstance(f.get("value"), dict):
             inside[p.rsplit(".", 1)[-1]].append(p)
     for key, paths in sorted(inside.items()):
@@ -140,7 +140,7 @@ def main(template_spec, breakdown_path, config_path=None):
                     if bd.get(q, {}).get("conditional_context"):
                         break
                     between.append(q)
-                opt = next((q for q in between if q in bd and not bd[q]["required"]), None)
+                opt = next((q for q in between if q in bd and not bd[q].get("required")), None)
                 show(p, bd[p], f"   <- inside optional `{opt.rsplit('.', 1)[-1]}` "
                                f"[{', '.join(tags_of(comments.get(opt))) or 'no tag'}]" if opt else "")
 

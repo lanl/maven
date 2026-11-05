@@ -109,7 +109,7 @@ Items below are where the generator had to choose. Check them, then record any c
 - `governed_use.review_provenance_companion.reviewed_by.organization.ror_id`: empty
 - `governed_use.review_provenance_companion.comments`: empty
 
-## Top-level blocks excluded by config (1)
+## Blocks excluded by config (exclude_top_level, exclude) (1)
 
 - `_repository` (template line 1117)
 
@@ -119,3 +119,6 @@ Items below are where the generator had to choose. Check them, then record any c
 - `discoverability.contact.person.email`: {'required': True}
 - `discoverability.datacard.created_by.creator.organization.ror_id`: {'required': False}
 - `discoverability.workflow.state`: {'options': ['Raw', 'Processing', 'QA', 'Analysis', 'Review', 'Embargo', 'Published', 'Archived', 'not_applicable']}
+
+## Hidden fields and mappings (output_format v2: config hidden, map_from) (0)
+
