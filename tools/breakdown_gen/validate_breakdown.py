@@ -160,9 +160,10 @@ def validate(template_text, breakdown, allow_missing=(), allow_extra_keys=("agen
         if p in tmpl:
             continue
         parent, _, key = p.rpartition(".")
-        if key in allow_extra_keys and any(f"{parent}.{b}" in bd and bd[f"{parent}.{b}"].get("conditional_context")
-                                           for b in bd[p].get("options") or []):
-            add("EXPECTED", p, "discriminator added for the one-of blocks " + str(bd[p].get("options")))
+        # a sibling one-of block identifies the discriminator (its options may be null when it is hidden + pre-filled)
+        blocks = [q.rpartition(".")[2] for q in bd if q.rpartition(".")[0] == parent and bd[q].get("conditional_context")]
+        if key in allow_extra_keys and blocks:
+            add("EXPECTED", p, "discriminator added for the one-of blocks " + str(blocks))
         else:
             add("ERROR", p, "in the breakdown but not in the template")
 
@@ -195,7 +196,8 @@ def validate(template_text, breakdown, allow_missing=(), allow_extra_keys=("agen
             add("WARNING", p, f"tagged [{', '.join(tags)}] but required: false"
                 + (f" (inside optional block `{optional}`; MAVEN would otherwise force it)" if optional else ""))
         vocab = vocabulary(comments.get(p))
-        if vocab and f.get("type") not in ("dropdown", "radio") and "." in p:  # top-level supports_* are drawn as Yes/No by MAVEN itself
+        no_type = "visible" in f and not f["visible"] and f.get("type") is None  # v2: hidden + pre-filled / mapped
+        if vocab and f.get("type") not in ("dropdown", "radio") and "." in p and not no_type:  # top-level supports_* are drawn as Yes/No by MAVEN itself
             add("WARNING", p, f"comment lists choices {vocab[:6]}{'…' if len(vocab) > 6 else ''} but there is no dropdown")
         text = ((comments.get(p) or "") + " " + str(tmpl[p])).lower()  # choices may sit in the placeholder: ${"Yes|No"}
         for o in f.get("options") or []:

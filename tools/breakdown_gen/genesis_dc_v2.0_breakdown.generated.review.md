@@ -20,14 +20,8 @@ Items below are where the generator had to choose. Check them, then record any c
 ## Field not found in the schema; `required` taken from the template tag (0)
 
 
-## Discriminators added for one-of blocks (6)
+## Discriminators added for one-of blocks (0)
 
-- `discoverability.datacard.created_by.creator`: added `agent_type` (options ['person', 'organization', 'ai_model', 'software']); not in the template
-- `discoverability.contact`: added `agent_type` (options ['person', 'organization']); not in the template
-- `discoverability.additional_contacts`: added `agent_type` (options ['person', 'organization']); not in the template
-- `discoverability.authors`: added `agent_type` (options ['person', 'organization']); not in the template
-- `reusability.stewardship.maintainer`: added `agent_type` (options ['person', 'organization']); not in the template
-- `governed_use.review_provenance_companion.reviewed_by`: added `agent_type` (options ['person', 'organization', 'ai_model', 'software']); not in the template
 
 ## No template comment; description fallback (1)
 
@@ -56,7 +50,7 @@ Items below are where the generator had to choose. Check them, then record any c
 - `reusability.integrity`: 5 template fields
 - `reusability.additional_licenses`: 5 template fields
 
-## Manual overrides applied from the config (37)
+## Manual overrides applied from the config (39)
 
 - `discoverability.identification.name`: {'required': True}
 - `discoverability.identification.primary_id.type`: {'required': True}
@@ -82,10 +76,12 @@ Items below are where the generator had to choose. Check them, then record any c
 - `discoverability.datacard.created_by.creator.software.relationship`: {'value': 'processes'}
 - `discoverability.identification.project`: {'value': 'genesis'}
 - `discoverability.product_type`: {'value': 'Dataset'}
-- `discoverability.contact.agent_type`: {'value': 'person'}
-- `discoverability.additional_contacts.agent_type`: {'value': 'person'}
-- `discoverability.authors.agent_type`: {'value': 'person'}
-- `reusability.stewardship.maintainer.agent_type`: {'value': 'person'}
+- `supports_discoverability`: {'value': 'Yes'}
+- `supports_accessibility`: {'value': 'Yes'}
+- `supports_interoperability`: {'value': 'Yes'}
+- `supports_reusability`: {'value': 'Yes'}
+- `supports_governed_use`: {'value': 'Yes'}
+- `supports_ai_usability`: {'value': 'Yes'}
 - `interoperability.provenance.processing_steps`: {'required': False}
 - `discoverability.sensitivity`: {'description': "Sensitivity of the DATASET and of the DATA CARD: the data card's sensitivity (discoverability.datacard.sensitivity) is filled from these values. NOTE: Sensitivity terminology is still under Genesis governance review. Vocabulary may evolve."}
 - `discoverability.datacard.sensitivity.source_marking_string`: {'description_add': {'after': 'If the data is open (public), enter None.'}}
@@ -96,13 +92,10 @@ Items below are where the generator had to choose. Check them, then record any c
 - `discoverability.contact.succession_note`: {'description_add': {'after': 'Include both a person and a group (e.g., a team or office) to contact, for clarity.'}}
 - `accessibility.access.intended_repositories`: {'description_add': {'after': 'If the project is moving to a DIANA Campaign, leave this empty.'}}
 
-## Hidden fields and mappings (output_format v2: config hidden, map_from) (28)
+## Hidden fields and mappings (output_format v2: config hidden, map_from) (26)
 
 - `*.organization`: hidden
-- `discoverability.contact.agent_type`: hidden
-- `discoverability.additional_contacts.agent_type`: hidden
-- `discoverability.authors.agent_type`: hidden
-- `reusability.stewardship.maintainer.agent_type`: hidden
+- `supports_*`: hidden
 - `xCard`: hidden
 - `discoverability.datacard.template_version`: hidden
 - `discoverability.datacard.datacard_version`: hidden
@@ -126,3 +119,4 @@ Items below are where the generator had to choose. Check them, then record any c
 - `governed_use.review_provenance_companion`: hidden
 - `discoverability.datacard.sensitivity`: leaves mapped from `discoverability.sensitivity`
 - `discoverability.datacard.created_by.creator.person`: leaves mapped from `discoverability.contact.person`
+- `*.organization`: description and options emptied

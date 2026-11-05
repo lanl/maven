@@ -33,17 +33,25 @@ def check_v2_rules(tree):
     errs = []
     f = fields(tree)
     for p, n in f.items():
+        parent = p.rpartition(".")[0]
+        if n.get("visible", True) and parent in f and not f[parent].get("visible", True):
+            errs.append(f"{p}: visible, but its parent {parent} is hidden")
         if isinstance(n.get("value"), dict):
             errs += [f"{p}: missing '{k}'" for k in ("description", "visible") if k not in n]
             continue
         errs += [f"{p}: missing '{k}'" for k in V2_LEAF_KEYS if k not in n]
         typ = n.get("type")
-        if typ not in ("int", "float", "string", "list", "dropdown"):
-            errs.append(f"{p}: unsupported type {typ!r}")
-        if (typ == "dropdown") != (isinstance(n.get("options"), list) and bool(n["options"])):
-            errs.append(f"{p}: options must be a non-empty list for a dropdown and null otherwise")
-        if (typ == "list") != isinstance(n.get("length"), int):
-            errs.append(f"{p}: length must be a number for a list and null otherwise")
+        if typ is None and not n.get("visible", True):
+            # hidden + pre-filled / mapped, or a blanked organization dropdown: type null on purpose (Vedant, 2026-11-05)
+            if n.get("options") is not None or n.get("length") is not None:
+                errs.append(f"{p}: type null, so options and length must be null too")
+        else:
+            if typ not in ("int", "float", "string", "list", "dropdown"):
+                errs.append(f"{p}: unsupported type {typ!r}")
+            if (typ == "dropdown") != (isinstance(n.get("options"), list) and bool(n["options"])):
+                errs.append(f"{p}: options must be a non-empty list for a dropdown and null otherwise")
+            if (typ == "list") != isinstance(n.get("length"), int):
+                errs.append(f"{p}: length must be a number for a list and null otherwise")
         if n.get("mapping") is not None and n["mapping"] not in f:
             errs.append(f"{p}: mapping {n['mapping']!r} is not a field of this breakdown")
     return errs

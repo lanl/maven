@@ -215,6 +215,8 @@ exclude:                                           # any field (and its children
   - discoverability.contributors
 hidden:                                            # output_format v2: visible: false on the field and everything under it
   - "*.organization"
+blank:                                             # output_format v2: empty description and options (field and below)
+  - "*.organization"
 map_from:                                          # output_format v2: {target block: source block}, leaf by leaf
   discoverability.datacard.sensitivity: discoverability.sensitivity
 
@@ -255,7 +257,7 @@ The template decides everything by default, the same way the v1.2 breakdown was 
 | `conditional_context` / `condition_discriminator` | When a block has two or more agent sub-blocks: use the existing sibling key from `discriminator_keys`, or add one named `synthesize_as` (v2.0 has none). |
 | `description_add` | Applied with the overrides: `{before: text, after: text}` is joined to the template description (a period is added before `after` when the text ends without one). |
 | `overrides` | Applied last. Any key can be set, e.g. `{type: int}`; with `output_format: v2` also `visible`, `mapping` and a pre-filled `value`. |
-| `output_format: v2` | Vedant's field format (2026-11-04), written after all rules above. Every field: `description`, `visible` (default `true`), `value`. A leaf also gets `type` (`int` \| `float` \| `string` \| `list` \| `dropdown`; `radio` and the top-level `supports_*` become a Yes/No `dropdown`; `[]` becomes `list`, anything else `string`), `options` (the list for a dropdown, otherwise `null`), `length` (`0` for a list, otherwise `null`), `required`, `value` (empty: `""`, or `[]` for a list, unless an override sets it) and `mapping` (`null` unless an override sets a field path). Parents get no `required`. `conditional_context` / `condition_discriminator` are kept. Then `hidden` (paths or `*` patterns) sets `visible: false` on a field and everything under it, and `map_from` sets each leaf's `mapping` to the same leaf in the source block; a path that matches nothing stops the run. Pre-filled values come from `overrides` (`{value: ...}`). |
+| `output_format: v2` | Vedant's field format (2026-11-04), written after all rules above. Every field: `description`, `visible` (default `true`), `value`. A leaf also gets `type` (`int` \| `float` \| `string` \| `list` \| `dropdown`; `radio` and the top-level `supports_*` become a Yes/No `dropdown`; `[]` becomes `list`, anything else `string`), `options` (the list for a dropdown, otherwise `null`), `length` (`0` for a list, otherwise `null`), `required`, `value` (empty: `""`, or `[]` for a list, unless an override sets it) and `mapping` (`null` unless an override sets a field path). Parents get no `required`. `conditional_context` / `condition_discriminator` are kept. Then `hidden` (paths or `*` patterns) sets `visible: false` on a field and everything under it, and `map_from` sets each leaf's `mapping` to the same leaf in the source block; a path that matches nothing stops the run. Pre-filled values come from `overrides` (`{value: ...}`). | `blank` (paths or `*` patterns) empties the description of a field and everything under it and the options of its leaves (a dropdown left without options gets `type: null`). A hidden leaf with a pre-filled value or a mapping gets an empty description and `type` / `options` / `length` null. Leaf sub-fields are written one per line in the order description, visible, mapping, type, options, length, required, value.
 
 ---
 
@@ -346,6 +348,6 @@ schema is what the datacard validator uses.
 
 - MAVEN's form has no multiselect, so list fields with a vocabulary (e.g. `role`) become single-choice
   dropdowns.
-- The synthesized `agent_type` discriminator in v2.0 is not part of the v2.0 datacard; MAVEN should drop it
-  when it writes the final datacard.
+- v2.0 has no discriminator (`alternatives.synthesize_as: null`, Vedant 2026-11-05): no `agent_type`, no
+  `conditional_context`; `person` / `organization` / ... are plain sub-blocks.
 - `xCard` is included in v2.0 since 2026-11-05 (hidden, `card_type: dataset`); the v2 rule check has no `supports_xCard` rule.
