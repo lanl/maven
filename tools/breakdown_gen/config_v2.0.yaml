@@ -8,6 +8,8 @@ template: templates/genesis_datacard_v2.0.0_vedant.yaml
 # Vedant's 2026-11-04 field format: description / visible / value on every field; type / options / length /
 # required / mapping on leaves; leaf values empty unless an override pre-fills them.
 output_format: v2
+# 2026-11-06 (Vedant): default `length` of every list (list leaves and repeated blocks), 3 for now
+list_length: 3
 # Template only, as the v1.2 breakdown was made: required, options and descriptions come from the template
 # tags, placeholders and comments. Uncomment to let the LinkML schema decide them instead (decision A).
 # schema: inputs/data-cards-v2.0.0.zip::data-cards-v2.0.0/datacard_schema/src/genesis_datacard/schema/genesis_datacard.yaml
@@ -16,7 +18,7 @@ root_class: GenesisDatacardClass
 
 # 2026-11-05 (Vedant): no agent_type and no discriminator keys (conditional_context / condition_discriminator): they
 # are not in the v2.0 datacard. person / organization / ai_model / software are plain sub-blocks; `required` nests
-# through them to the group (e.g. contact.person.given_name follows contact). organization is hidden and blanked.
+# through them to the group (e.g. contact.person.given_name follows contact). organization is hidden.
 alternatives:
   blocks: [person, organization, ai_model, software]
   discriminator_keys: [agent_type, type]
@@ -64,6 +66,8 @@ exclude:
 
 # 2026-11-05: hidden fields (Vedant, part 4; output_format v2 only). A path hides the field and everything under it;
 # '*' matches any part of the path. Pre-filled values are in `overrides` below ({value: ...}).
+# 2026-11-06 (Vedant): every hidden field gets description '' and type / options / length null (only visible,
+# mapping, required and value are kept).
 hidden:
   - "*.organization"                                    # every organization block and its leaves
   - "supports_*"                                       # 2026-11-05 (Vedant): the 6 capability flags, value Yes (overrides)
@@ -89,11 +93,6 @@ hidden:
   - reusability.data_quality                           # until the AI-ready metadata is finished
   - governed_use.compliance
   - governed_use.review_provenance_companion            # Alexandria check, as above
-
-# 2026-11-05 (Vedant): blocks whose description and options are emptied (the block and everything under it);
-# a dropdown left without options gets type null. Output_format v2 only.
-blank:
-  - "*.organization"
 
 # 2026-11-05: {target block: source block}; every leaf of the target gets `mapping: <same leaf in the source>`.
 map_from:

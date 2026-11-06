@@ -38,11 +38,13 @@ def check_v2_rules(tree):
             errs.append(f"{p}: visible, but its parent {parent} is hidden")
         if isinstance(n.get("value"), dict):
             errs += [f"{p}: missing '{k}'" for k in ("description", "visible") if k not in n]
+            if n.get("type") is not None and (n["type"] != "list" or not isinstance(n.get("length"), int)):
+                errs.append(f"{p}: a block with a type must be type list with a number length")
             continue
         errs += [f"{p}: missing '{k}'" for k in V2_LEAF_KEYS if k not in n]
         typ = n.get("type")
         if typ is None and not n.get("visible", True):
-            # hidden + pre-filled / mapped, or a blanked organization dropdown: type null on purpose (Vedant, 2026-11-05)
+            # every hidden field has type / options / length null (Vedant, 2026-11-06)
             if n.get("options") is not None or n.get("length") is not None:
                 errs.append(f"{p}: type null, so options and length must be null too")
         else:

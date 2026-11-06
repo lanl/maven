@@ -3,7 +3,7 @@
 # Change the config (overrides) and regenerate instead.
 ---
 xCard:
-  description: Metadata that describes the xCard
+  description: ''
   visible: false
   value:
     card_type:
@@ -103,10 +103,10 @@ discoverability:
           required: true
           value: 1.0.0
         filename:
-          description: 'The filename of the data card document, follow naming convention: "genesis_datacard_${SNAKE_CASE_DATASET_NAME}$.md" where ${SNAKE_CASE_DATASET_NAME} is the dataset name in snake_case format. Use "genesis_datacard_other_${SNAKE_CASE_DATASET_NAME}$.md" for datasets that are not part of a Genesis project or sub-project.'
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: true
@@ -121,7 +121,7 @@ discoverability:
           required: true
           value: en
         id:
-          description: A unique identifier for the datacard document itself, distinct from the dataset identifier. Assign if the datacard is registered in a catalog or repository independently of the dataset. If one of type or value is provided, the other must also be provided.
+          description: ''
           visible: false
           value:
             type:
@@ -134,16 +134,16 @@ discoverability:
               required: false
               value: unregistered
             value:
-              description: The value of the identifier, following the format specified by the 'type' field.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
         sensitivity:
-          description: 'Sensitivity of the DATA CARD itself, which may differ from the sensitivity of the dataset it describes. Populate based on the sensitivity of the data card content alone, not the dataset. See NOTE ON SENSITIVITY above. NOTE: Sensitivity terminology is still under Genesis governance review. Vocabulary may evolve.'
+          description: ''
           visible: false
           value:
             overall_sensitivity:
@@ -309,64 +309,64 @@ discoverability:
           required: false
           value: ''
         change_log:
-          description: Running history of meaningful changes to this datacard. Add a new entry every time the datacard is updated. Do not overwrite or delete prior entries. If there have been no changes since creation, include a single entry with the creation date and the summary 'Initial creation'.
+          description: ''
           visible: false
           value:
             change_date:
-              description: The date of a specific change to the datacard, in ISO 8601 format (YYYY-MM-DD).
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: true
               value: ''
             datacard_version:
-              description: 'Replace default value with the version of the updated version, which should be incremented when the datacard is meaningfully updated. Use semantic versioning: MAJOR.MINOR.PATCH e.g., 1.0 → 1.1 for content updates; 1.x -> 2.0 for structural changes.'
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: true
               value: ''
             summary:
-              description: A brief description of what was changed in a specific update to the datacard and why. Update this text for all subsequent revisions. This provides context for each change and can be used for understanding the evolution of the datacard over time. Brief description of what changed and why. e.g., Initial creation | Updated license to CC-BY-4.0 | Added checksum after file transfer to OSTI | Corrected collection end date
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: true
               value: ''
         created_by:
-          description: All individuals, organizations, AI models, or software tools that created or updated this datacard. List in chronological order of the contribution — e.g., if an AI model generated the initial draft and a person then edited it, list the AI model first followed by the person. This provides important provenance information about the datacard and can inform trust and maintenance practices.
+          description: ''
           visible: false
           value:
             contribution_date:
-              description: The ISO 8601 date of this specific contribution
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: true
               value: ''
             description:
-              description: Detailed description of the entity.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
             creator:
-              description: Container for the agent (person, organization, AI model, or software tool) responsible for this contribution.
+              description: ''
               visible: false
               value:
                 person:
-                  description: A human individual.
+                  description: ''
                   visible: false
                   value:
                     given_name:
@@ -397,7 +397,7 @@ discoverability:
                       required: false
                       value: ''
                     affiliation:
-                      description: An organization with which a person is affiliated.
+                      description: ''
                       visible: false
                       value:
                         name:
@@ -426,7 +426,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: string
+                      type: null
                       options: null
                       length: null
                       required: true
@@ -441,32 +441,32 @@ discoverability:
                       required: false
                       value: ''
                 ai_model:
-                  description: An AI model.
+                  description: ''
                   visible: false
                   value:
                     name:
-                      description: Human-readable name or local string key for the entity.
+                      description: ''
                       visible: false
                       mapping: null
-                      type: string
+                      type: null
                       options: null
                       length: null
                       required: true
                       value: ''
                     version:
-                      description: Replace default with the version of the AI model, if applicable.
+                      description: ''
                       visible: false
                       mapping: null
-                      type: string
+                      type: null
                       options: null
                       length: null
                       required: true
                       value: ''
                     accessed_date:
-                      description: The ISO 8601 date when the AI model was accessed for use in creating or updating the datacard.
+                      description: ''
                       visible: false
                       mapping: null
-                      type: string
+                      type: null
                       options: null
                       length: null
                       required: true
@@ -490,23 +490,23 @@ discoverability:
                       required: true
                       value: generates
                 software:
-                  description: Software associated with this dataset, if any. This can include links to software tools, libraries, or frameworks that were used to generate, process, or analyze the dataset, which can provide users with additional context and insights about the dataset.
+                  description: ''
                   visible: false
                   value:
                     name:
-                      description: Human-readable name or local string key for the entity.
+                      description: ''
                       visible: false
                       mapping: null
-                      type: string
+                      type: null
                       options: null
                       length: null
                       required: true
                       value: ''
                     version:
-                      description: Replace default with the version of the software tool, if applicable.
+                      description: ''
                       visible: false
                       mapping: null
-                      type: string
+                      type: null
                       options: null
                       length: null
                       required: true
@@ -583,102 +583,102 @@ discoverability:
               required: true
               value: ''
         additional_ids:
-          description: Additional identifiers for this dataset.
+          description: ''
           visible: false
           value:
             type:
-              description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+              description: ''
               visible: false
               mapping: null
-              type: dropdown
-              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              type: null
+              options: null
               length: null
               required: false
               value: ''
             value:
-              description: The value of the identifier, following the format specified by the 'type' field.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
         supersedes:
-          description: Identifier of the prior version this dataset replaces. If one of type or value is provided, the other must also be provided.
+          description: ''
           visible: false
           value:
             type:
-              description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+              description: ''
               visible: false
               mapping: null
-              type: dropdown
-              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              type: null
+              options: null
               length: null
               required: false
               value: ''
             value:
-              description: The value of the identifier, following the format specified by the 'type' field.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
         superseded_by:
-          description: Identifier of the newer version that replaces this dataset. If one of type or value is provided, the other must also be provided.
+          description: ''
           visible: false
           value:
             type:
-              description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+              description: ''
               visible: false
               mapping: null
-              type: dropdown
-              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              type: null
+              options: null
               length: null
               required: false
               value: ''
             value:
-              description: The value of the identifier, following the format specified by the 'type' field.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
         parent_collection:
-          description: Class collection or experimental campaign this dataset belongs to. Use when this dataset is one of many in a larger organized collection or ensemble.
+          description: ''
           visible: false
           value:
             name:
-              description: Human-readable name or local string key for the entity.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
             identifier:
-              description: Unique identifier for an external resource, such as a DOI, ARK, or other identifier. If one of `type` or `value` is provided, the other must also be provided.
+              description: ''
               visible: false
               value:
                 type:
-                  description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+                  description: ''
                   visible: false
                   mapping: null
-                  type: dropdown
-                  options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+                  type: null
+                  options: null
                   length: null
                   required: false
                   value: ''
                 value:
-                  description: The value of the identifier, following the format specified by the 'type' field.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
@@ -778,16 +778,16 @@ discoverability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: false
           value: []
         task_subcategory:
-          description: More specific task subcategory or subcategories. e.g., binary_classification | multi_class_classification | multi_label_classification | image_segmentation | object_detection | time_series_forecasting | named_entity_recognition | question_answering
+          description: ''
           visible: false
           mapping: null
-          type: list
+          type: null
           options: null
-          length: 0
+          length: null
           required: false
           value: []
         keywords:
@@ -796,7 +796,7 @@ discoverability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: true
           value: []
     product_type:
@@ -904,7 +904,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: true
@@ -934,6 +934,8 @@ discoverability:
         person:
           description: A human individual.
           visible: true
+          type: list
+          length: 3
           value:
             given_name:
               description: Required if an entry is added. The given name(s) of a person.
@@ -992,7 +994,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
@@ -1007,10 +1009,10 @@ discoverability:
               required: false
               value: ''
         valid_until:
-          description: Date after which this contact may no longer be valid., in ISO 8601 format (YYYY-MM-DD). Use for project-bound contacts (students, postdocs, term staff).
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
@@ -1031,6 +1033,8 @@ discoverability:
         person:
           description: A human individual.
           visible: true
+          type: list
+          length: 3
           value:
             given_name:
               description: The given name(s) of a person.
@@ -1089,7 +1093,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: true
@@ -1106,6 +1110,8 @@ discoverability:
     sponsor_organizations:
       description: Organizations that funded or sponsored this dataset.
       visible: true
+      type: list
+      length: 3
       value:
         name:
           description: The name of the sponsoring organization. E.g., DOE Office of Science | NNSA | NSF
@@ -1164,6 +1170,8 @@ discoverability:
     research_organizations:
       description: Organizations that created or collected the data.
       visible: true
+      type: list
+      length: 3
       value:
         name:
           description: Human-readable name or local string key for the entity.
@@ -1186,6 +1194,8 @@ discoverability:
     facilities:
       description: User facilities, HPC centers, or research infrastructure used to collect, process, or store the dataset.
       visible: true
+      type: list
+      length: 3
       value:
         name:
           description: Required if an entry is added. Human-readable name or local string key for the entity.
@@ -1282,7 +1292,7 @@ discoverability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: false
           value: []
         cui_status:
@@ -1300,7 +1310,7 @@ discoverability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: false
           value: []
         cui_specified_categories:
@@ -1309,7 +1319,7 @@ discoverability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: false
           value: []
         cui_limited_dissemination_controls:
@@ -1318,7 +1328,7 @@ discoverability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: false
           value: []
         ucni_status:
@@ -1345,7 +1355,7 @@ discoverability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: false
           value: []
         normalized_control_basis:
@@ -1644,7 +1654,7 @@ interoperability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: true
           value: []
         encoding:
@@ -1671,7 +1681,7 @@ interoperability:
           mapping: null
           type: list
           options: null
-          length: 0
+          length: 3
           required: true
           value: []
         language:
@@ -1823,6 +1833,8 @@ interoperability:
         datasets:
           description: Related datasets, if any. This can include links to other datasets that are relevant to understanding and using the dataset effectively, such as source datasets, derived datasets, or complementary datasets.
           visible: true
+          type: list
+          length: 3
           value:
             name:
               description: Human-readable name or local string key for the entity.
@@ -1876,6 +1888,8 @@ interoperability:
         publications:
           description: Publications associated with this dataset, if any. This can include links to scholarly articles, conference papers, or other publications that describe the dataset or its use, which can provide users with additional context and insights about the dataset.
           visible: true
+          type: list
+          length: 3
           value:
             value:
               description: The value of the identifier, following the format specified by the 'type' field.
@@ -1907,6 +1921,8 @@ interoperability:
         software:
           description: Software associated with this dataset, if any. This can include links to software tools, libraries, or frameworks that were used to generate, process, or analyze the dataset, which can provide users with additional context and insights about the dataset.
           visible: true
+          type: list
+          length: 3
           value:
             name:
               description: Required if an entry is added. Human-readable name or local string key for the entity.
@@ -1947,6 +1963,8 @@ interoperability:
         ai_models:
           description: AI models associated with this dataset, if any. This can include links to AI models that were trained on, evaluated using, or otherwise related to the dataset, which can provide users with additional context and insights about the dataset.
           visible: true
+          type: list
+          length: 3
           value:
             name:
               description: Required if an entry is added. Human-readable name or local string key for the entity.
@@ -1994,112 +2012,114 @@ interoperability:
               required: false
               value: ''
     domain_metadata:
-      description: Captures domain-specific metadata that may be relevant for understanding and using the dataset effectively. This can include fields that are specific to certain scientific domains or types of data, which can provide users with important context and insights about the dataset. Domain-specific metadata fields supplement the supports_discoverability card and should not replace the common metadata expected by the datacard.
+      description: ''
       visible: false
       value:
         name:
-          description: Human-readable name or local string key for the entity.
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         description:
-          description: Detailed description of the entity.
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         science_domain:
-          description: 'Based on OSTI Subject Areas, scientific domains or disciplines this dataset primarily relates to. Extends the the list of OSTI Subject Areas with an Other category for datasets that do not fit into the OSTI list. Those using E-Link can map to their own taxonomy. Allowed values: Biology and Medicine | Chemistry | Energy Storage, Conversion, and Utilization | Engineering | Environmental Sciences | Fission and Nuclear Technologies | Fossil Fuels | Geosciences | Materials | Mathematics and Computing | National Defense | Physics | Power Generation and Distribution | Renewable Energy | Other'
+          description: ''
           visible: false
           mapping: null
-          type: dropdown
-          options: [Biology and Medicine, Chemistry, 'Energy Storage, Conversion, and Utilization', Engineering, Environmental Sciences, Fission and Nuclear Technologies, Fossil Fuels, Geosciences, Materials, Mathematics and Computing, National Defense, Physics, Power Generation and Distribution, Renewable Energy, Other]
+          type: null
+          options: null
           length: null
           required: false
           value: ''
         schema_reference:
-          description: Reference to a schema or controlled vocabulary that defines the domain-specific metadata fields used in the domain_metadata block. This can provide users with information about the structure and semantics of the domain-specific metadata, which can inform their understanding of the dataset and how to work with the domain-specific metadata.
+          description: ''
           visible: false
           value:
             type:
-              description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+              description: ''
               visible: false
               mapping: null
-              type: dropdown
-              options: [ark, doi, handle, local, purl, url, urn, uuid, other, unregistered]
+              type: null
+              options: null
               length: null
               required: false
               value: ''
             value:
-              description: The value of the identifier, following the format specified by the 'type' field.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
             version:
-              description: Version of software, tool, or library.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
         fields:
-          description: Field names, their corresponding values, data types, units, and descriptions for domain-specific metadata.
+          description: ''
           visible: false
+          type: null
+          length: null
           value:
             name:
-              description: Required if an entry is added. Human-readable name or local string key for the entity.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
             field_value:
-              description: Required if an entry is added. The value for a specific domain metadata field.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
             data_type:
-              description: Required if an entry is added. The data type of a feature or variable, following a controlled vocabulary from (e.g., float, int, string, boolean, datetime, other). This can provide important information about the nature of the data and can inform users about how to interpret and work with the dataset.
+              description: ''
               visible: false
               mapping: null
-              type: dropdown
-              options: [float, int, string, boolean, datetime, other]
+              type: null
+              options: null
               length: null
               required: false
               value: ''
             unit:
-              description: Required if an entry is added. The unit of measurement for a feature. This can provide important context for interpreting the values of the feature.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
             description:
-              description: A detailed description of the domain-specific metadata field.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
@@ -2227,7 +2247,7 @@ reusability:
                   description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
@@ -2269,72 +2289,74 @@ reusability:
           required: false
           value: ''
     data_quality:
-      description: Provides information about the quality of the dataset, including any known issues, limitations, or uncertainties that may affect its suitability for AI/ML applications.
+      description: ''
       visible: false
       value:
         completeness:
-          description: Information about the completeness of the dataset, including any known gaps, missing values, or limitations in the data that may affect its suitability for use. e.g., All detector channels present; 2% of timesteps missing | Missing due to sensor downtime for 5% of samples | Dataset is complete with no known gaps or missing values | not_applicable
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: true
           value: ''
         known_issues:
-          description: Any known issues or limitations with the dataset that may affect its suitability for use. Be explicit if there are no known issues or limitations (e.g., "not_applicable") rather than leaving this field blank. e.g., Sensor drift observed after 2023-06-01T12:00:00Z | Sensor calibration drift affects accuracy of measurements after June 2023 | Data from Facility X may have quality issues due to known equipment problems during the data collection period | not_applicable
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: true
           value: ''
         validation_methods:
-          description: 'Information about any validation methods or processes that have been applied to the dataset to assess its quality and suitability for use. Be explicit if there are no validation methods or processes (e.g., "not_applicable") rather than leaving this field blank. e.g., Cross-validated against NIST SRM 640f | Dataset validated against ground truth measurements from Facility Y | Data quality assessed using method Z with the following results: ... | not_applicable'
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: true
           value: ''
         noise_characteristics:
-          description: Information about the noise characteristics of the dataset. Be explicit if there are no known noise issues or characteristics (e.g., "not_applicable") rather than leaving this field blank. e.g., Signal-to-noise ratio (SNR) of 20 dB across all channels | Noise level increases by 5% after June 2023 due to equipment degradation | Dataset has low noise levels with no known issues | not_applicable
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         uncertainty_notes:
-          description: Any known uncertainties or limitations in the dataset that may affect its suitability for use. Be explicit if there are no known uncertainties or limitations (e.g., "not_applicable") rather than leaving this field blank. e.g., Measurement uncertainty ±0.5% (k=2) per ISO/IEC Guide 98-3 | Uncertainty increases to ±10% for measurements taken after June 2023 due to equipment degradation | Dataset has low uncertainty with no known issues | not_applicable
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         missing_data_codes:
-          description: If the dataset contains missing values, list the missing codes and their meanings. This can provide users with important information about how missing data is represented in the dataset, which can inform their decisions about how to handle missing values when used.
+          description: ''
           visible: false
+          type: null
+          length: null
           value:
             code:
-              description: Required if an entry is added. The code used in the dataset to indicate a missing or null value. e.g., -9999 | NULL
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
               value: ''
             description:
-              description: Required if an entry is added. A description of what the missing data code represents.
+              description: ''
               visible: false
               mapping: null
-              type: string
+              type: null
               options: null
               length: null
               required: false
@@ -2616,139 +2638,141 @@ governed_use:
               required: true
               value: ''
     compliance:
-      description: Populate when release_status = Under_Review | Approved | Published. Include with `Unknown` values for Draft datasets Acts as a holder for confirmation of compliance with relevant policies, standards, and requirements for the dataset.
+      description: ''
       visible: false
       value:
         doe_data_management_plan:
-          description: 'Whether the dataset is in compliance with a DOE Data Management Plan (DMP). Allowed values: "Yes" | "No" | Unknown | not_applicable'
+          description: ''
           visible: false
           mapping: null
-          type: dropdown
-          options: ['Yes', 'No', Unknown, not_applicable]
+          type: null
+          options: null
           length: null
           required: true
           value: ''
         osti_elink2_metadata_compliant:
-          description: 'Whether the dataset is compliant with OSTI''s E-Link 2.0 metadata requirements. Allowed values: "Yes" | "No" | Unknown | not_applicable'
+          description: ''
           visible: false
           mapping: null
-          type: dropdown
-          options: ['Yes', 'No', Unknown, not_applicable]
+          type: null
+          options: null
           length: null
           required: true
           value: ''
         irb_approved:
-          description: 'Whether the dataset has been approved by an Institutional Review Board (IRB). Allowed values: "Yes" | "No" | Unknown | not_applicable'
+          description: ''
           visible: false
           mapping: null
-          type: dropdown
-          options: ['Yes', 'No', Unknown, not_applicable]
+          type: null
+          options: null
           length: null
           required: true
           value: ''
     review_provenance_companion:
-      description: Reviews or assessments of the dataset, if any. Running history of all formal reviews. Add one entry per review stage in chronological order. Do not overwrite earlier entries when adding new ones. This block extends the Genesis Sensitivity V2 review_provenance_companion (which only accepts a single review) by allowing multiple review records to be captured in a structured format, which is especially useful for datasets that have undergone multiple reviews or have complex provenance histories. Provides users with insights into the quality and reliability of the dataset.
+      description: ''
       visible: false
+      type: null
+      length: null
       value:
         source_review_reference:
-          description: Identifier or citation for the authoritative review/release/source document. e.g., internal_qa | security | export_control | irb | quality_assessment | partner | publication | other
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         review_purpose:
-          description: The purpose or focus of the review, such as export control, IRB, security, quality assessment, or other. Provides users with important context about the nature of the review and what aspects of the dataset were evaluated, which can inform their understanding of the dataset's quality and reliability. e.g., Export control review prior to public release | Institutional Review Board (IRB) review for human subjects research | Internal security review for sensitive data handling | Quality assessment review for data integrity and accuracy
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         source_review_authority:
-          description: Office, system, or authority of record for the source sensitivity determination. Provides users with information about the official authority responsible for the review, which can inform their confidence in the dataset's quality and reliability. e.g., DOE Office of Export Control | Institutional Review Board at XYZ University | Internal security review board
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         review_contact_name:
-          description: Human point of contact, if appropriate to capture. This can provide users with a point of contact for questions about the review process and its outcomes, which can facilitate communication and support responsible use of the data.
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         review_contact_email:
-          description: Contact email, if appropriate to capture. Provides users with a point of contact for questions about the review process and its outcomes, which can facilitate communication and support responsible use of the data.
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         reviewed_by:
-          description: Person or role responsible for conducting the review, if applicable. Provides users with information about the expertise and credibility of the reviewers, which can inform their confidence in the dataset's quality and reliability.
+          description: ''
           visible: false
           value:
             person:
-              description: A human individual.
+              description: ''
               visible: false
               value:
                 given_name:
-                  description: The given name(s) of a person.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 family_name:
-                  description: The family name(s) of a person.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 email:
-                  description: The email address of a person.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 affiliation:
-                  description: An organization with which a person is affiliated.
+                  description: ''
                   visible: false
                   value:
                     name:
-                      description: Human-readable name or local string key for the entity.
+                      description: ''
                       visible: false
                       mapping: null
-                      type: string
+                      type: null
                       options: null
                       length: null
                       required: false
                       value: ''
                 role:
-                  description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+                  description: ''
                   visible: false
                   mapping: null
-                  type: dropdown
-                  options: [Conceptualization, Contact_Person, Contributor, Creator, Data_Curator, Data_Manager, Distributor, Editor, Formal_Analysis, Funding_Acquisition, Hosting_Institution, Investigation, Methodology, Producer, Project_Administration, Project_Leader, Project_Manager, Project_Member, Publisher, Registration_Agency, Registration_Authority, Related_Person, Researcher, Research_Group, Resources, Rights_Holder, Software, Sponsor, Supervision, Translator, Validation, Visualization, Work_Package_Leader, Writing_Original_Draft, Writing_Review_Editing, Other]
+                  type: null
+                  options: null
                   length: null
                   required: false
                   value: ''
@@ -2760,7 +2784,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
@@ -2775,117 +2799,117 @@ governed_use:
                   required: false
                   value: ''
             ai_model:
-              description: An AI model.
+              description: ''
               visible: false
               value:
                 name:
-                  description: Human-readable name or local string key for the entity.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 version:
-                  description: Replace default with the version of the AI model, if applicable.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 accessed_date:
-                  description: The ISO 8601 date when the AI model was accessed for use in creating or updating the datacard.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 role:
-                  description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+                  description: ''
                   visible: false
                   mapping: null
-                  type: dropdown
-                  options: [Conceptualization, Contact_Person, Contributor, Creator, Data_Curator, Data_Manager, Distributor, Editor, Formal_Analysis, Funding_Acquisition, Hosting_Institution, Investigation, Methodology, Producer, Project_Administration, Project_Leader, Project_Manager, Project_Member, Publisher, Registration_Agency, Registration_Authority, Related_Person, Researcher, Research_Group, Resources, Rights_Holder, Software, Sponsor, Supervision, Translator, Validation, Visualization, Work_Package_Leader, Writing_Original_Draft, Writing_Review_Editing, Other]
+                  type: null
+                  options: null
                   length: null
                   required: false
                   value: ''
                 relationship:
-                  description: 'The relationship of this AI model to the datacard or dataset Allowed values: is_cited_by | cites | in_series | is_supplement_to | is_supplemented_by | is_continued_by | continues | describes | is_described_by | has_metadata | is_metadata_for | has_version | is_version_of | is_previous_version_of | is_part_of | has_part | is_published_in | is_referenced_by | references | is_documented_by | documents | is_compiled_by | compiles | is_variant_form_of | is_original_form_of | is_identical_to | is_reviewed_by | reviews | is_derived_from | is_source_of | is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by | collects | is_translation_of | has_translation | other | generates | is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by | is_trained_on | is_used_for_training | is_evaluated_on | is_used_for_evaluation | tested_on | validated_on | fine_tuned_from | has_evaluation'
+                  description: ''
                   visible: false
                   mapping: null
-                  type: dropdown
-                  options: [is_cited_by, cites, in_series, is_supplement_to, is_supplemented_by, is_continued_by, continues, describes, is_described_by, has_metadata, is_metadata_for, has_version, is_version_of, is_previous_version_of, is_part_of, has_part, is_published_in, is_referenced_by, references, is_documented_by, documents, is_compiled_by, compiles, is_variant_form_of, is_original_form_of, is_identical_to, is_reviewed_by, reviews, is_derived_from, is_source_of, is_required_by, requires, obsoletes, is_obsoleted_by, is_collected_by, collects, is_translation_of, has_translation, other, generates, is_generated_by, processes, is_processed_by, analyzes, is_analyzed_by, is_trained_on, is_used_for_training, is_evaluated_on, is_used_for_evaluation, tested_on, validated_on, fine_tuned_from, has_evaluation]
+                  type: null
+                  options: null
                   length: null
                   required: false
                   value: ''
             software:
-              description: Software associated with this dataset, if any. This can include links to software tools, libraries, or frameworks that were used to generate, process, or analyze the dataset, which can provide users with additional context and insights about the dataset.
+              description: ''
               visible: false
               value:
                 name:
-                  description: Human-readable name or local string key for the entity.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 version:
-                  description: Replace default with the version of the software tool, if applicable.
+                  description: ''
                   visible: false
                   mapping: null
-                  type: string
+                  type: null
                   options: null
                   length: null
                   required: false
                   value: ''
                 role:
-                  description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+                  description: ''
                   visible: false
                   mapping: null
-                  type: dropdown
-                  options: [Conceptualization, Contact_Person, Contributor, Creator, Data_Curator, Data_Manager, Distributor, Editor, Formal_Analysis, Funding_Acquisition, Hosting_Institution, Investigation, Methodology, Producer, Project_Administration, Project_Leader, Project_Manager, Project_Member, Publisher, Registration_Agency, Registration_Authority, Related_Person, Researcher, Research_Group, Resources, Rights_Holder, Software, Sponsor, Supervision, Translator, Validation, Visualization, Work_Package_Leader, Writing_Original_Draft, Writing_Review_Editing, Other]
+                  type: null
+                  options: null
                   length: null
                   required: false
                   value: ''
                 relationship:
-                  description: 'The relationship of this software to the datacard or dataset. Allowed values: is_cited_by | cites | in_series | is_supplement_to | is_supplemented_by | is_continued_by | continues | describes | is_described_by | has_metadata | is_metadata_for | has_version | is_version_of | is_previous_version_of | is_part_of | has_part | is_published_in | is_referenced_by | references | is_documented_by | documents | is_compiled_by | compiles | is_variant_form_of | is_original_form_of | is_identical_to | is_reviewed_by | reviews | is_derived_from | is_source_of | is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by | collects | is_translation_of | has_translation | other | generates | is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by | is_trained_on | is_used_for_training | is_evaluated_on | is_used_for_evaluation | tested_on | validated_on | fine_tuned_from | has_evaluation'
+                  description: ''
                   visible: false
                   mapping: null
-                  type: dropdown
-                  options: [is_cited_by, cites, in_series, is_supplement_to, is_supplemented_by, is_continued_by, continues, describes, is_described_by, has_metadata, is_metadata_for, has_version, is_version_of, is_previous_version_of, is_part_of, has_part, is_published_in, is_referenced_by, references, is_documented_by, documents, is_compiled_by, compiles, is_variant_form_of, is_original_form_of, is_identical_to, is_reviewed_by, reviews, is_derived_from, is_source_of, is_required_by, requires, obsoletes, is_obsoleted_by, is_collected_by, collects, is_translation_of, has_translation, other, generates, is_generated_by, processes, is_processed_by, analyzes, is_analyzed_by, is_trained_on, is_used_for_training, is_evaluated_on, is_used_for_evaluation, tested_on, validated_on, fine_tuned_from, has_evaluation]
+                  type: null
+                  options: null
                   length: null
                   required: false
                   value: ''
         decontrol_or_declassify_on:
-          description: For sensitive datasets, the date when the dataset can be decontrolled or declassified, if applicable. Provides users with information about when the dataset may become more widely available and can inform their decisions about using and citing the data.
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         review_date:
-          description: The date when the review was conducted or completed, in ISO 8601 format (YYYY-MM-DD).
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
           value: ''
         comments:
-          description: Additional comments or notes about the review, if any. Provides insights about the review process and its outcomes.
+          description: ''
           visible: false
           mapping: null
-          type: string
+          type: null
           options: null
           length: null
           required: false
