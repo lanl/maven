@@ -92,7 +92,7 @@ Items below are where the generator had to choose. Check them, then record any c
 - `discoverability.contact.succession_note`: {'description_add': {'after': 'Include both a person and a group (e.g., a team or office) to contact, for clarity.'}}
 - `accessibility.access.intended_repositories`: {'description_add': {'after': 'If the project is moving to a DIANA Campaign, leave this empty.'}}
 
-## Hidden fields and mappings (output_format v2: config hidden, map_from) (26)
+## Hidden fields and mappings (output_format v2: config hidden, map_from) (25)
 
 - `*.organization`: hidden
 - `supports_*`: hidden
@@ -119,4 +119,3 @@ Items below are where the generator had to choose. Check them, then record any c
 - `governed_use.review_provenance_companion`: hidden
 - `discoverability.datacard.sensitivity`: leaves mapped from `discoverability.sensitivity`
 - `discoverability.datacard.created_by.creator.person`: leaves mapped from `discoverability.contact.person`
-- `*.organization`: description and options emptied

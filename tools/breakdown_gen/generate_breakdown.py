@@ -95,6 +95,7 @@ def parse_template(text):
             stack.pop()
         if m["dash"] and stack:
             by_path[".".join(k for _, k in stack)]["is_list"] = True
+            by_path[".".join(k for _, k in stack)].setdefault("dash_key", m["key"])
         stack.append((indent, m["key"]))
         path = ".".join(k for _, k in stack)
         value, comment = split_comment(m["rest"])
@@ -400,6 +401,13 @@ class Builder:
     def build(self):
         self.find_alternatives()
         excluded = set(self.cfg.get("exclude_top_level", []))
+        # the repeated unit of a template list: the block carrying the dash ('- person:'), or the list block itself
+        # when the dash is on a plain field ('- name: ...'); output_format v2 gives it type list + length
+        list_units = set()
+        for n in self.nodes:
+            if n.get("dash_key"):
+                child = self.by_path.get(f"{n['path']}.{n['dash_key']}")
+                list_units.add(child["path"] if child and child["has_children"] else n["path"])
         root = {}
         made = {"": root}
         for n in self.nodes:
@@ -434,6 +442,8 @@ class Builder:
                 if self.hint:
                     field["description"] = f"{field['description']} {self.choice_hint(n)}".strip()
             if n["has_children"]:
+                if n["path"] in list_units:
+                    field["list_unit"] = True
                 field["value"] = {}
                 made[n["path"]] = field["value"]
             else:
@@ -489,7 +499,7 @@ class V2Dumper(yaml.SafeDumper):
 V2Dumper.add_representer(list, lambda d, v: d.represent_sequence("tag:yaml.org,2002:seq", v, flow_style=True))
 
 
-def to_v2_format(tree, top=True):
+def to_v2_format(tree, top=True, list_length=0):
     """Vedant's field format (2026-11-04, `output_format: v2`): every field has description / visible / value; a
     leaf also has type (int | float | string | list | dropdown), options, length, required and mapping. A leaf
     value starts empty; only a value set in the config overrides (a hidden, pre-filled field) is kept."""
@@ -499,7 +509,9 @@ def to_v2_format(tree, top=True):
         g.update({k: f[k] for k in ("conditional_context", "condition_discriminator") if k in f})
         v = f["value"]
         if isinstance(v, dict):
-            g["value"] = to_v2_format(v, False)
+            if f.get("list_unit"):  # Vedant (2026-11-06): a repeated block is a list of `length` entries
+                g.update(type="list", length=list_length)
+            g["value"] = to_v2_format(v, False, list_length)
         else:
             typ = "dropdown" if f.get("type") == "radio" else f.get("type")
             if typ is None:  # top-level supports_* flags are Yes/No; '[]' in the template is a list
@@ -508,20 +520,21 @@ def to_v2_format(tree, top=True):
                 raise ValueError(f"{key}: type {typ!r} is not one of {LEAF_TYPES}")
             g["mapping"] = f.get("mapping")  # Vedant (2026-11-05): right under visible
             g.update(type=typ, options=f.get("options", ["Yes", "No"]) if typ == "dropdown" else None,
-                     length=0 if typ == "list" else None, required=bool(f["required"]),
+                     length=list_length if typ == "list" else None, required=bool(f["required"]),
                      value=([] if typ == "list" else "") if isinstance(v, RawValue) else v)  # RawValue = placeholder
         out[key] = g
     return out
 
 
-def apply_hidden_and_mapping(tree, hidden=(), map_from=None, blank=()):
+def apply_hidden_and_mapping(tree, hidden=(), map_from=None):
     """v2 format: `hidden` patterns (path or fnmatch '*') set visible: false on the field and everything under it;
     `map_from` {target block: source block} points every leaf of the target at the same leaf of the source.
-    Returns report lines; a pattern or block that matches nothing stops the run."""
+    Every hidden field keeps only what MAVEN uses (Vedant, 2026-11-06): description '', type / options / length null;
+    visible, mapping, required and value stay. Returns report lines; a pattern or block that matches nothing stops the run."""
     map_from = map_from or {}
-    hits = {p: 0 for p in list(hidden) + list(map_from) + list(blank)}
+    hits = {p: 0 for p in list(hidden) + list(map_from)}
 
-    def walk(node, path, hide, empty=False):
+    def walk(node, path, hide):
         for k, f in node.items():
             p = f"{path}.{k}" if path else k
             matched = [pat for pat in hidden if fnmatch(p, pat)]
@@ -531,33 +544,23 @@ def apply_hidden_and_mapping(tree, hidden=(), map_from=None, blank=()):
             h = hide or bool(matched) or not f.get("visible", True)
             if h:
                 f["visible"] = False
-            blanked = [pat for pat in blank if fnmatch(p, pat)]
-            for pat in blanked:
-                hits[pat] += 1
-            e = empty or bool(blanked)
-            if e:  # Vedant (2026-11-05): no description and no options (organization blocks)
                 f["description"] = ""
+                for key in ("type", "options", "length"):
+                    if key in f:  # leaves, and blocks that are lists
+                        f[key] = None
             if isinstance(f["value"], dict):
-                walk(f["value"], p, h, e)
+                walk(f["value"], p, h)
                 continue
-            if e:
-                f["options"] = None
-                if f.get("type") == "dropdown":
-                    f["type"] = None  # a dropdown without options is no dropdown
             src = next((t for t in map_from if p.startswith(t + ".")), None)
             if src:
                 hits[src] += 1
                 f["mapping"] = map_from[src] + p[len(src):]
-            if h and (f["value"] not in ("", []) or f.get("mapping")):
-                # Vedant (2026-11-05): hidden and pre-filled or mapped, so nobody fills it in; keep only what MAVEN uses
-                f.update(description="", type=None, options=None, length=None)
 
     walk(tree, "", False)
     stale = [p for p, n in hits.items() if not n]
     if stale:
-        raise KeyError(f"hidden / map_from / blank paths not in the breakdown: {stale}")
-    return ([f"`{p}`: hidden" for p in hidden] + [f"`{t}`: leaves mapped from `{s}`" for t, s in map_from.items()]
-            + [f"`{p}`: description and options emptied" for p in blank])
+        raise KeyError(f"hidden / map_from paths not in the breakdown: {stale}")
+    return [f"`{p}`: hidden" for p in hidden] + [f"`{t}`: leaves mapped from `{s}`" for t, s in map_from.items()]
 
 
 # ----------------------------------------------------------------------------- writer
@@ -648,9 +651,8 @@ def main():
               "# GENERATED by tools/breakdown_gen/generate_breakdown.py; do not edit by hand.",
               "# Change the config (overrides) and regenerate instead.", "---"]
     if cfg.get("output_format") == "v2":
-        tree = to_v2_format(tree)
-        b.report["hidden_mapping"] = apply_hidden_and_mapping(tree, cfg.get("hidden") or [], cfg.get("map_from"),
-                                                             cfg.get("blank") or [])
+        tree = to_v2_format(tree, list_length=cfg.get("list_length", 0))
+        b.report["hidden_mapping"] = apply_hidden_and_mapping(tree, cfg.get("hidden") or [], cfg.get("map_from"))
         # Vedant (2026-11-05): one sub-field per line, no wrapping; option lists stay inline ([Yes, No])
         body = [yaml.dump({k: v}, Dumper=V2Dumper, sort_keys=False, allow_unicode=True, width=float("inf"))
                 for k, v in tree.items()]

@@ -70,7 +70,7 @@ def test_v20_uses_vedants_field_format():
     # Vedant (2026-11-05): leaf sub-fields in this order, mapping right under visible
     assert list(keywords) == ["description", "visible", "mapping", "type", "options", "length", "required", "value"]
     assert {k: keywords[k] for k in ("type", "options", "length", "required", "value", "mapping")} == \
-        {"type": "list", "options": None, "length": 0, "required": True, "value": [], "mapping": None}
+        {"type": "list", "options": None, "length": 3, "required": True, "value": [], "mapping": None}
     # Vedant (2026-11-05): the supports_* flags are not shown and are always Yes
     flags = [k for k in tree if k.startswith("supports_")]
     assert len(flags) == 6 and all((tree[k]["type"], tree[k]["visible"], tree[k]["value"]) == (None, False, "Yes") for k in flags)
@@ -99,10 +99,10 @@ def test_v20_single_value_fields():
         "discoverability.datacard.sensitivity.classification_category",
         "governed_use.non_sensitivity_governance_metadata.privacy.privacy_control_basis"]
     # creator.ai_model.role / software.role are hidden + pre-filled, so their type is null (Vedant, 2026-11-05)
-    filled = lambda p: not f[p]["visible"] and (f[p]["value"] or f[p]["mapping"] or ".organization." in p)  # noqa: E731
+    filled = lambda p: not f[p]["visible"]  # every hidden field has type null (Vedant, 2026-11-06)  # noqa: E731
     assert len(single) == 22 and all(f[p]["type"] == (None if filled(p) else "dropdown")
                                      and isinstance(f[p]["value"], str) for p in single)
-    assert f["discoverability.datacard.created_by.contribution_date"]["type"] == "string"
+    assert f["discoverability.datacard.created_by.contribution_date"]["type"] != "list"  # hidden: type null
     for block in ("discoverability.contact.person", "interoperability.provenance.source_data",
                   "accessibility.access.intended_repositories"):  # single blocks (de-listed in Vedant's template)
         assert isinstance(f[block]["value"], dict)
@@ -124,11 +124,12 @@ def test_v20_hidden_prefilled_and_mapped():
         "discoverability.contact.person.affiliation.name"
     assert hidden("discoverability.contact.organization.name") and not hidden("discoverability.contact.person.given_name")
     assert not hidden("discoverability.contact.person.email") and not hidden("discoverability.sensitivity.cui_status")
-    # Vedant (2026-11-05): hidden + pre-filled / mapped leaves have no type, options or description
+    # Vedant (2026-11-06): every hidden field has an empty description and type / options / length null
     for p, n in f.items():
-        if not isinstance(n["value"], dict) and hidden(p) and (n["value"] not in ("", []) or n["mapping"]):
-            assert (n["description"], n["type"], n["options"], n["length"]) == ("", None, None, None), p
-    assert f["discoverability.datacard.filename"]["type"] == "string"  # hidden but empty: unchanged
+        if hidden(p):
+            assert n["description"] == "" and all(n.get(k) is None for k in ("type", "options", "length")), p
+    assert f["discoverability.datacard.filename"]["type"] is None and f["discoverability.datacard.filename"]["value"] == ""
+    assert f["discoverability.datacard.created_by.creator.ai_model.role"]["value"] == "Writing_Original_Draft"  # value kept
 
 
 def test_v20_description_notes():
@@ -143,6 +144,24 @@ def test_v20_description_notes():
     assert f["discoverability.datacard.sensitivity.source_marking_string"]["description"] == ""  # hidden + mapped
     assert f["discoverability.dataset_description.task_category"]["description"].startswith("A task category is")
     assert "DATA CARD" in f["discoverability.sensitivity"]["description"]
+
+
+def test_v20_repeated_blocks_are_lists():
+    # Vedant (2026-11-06): the block with the template dash ('- person:') is a list; '- name: ...' makes the block itself
+    # a list; every list (blocks and leaves) has length 3 for now; other blocks (e.g. affiliation) get no type
+    from compare_breakdowns import fields
+    out = HERE / "genesis_dc_v2.0_breakdown.generated.yaml"
+    subprocess.run([sys.executable, str(HERE / "generate_breakdown.py"), str(HERE / "config_v2.0.yaml")], check=True)
+    f = fields(yaml.safe_load(out.read_text(encoding="utf-8")))
+    blocks = {p for p, n in f.items() if isinstance(n["value"], dict) and "type" in n}
+    assert {"discoverability.additional_contacts.person", "discoverability.authors.person",
+            "discoverability.sponsor_organizations", "governed_use.review_provenance_companion"} <= blocks and len(blocks) == 12
+    # visible list blocks: list / 3; hidden ones (e.g. review_provenance_companion) have type / length null
+    assert all((f[p]["type"], f[p]["length"]) == (("list", 3) if f[p]["visible"] else (None, None)) for p in blocks)
+    assert sum(f[p]["visible"] for p in blocks) == 9
+    assert list(f["discoverability.authors.person"]) == ["description", "visible", "type", "length", "value"]
+    assert "type" not in f["discoverability.authors"] and "type" not in f["discoverability.authors.person.affiliation"]
+    assert all(n["length"] == 3 for n in f.values() if not isinstance(n["value"], dict) and n.get("type") == "list")
 
 
 def test_hidden_parent_hides_children():
@@ -207,6 +226,7 @@ if __name__ == "__main__":
     test_v20_single_value_fields()
     test_v20_hidden_prefilled_and_mapped()
     test_v20_description_notes()
+    test_v20_repeated_blocks_are_lists()
     test_hidden_parent_hides_children()
     test_stale_hidden_path_stops_the_run()
     test_stale_exclude_pattern_stops_the_run()
