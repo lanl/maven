@@ -27,7 +27,7 @@ Items below are where the generator had to choose. Check them, then record any c
 
 - `xCard.card_type`: empty
 
-## Blocks excluded by config (exclude_top_level, exclude) (20)
+## Blocks excluded by config (exclude_top_level, exclude) (19)
 
 - `*.ror_id`: 19 template fields
 - `*.orcid`: 7 template fields
@@ -36,7 +36,6 @@ Items below are where the generator had to choose. Check them, then record any c
 - `*.ai_models.identifier`: 3 template fields
 - `discoverability.contributors`: 31 template fields
 - `discoverability.dataset_type`: 1 template fields
-- `discoverability.contact.valid_until`: 1 template fields
 - `discoverability.authors.ai_model`: 9 template fields
 - `discoverability.authors.software`: 8 template fields
 - `interoperability.data_structure.features`: 6 template fields
@@ -50,31 +49,34 @@ Items below are where the generator had to choose. Check them, then record any c
 - `reusability.integrity`: 5 template fields
 - `reusability.additional_licenses`: 5 template fields
 
-## Manual overrides applied from the config (39)
+## Manual overrides applied from the config (42)
 
 - `discoverability.identification.name`: {'required': True}
 - `discoverability.identification.primary_id.type`: {'required': True}
 - `discoverability.identification.primary_id.value`: {'required': True}
 - `discoverability.contact.person.email`: {'required': True}
 - `interoperability.domain_metadata.fields.data_type`: {'type': 'dropdown', 'options': ['float', 'int', 'string', 'boolean', 'datetime', 'other']}
-- `accessibility.dataset_scale.record_unit`: {'type': 'dropdown', 'options': ['samples', 'files', 'records', 'timesteps', 'images', 'tokens', 'other']}
+- `accessibility.dataset_scale.record_unit`: {'type': 'string'}
 - `governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status`: {'options': ['Approved', 'Pending', 'Not_Approved', 'Requires_STI_Review', 'not_applicable']}
-- `discoverability.dataset_description.tags.project`: {'description': ' Required when tags is provided. Replace default value if necessary with a single human-readable name from the project this dataset belongs to. May be a Genesis project or sub-project, or a non-Genesis project or sub-project. Use the same name in the datacard filename. e.g., genesis | genesis-fusion | genesis-lightsource | nuclear-physics'}
+- `accessibility.access_policy.authorization_required`: {'type': 'list'}
+- `accessibility.access_policy.intended_partner_classes`: {'type': 'list'}
+- `accessibility.access_policy.approved_environments`: {'type': 'list'}
+- `governed_use.non_sensitivity_governance_metadata.rights_release_records.agreement_type`: {'type': 'list'}
+- `discoverability.dataset_description.tags.project`: {'mapping': 'discoverability.identification.project'}
 - `accessibility.dataset_scale.record_count`: {'type': 'int'}
 - `accessibility.dataset_scale.compressed_bytes`: {'type': 'int'}
 - `accessibility.dataset_scale.uncompressed_bytes`: {'type': 'int'}
 - `reusability.citation.preferred_citation.year`: {'type': 'int'}
 - `reusability.citation.preferred_citation.howpublished`: {'description': ' Required when a preferred_citation is provided. How the dataset was published or released. how_published: is intended as a component of a bibtex citation when preferred_citation is provided e.g., Online | In Repository | As Supplementary Material'}
 - `xCard.card_type`: {'value': 'dataset', 'description': 'The xCard type (from the template header: for datasets, the xCard type is "dataset").'}
-- `discoverability.datacard.template_version`: {'value': '2.0.0'}
-- `discoverability.datacard.datacard_version`: {'value': '1.0.0'}
+- `discoverability.datacard.template_version`: {'value': '2.0.0', 'type': 'int'}
+- `discoverability.datacard.datacard_version`: {'value': '1.0.0', 'type': 'int'}
 - `discoverability.datacard.language`: {'value': 'en'}
 - `discoverability.datacard.id.type`: {'value': 'unregistered'}
 - `discoverability.datacard.created_by.creator.ai_model.role`: {'value': 'Writing_Original_Draft'}
 - `discoverability.datacard.created_by.creator.ai_model.relationship`: {'value': 'generates'}
 - `discoverability.datacard.created_by.creator.software.role`: {'value': 'Software'}
 - `discoverability.datacard.created_by.creator.software.relationship`: {'value': 'processes'}
-- `discoverability.identification.project`: {'value': 'genesis'}
 - `discoverability.product_type`: {'value': 'Dataset'}
 - `supports_discoverability`: {'value': 'Yes'}
 - `supports_accessibility`: {'value': 'Yes'}
@@ -92,7 +94,7 @@ Items below are where the generator had to choose. Check them, then record any c
 - `discoverability.contact.succession_note`: {'description_add': {'after': 'Include both a person and a group (e.g., a team or office) to contact, for clarity.'}}
 - `accessibility.access.intended_repositories`: {'description_add': {'after': 'If the project is moving to a DIANA Campaign, leave this empty.'}}
 
-## Hidden fields and mappings (output_format v2: config hidden, map_from) (25)
+## Hidden fields and mappings (output_format v2: config hidden, map_from) (26)
 
 - `*.organization`: hidden
 - `supports_*`: hidden
@@ -105,13 +107,14 @@ Items below are where the generator had to choose. Check them, then record any c
 - `discoverability.datacard.sensitivity`: hidden
 - `discoverability.datacard.change_log`: hidden
 - `discoverability.datacard.created_by`: hidden
-- `discoverability.identification.project`: hidden
+- `discoverability.dataset_description.tags.project`: hidden
 - `discoverability.identification.additional_ids`: hidden
 - `discoverability.identification.supersedes`: hidden
 - `discoverability.identification.superseded_by`: hidden
 - `discoverability.identification.parent_collection`: hidden
 - `discoverability.dataset_description.task_subcategory`: hidden
 - `discoverability.product_type`: hidden
+- `discoverability.contact.valid_until`: hidden
 - `discoverability.additional_contacts.valid_until`: hidden
 - `interoperability.domain_metadata`: hidden
 - `reusability.data_quality`: hidden

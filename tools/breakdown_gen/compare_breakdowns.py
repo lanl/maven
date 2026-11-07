@@ -38,22 +38,20 @@ def check_v2_rules(tree):
             errs.append(f"{p}: visible, but its parent {parent} is hidden")
         if isinstance(n.get("value"), dict):
             errs += [f"{p}: missing '{k}'" for k in ("description", "visible") if k not in n]
-            if n.get("type") is not None and (n["type"] != "list" or not isinstance(n.get("length"), int)):
+            if "type" in n and (n["type"] != "list" or not isinstance(n.get("length"), int)):
                 errs.append(f"{p}: a block with a type must be type list with a number length")
             continue
         errs += [f"{p}: missing '{k}'" for k in V2_LEAF_KEYS if k not in n]
         typ = n.get("type")
-        if typ is None and not n.get("visible", True):
-            # every hidden field has type / options / length null (Vedant, 2026-11-06)
-            if n.get("options") is not None or n.get("length") is not None:
-                errs.append(f"{p}: type null, so options and length must be null too")
-        else:
-            if typ not in ("int", "float", "string", "list", "dropdown"):
-                errs.append(f"{p}: unsupported type {typ!r}")
-            if (typ == "dropdown") != (isinstance(n.get("options"), list) and bool(n["options"])):
-                errs.append(f"{p}: options must be a non-empty list for a dropdown and null otherwise")
-            if (typ == "list") != isinstance(n.get("length"), int):
-                errs.append(f"{p}: length must be a number for a list and null otherwise")
+        if typ not in ("int", "float", "string", "list", "dropdown"):  # every leaf has a type, even hidden (2026-11-06)
+            errs.append(f"{p}: unsupported type {typ!r}")
+        hidden_dropdown = typ == "dropdown" and not n.get("visible", True)  # hidden: options are null on purpose
+        if not hidden_dropdown and (typ == "dropdown") != (isinstance(n.get("options"), list) and bool(n["options"])):
+            errs.append(f"{p}: options must be a non-empty list for a visible dropdown and null otherwise")
+        if hidden_dropdown and n.get("options") is not None:
+            errs.append(f"{p}: a hidden field has options null")
+        if (typ == "list") != isinstance(n.get("length"), int):
+            errs.append(f"{p}: length must be a number for a list and null otherwise")
         if n.get("mapping") is not None and n["mapping"] not in f:
             errs.append(f"{p}: mapping {n['mapping']!r} is not a field of this breakdown")
     return errs

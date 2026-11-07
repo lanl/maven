@@ -69,6 +69,19 @@ def test_missing_block_is_caught_per_section():
     assert "ai_usability.ai_usage.training_use_status" in missing and len(missing) == 11
 
 
+def test_v20_hidden_dropdown_value_is_checked():
+    # a hidden dropdown has options null (2026-11-06): its pre-filled value is checked against the template's list
+    tmpl = (HERE / "templates" / "genesis_datacard_v2.0.0_vedant.yaml").read_text(encoding="utf-8")
+    bd = yaml.safe_load((HERE / "genesis_dc_v2.0_breakdown.generated.yaml").read_text(encoding="utf-8"))
+    cfg = yaml.safe_load((HERE / "config_v2.0.yaml").read_text(encoding="utf-8"))
+    gone = cfg["exclude"] + cfg["exclude_top_level"]
+    assert [f for f in validate(tmpl, bd, gone)[2] if f[0] == "ERROR"] == []
+    role = bd["discoverability"]["value"]["datacard"]["value"]["created_by"]["value"]["creator"]["value"]["ai_model"]["value"]["role"]
+    role["value"] = "Not_A_Role"
+    assert [p for s, _, p, m in validate(tmpl, bd, gone)[2] if s == "ERROR"] == [
+        "discoverability.datacard.created_by.creator.ai_model.role"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

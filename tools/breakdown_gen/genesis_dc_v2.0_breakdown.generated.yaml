@@ -10,7 +10,7 @@ xCard:
       description: ''
       visible: false
       mapping: null
-      type: null
+      type: string
       options: null
       length: null
       required: true
@@ -20,7 +20,7 @@ supports_discoverability:
   description: ''
   visible: false
   mapping: null
-  type: null
+  type: dropdown
   options: null
   length: null
   required: true
@@ -30,7 +30,7 @@ supports_accessibility:
   description: ''
   visible: false
   mapping: null
-  type: null
+  type: dropdown
   options: null
   length: null
   required: true
@@ -40,7 +40,7 @@ supports_interoperability:
   description: ''
   visible: false
   mapping: null
-  type: null
+  type: dropdown
   options: null
   length: null
   required: true
@@ -50,7 +50,7 @@ supports_reusability:
   description: ''
   visible: false
   mapping: null
-  type: null
+  type: dropdown
   options: null
   length: null
   required: true
@@ -60,7 +60,7 @@ supports_governed_use:
   description: ''
   visible: false
   mapping: null
-  type: null
+  type: dropdown
   options: null
   length: null
   required: true
@@ -70,7 +70,7 @@ supports_ai_usability:
   description: ''
   visible: false
   mapping: null
-  type: null
+  type: dropdown
   options: null
   length: null
   required: true
@@ -88,7 +88,7 @@ discoverability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: int
           options: null
           length: null
           required: true
@@ -97,7 +97,7 @@ discoverability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: int
           options: null
           length: null
           required: true
@@ -106,7 +106,7 @@ discoverability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: true
@@ -115,7 +115,7 @@ discoverability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: true
@@ -128,7 +128,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -137,7 +137,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -150,7 +150,7 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.overall_sensitivity
-              type: null
+              type: dropdown
               options: null
               length: null
               required: true
@@ -159,7 +159,7 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.source_marking_string
-              type: null
+              type: string
               options: null
               length: null
               required: true
@@ -168,7 +168,7 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.source_marking_scheme
-              type: null
+              type: dropdown
               options: null
               length: null
               required: true
@@ -177,7 +177,7 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.classified_status
-              type: null
+              type: dropdown
               options: null
               length: null
               required: true
@@ -186,7 +186,7 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.classification_level
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -195,7 +195,7 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.classification_category
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -204,16 +204,16 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.classified_control_markings
-              type: null
+              type: list
               options: null
-              length: null
+              length: 3
               required: false
               value: []
             cui_status:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.cui_status
-              type: null
+              type: dropdown
               options: null
               length: null
               required: true
@@ -222,34 +222,34 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.cui_basic_categories
-              type: null
+              type: list
               options: null
-              length: null
+              length: 3
               required: false
               value: []
             cui_specified_categories:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.cui_specified_categories
-              type: null
+              type: list
               options: null
-              length: null
+              length: 3
               required: false
               value: []
             cui_limited_dissemination_controls:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.cui_limited_dissemination_controls
-              type: null
+              type: list
               options: null
-              length: null
+              length: 3
               required: false
               value: []
             ucni_status:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.ucni_status
-              type: null
+              type: dropdown
               options: null
               length: null
               required: true
@@ -258,7 +258,7 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.uk_mda_status
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -267,22 +267,22 @@ discoverability:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.legacy_label_source
-              type: null
+              type: list
               options: null
-              length: null
+              length: 3
               required: false
               value: []
             normalized_control_basis:
               description: ''
               visible: false
               mapping: discoverability.sensitivity.normalized_control_basis
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
               value: ''
         creation_method:
-          description: 'The method by which the datacard was created, following a controlled vocabulary. This provides context on how the datacard was generated and can inform trust and maintenance practices. Allowed values: Manual | Automated | Hybrid'
+          description: The method by which the datacard was created, following a controlled vocabulary. This provides context on how the datacard was generated and can inform trust and maintenance practices.
           visible: true
           mapping: null
           type: dropdown
@@ -316,7 +316,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: true
@@ -325,7 +325,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: true
@@ -334,7 +334,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: true
@@ -347,7 +347,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: true
@@ -356,7 +356,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -373,7 +373,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: discoverability.contact.person.given_name
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -382,7 +382,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: discoverability.contact.person.family_name
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -391,7 +391,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: discoverability.contact.person.email
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: false
@@ -404,7 +404,7 @@ discoverability:
                           description: ''
                           visible: false
                           mapping: discoverability.contact.person.affiliation.name
-                          type: null
+                          type: string
                           options: null
                           length: null
                           required: true
@@ -413,7 +413,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: discoverability.contact.person.role
-                      type: null
+                      type: dropdown
                       options: null
                       length: null
                       required: true
@@ -426,7 +426,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -435,7 +435,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: dropdown
                       options: null
                       length: null
                       required: false
@@ -448,7 +448,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -457,7 +457,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -466,7 +466,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -475,7 +475,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: dropdown
                       options: null
                       length: null
                       required: false
@@ -484,7 +484,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: dropdown
                       options: null
                       length: null
                       required: true
@@ -497,7 +497,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -506,7 +506,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: true
@@ -515,7 +515,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: dropdown
                       options: null
                       length: null
                       required: true
@@ -524,7 +524,7 @@ discoverability:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: dropdown
                       options: null
                       length: null
                       required: true
@@ -543,14 +543,14 @@ discoverability:
           required: true
           value: ''
         project:
-          description: ''
-          visible: false
+          description: Replace default value if necessary with a single human-readable name from the project this dataset belongs to. May be a Genesis project or sub-project, or a non-Genesis project or sub-project. Use the same name in the datacard filename. e.g., genesis | genesis-fusion | genesis-lightsource | nuclear-physics
+          visible: true
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: true
-          value: genesis
+          value: ''
         version:
           description: 'Dataset version using semantic versioning: MAJOR.MINOR.PATCH Increment MAJOR for breaking changes, MINOR for additions, PATCH for corrections. Start at 1.0.0 for first release. See supersedes / superseded_by below for linking versions, and stewardship.versioning_strategy for how versions are managed.'
           visible: true
@@ -565,7 +565,7 @@ discoverability:
           visible: true
           value:
             type:
-              description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+              description: The type of the identifier (e.g., DOI, UUID).
               visible: true
               mapping: null
               type: dropdown
@@ -590,7 +590,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -599,7 +599,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -612,7 +612,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -621,7 +621,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -634,7 +634,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -643,7 +643,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -656,7 +656,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -669,7 +669,7 @@ discoverability:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
@@ -678,7 +678,7 @@ discoverability:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -688,7 +688,7 @@ discoverability:
       visible: true
       value:
         science_domain:
-          description: 'Based on OSTI Subject Areas, scientific domains or disciplines this dataset primarily relates to. Extends the the list of OSTI Subject Areas with an Other category for datasets that do not fit into the OSTI list. Those using E-Link can map to their own taxonomy. Allowed values: Biology and Medicine | Chemistry | Energy Storage, Conversion, and Utilization | Engineering | Environmental Sciences | Fission and Nuclear Technologies | Fossil Fuels | Geosciences | Materials | Mathematics and Computing | National Defense | Physics | Power Generation and Distribution | Renewable Energy | Other'
+          description: Based on OSTI Subject Areas, scientific domains or disciplines this dataset primarily relates to. Extends the the list of OSTI Subject Areas with an Other category for datasets that do not fit into the OSTI list. Those using E-Link can map to their own taxonomy.
           visible: true
           mapping: null
           type: dropdown
@@ -746,9 +746,9 @@ discoverability:
           visible: true
           value:
             project:
-              description: Required when tags is provided. Replace default value if necessary with a single human-readable name from the project this dataset belongs to. May be a Genesis project or sub-project, or a non-Genesis project or sub-project. Use the same name in the datacard filename. e.g., genesis | genesis-fusion | genesis-lightsource | nuclear-physics
-              visible: true
-              mapping: null
+              description: ''
+              visible: false
+              mapping: discoverability.identification.project
               type: string
               options: null
               length: null
@@ -764,7 +764,7 @@ discoverability:
               required: false
               value: ''
             object_type:
-              description: 'The type of object described by this datacard. Allowed values: Dataset | Model | Software | AI_Agent | Infrastructure | Resource | Other'
+              description: The type of object described by this datacard.
               visible: true
               mapping: null
               type: dropdown
@@ -785,9 +785,9 @@ discoverability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: list
           options: null
-          length: null
+          length: 3
           required: false
           value: []
         keywords:
@@ -803,13 +803,13 @@ discoverability:
       description: ''
       visible: false
       mapping: null
-      type: null
+      type: dropdown
       options: null
       length: null
       required: true
       value: Dataset
     release_status:
-      description: 'The release status of the dataset This provides important context about the lifecycle stage of the dataset and can inform users about its readiness for use. Allowed values: Draft | Under_Review | Approved | Published | Deprecated'
+      description: The release status of the dataset This provides important context about the lifecycle stage of the dataset and can inform users about its readiness for use.
       visible: true
       mapping: null
       type: dropdown
@@ -888,7 +888,7 @@ discoverability:
                   required: true
                   value: ''
             role:
-              description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+              description: The function of an entity or agent with respect to another entity or resource.
               visible: true
               mapping: null
               type: dropdown
@@ -904,7 +904,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: true
@@ -913,11 +913,20 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
               value: ''
+        valid_until:
+          description: ''
+          visible: false
+          mapping: null
+          type: string
+          options: null
+          length: null
+          required: false
+          value: ''
         succession_note:
           description: Who to contact if this contact is no longer reachable. e.g., Contact the ORNL data management office at data@ornl.gov. Include both a person and a group (e.g., a team or office) to contact, for clarity.
           visible: true
@@ -978,7 +987,7 @@ discoverability:
                   required: false
                   value: ''
             role:
-              description: 'Required if an entry is added. The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+              description: Required if an entry is added. The function of an entity or agent with respect to another entity or resource.
               visible: true
               mapping: null
               type: dropdown
@@ -994,7 +1003,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -1003,7 +1012,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -1012,7 +1021,7 @@ discoverability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -1077,7 +1086,7 @@ discoverability:
                   required: true
                   value: ''
             role:
-              description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+              description: The function of an entity or agent with respect to another entity or resource.
               visible: true
               mapping: null
               type: dropdown
@@ -1093,7 +1102,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: true
@@ -1102,7 +1111,7 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -1132,7 +1141,7 @@ discoverability:
           required: false
           value: ''
         funding_source:
-          description: 'Funder or sponsor of the research that produced this dataset. Allowed values: DOE_Program_SC | DOE_Program_NNSA | LDRD | WFO | CRADA | Other_Federal | State_Government | Subcontract | Industry | Nonprofit | Internal | Other'
+          description: Funder or sponsor of the research that produced this dataset.
           visible: true
           mapping: null
           type: dropdown
@@ -1183,7 +1192,7 @@ discoverability:
           required: true
           value: ''
         role:
-          description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+          description: The function of an entity or agent with respect to another entity or resource.
           visible: true
           mapping: null
           type: dropdown
@@ -1207,7 +1216,7 @@ discoverability:
           required: false
           value: ''
         role:
-          description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+          description: The function of an entity or agent with respect to another entity or resource.
           visible: true
           mapping: null
           type: dropdown
@@ -1233,7 +1242,7 @@ discoverability:
       visible: true
       value:
         overall_sensitivity:
-          description: 'Human-readable top-level sensitivity posture of the data card (for `discoverability.datacard.sensitivity`), or the dataset (for `discoverability.sensitivity`) - do not automatically set the overall sensitivity of the data card and dataset sensitivity to the same value, as they may differ. The field value is based on the authoritative source markings and metadata fields. This is a summary field only and does not replace the authoritative fields such as the classification_status, classification_level, export_control_basis, or privacy_control_basis fields. Authoritative source markings and metadata fields should be used for access control and governance decisions. Use "Public" for unclassified, non-sensitive assets that can be shared publicly. Allowed values: Public | Unclassified_Uncontrolled | CUI | UCNI | Classified | Legacy_Controlled | Mixed | Other_Controlled'
+          description: Human-readable top-level sensitivity posture of the data card (for `discoverability.datacard.sensitivity`), or the dataset (for `discoverability.sensitivity`) - do not automatically set the overall sensitivity of the data card and dataset sensitivity to the same value, as they may differ. The field value is based on the authoritative source markings and metadata fields. This is a summary field only and does not replace the authoritative fields such as the classification_status, classification_level, export_control_basis, or privacy_control_basis fields. Authoritative source markings and metadata fields should be used for access control and governance decisions. Use "Public" for unclassified, non-sensitive assets that can be shared publicly.
           visible: true
           mapping: null
           type: dropdown
@@ -1251,7 +1260,7 @@ discoverability:
           required: true
           value: ''
         source_marking_scheme:
-          description: 'Identifies the authoritative source marking regime, for the source_marking_string field. Use "None" for unclassified, non-sensitive assets that can be shared publicly. If a Legacy_OUO is unresolved to a current standard marking, the `normalized_control_basis` should be populated as "Legacy_Needs_Mapping" to indicate that the control basis is legacy and needs interpretation for governance purposes. Allowed values: DOE_CUI | DOE_UCNI | EO13526_Classified | AEA_RD_FRD_TFNI | DOD_CUI | DHS_CUI | Legacy_OUO | Legacy_Site_Specific | Other_Agency | None. If the data is open (public), select None.'
+          description: Identifies the authoritative source marking regime, for the source_marking_string field. Use "None" for unclassified, non-sensitive assets that can be shared publicly. If a Legacy_OUO is unresolved to a current standard marking, the `normalized_control_basis` should be populated as "Legacy_Needs_Mapping" to indicate that the control basis is legacy and needs interpretation for governance purposes. If the data is open (public), select None.
           visible: true
           mapping: null
           type: dropdown
@@ -1269,7 +1278,7 @@ discoverability:
           required: true
           value: ''
         classification_level:
-          description: 'Official classification level, if the asset is classified. Required if classified_status is "Yes". Allowed values: Top_Secret | Secret | Confidential'
+          description: Official classification level, if the asset is classified. Required if classified_status is "Yes".
           visible: true
           mapping: null
           type: dropdown
@@ -1278,7 +1287,7 @@ discoverability:
           required: false
           value: ''
         classification_category:
-          description: 'Official classification category, if the asset is classified. Required if classified_status = "Yes". If present, at least one specified category must be included. Allowed values: NSI | RD | FRD | TFNI | Other_Classified'
+          description: Official classification category, if the asset is classified. Required if classified_status = "Yes". If present, at least one specified category must be included.
           visible: true
           mapping: null
           type: dropdown
@@ -1341,7 +1350,7 @@ discoverability:
           required: true
           value: ''
         uk_mda_status:
-          description: 'Indicates whether the asset is subject to UK Ministry of Defence Assessment (MDA)-specific handling. Optional and may be used where relevant to local/site governance. Allowed values: "Yes" | "No" | Unknown | not_applicable'
+          description: Indicates whether the asset is subject to UK Ministry of Defence Assessment (MDA)-specific handling. Optional and may be used where relevant to local/site governance.
           visible: true
           mapping: null
           type: dropdown
@@ -1359,7 +1368,7 @@ discoverability:
           required: false
           value: []
         normalized_control_basis:
-          description: 'Optional interpreted control basis used for governance where source materials contain legacy, mixed, or non-standard constructs. If present, it must be populated with at least one value. Provide as a list of unique entries if multiple control bases apply. This does not replace authoritative source markings. If source_marking_scheme = Legacy_OUO and the legacy marking is unresolved to a current standard marking, this should be populated as "Legacy_Needs_Mapping" to indicate that the control basis is legacy and needs interpretation for governance purposes. Allowed values: Classified | CUI | UCNI | Public_Release_Approved | Legacy_Needs_Mapping | Other_Controlled'
+          description: Optional interpreted control basis used for governance where source materials contain legacy, mixed, or non-standard constructs. If present, it must be populated with at least one value. Provide as a list of unique entries if multiple control bases apply. This does not replace authoritative source markings. If source_marking_scheme = Legacy_OUO and the legacy marking is unresolved to a current standard marking, this should be populated as "Legacy_Needs_Mapping" to indicate that the control basis is legacy and needs interpretation for governance purposes.
           visible: true
           mapping: null
           type: dropdown
@@ -1372,7 +1381,7 @@ discoverability:
       visible: true
       value:
         state:
-          description: 'Current lifecycle position of the data itself, following StateEnum controlled vocabulary. Allowed values: Raw | Processing | QA | Analysis | Review | Embargo | Published | Archived | not_applicable'
+          description: Current lifecycle position of the data itself, following StateEnum controlled vocabulary.
           visible: true
           mapping: null
           type: dropdown
@@ -1417,7 +1426,7 @@ accessibility:
       visible: true
       value:
         access_level:
-          description: 'The access level of the dataset. This provides important context about who can access the dataset and can inform users about potential barriers to access and use. This does not replace the authoritative source markings and metadata fields for classification, CUI, or other sensitivity designations, which should still be filled out based on the authoritative source markings. Allowed values: Open | Restricted | Controlled'
+          description: The access level of the dataset. This provides important context about who can access the dataset and can inform users about potential barriers to access and use. This does not replace the authoritative source markings and metadata fields for classification, CUI, or other sensitivity designations, which should still be filled out based on the authoritative source markings.
           visible: true
           mapping: null
           type: dropdown
@@ -1438,29 +1447,29 @@ accessibility:
           description: 'List of authorizations required. When formal authorization is required to access the datase. Allowed values: Account | User_Agreement | Data_Use_Agreement | Sponsor_Approval | Export_Control_Review | IRB_Approval | Other'
           visible: true
           mapping: null
-          type: dropdown
-          options: [Account, User_Agreement, Data_Use_Agreement, Sponsor_Approval, Export_Control_Review, IRB_Approval, Other]
-          length: null
+          type: list
+          options: null
+          length: 3
           required: false
-          value: ''
+          value: []
         intended_partner_classes:
           description: 'The intended partner classes/types (list) that are expected to access and use this dataset, if applicable. If absent, or null, this field is not yet known or determined. Use an empty list if definitively no specific partner classes are targeted. Use Public if this dataset is intended for broad public use without restrictions. Allowed values: Internal_Team | Tri_Lab | DOE_NNSA_Lab | Federal_Partner | Contractor | Academic_Researchers | External_Research_Partner | Industry_Partner | Public | Other'
           visible: true
           mapping: null
-          type: dropdown
-          options: [Internal_Team, Tri_Lab, DOE_NNSA_Lab, Federal_Partner, Contractor, Academic_Researchers, External_Research_Partner, Industry_Partner, Public, Other]
-          length: null
+          type: list
+          options: null
+          length: 3
           required: false
-          value: ''
+          value: []
         approved_environments:
           description: 'Approved environments for accessing or using the dataset, if applicable. Use an empty list ([]) if there are no specific approved environments or if the dataset is publicly accessible. null or absent means it has not yet been determined whether approved environments are required. This can inform users about where they are allowed to access and use the dataset, which can be important for compliance with security requirements. Allowed values: JUCE | Classified Enclave | CUI Approved Enclave | Cloud Enclave (Authorized)'
           visible: true
           mapping: null
-          type: dropdown
-          options: [JUCE, Classified Enclave, CUI Approved Enclave, Cloud Enclave (Authorized)]
-          length: null
+          type: list
+          options: null
+          length: 3
           required: false
-          value: ''
+          value: []
         policy_url:
           description: URL to the official access policy or data use agreement governing this dataset. This can provide users with direct access to the full terms and conditions for using the dataset, which can inform their understanding of legal and ethical requirements.
           visible: true
@@ -1515,7 +1524,7 @@ accessibility:
               required: false
               value: ''
             access_level:
-              description: 'The access level of the dataset. This provides important context about who can access the dataset and can inform users about potential barriers to access and use. This does not replace the authoritative source markings and metadata fields for classification, CUI, or other sensitivity designations, which should still be filled out based on the authoritative source markings. Allowed values: Open | Restricted | Controlled'
+              description: The access level of the dataset. This provides important context about who can access the dataset and can inform users about potential barriers to access and use. This does not replace the authoritative source markings and metadata fields for classification, CUI, or other sensitivity designations, which should still be filled out based on the authoritative source markings.
               visible: true
               mapping: null
               type: dropdown
@@ -1573,7 +1582,7 @@ accessibility:
                   required: false
                   value: ''
                 authentication:
-                  description: 'Whether authentication is required to access the dataset through this endpoint. Informs users about potential barriers to access and can help them prepare \ for any necessary credentials or permissions needed to work with the dataset. Allowed values: None | API_Key | OAuth2 | SAML | Certificate | OpenID_Connect | Basic_Auth | Bearer_Token | Other'
+                  description: Whether authentication is required to access the dataset through this endpoint. Informs users about potential barriers to access and can help them prepare \ for any necessary credentials or permissions needed to work with the dataset.
                   visible: true
                   mapping: null
                   type: dropdown
@@ -1616,8 +1625,8 @@ accessibility:
           description: The unit of measurement for the record count, such as samples, files, records, timesteps, images, tokens, other).
           visible: true
           mapping: null
-          type: dropdown
-          options: [samples, files, records, timesteps, images, tokens, other]
+          type: string
+          options: null
           length: null
           required: false
           value: ''
@@ -1733,7 +1742,7 @@ interoperability:
               visible: true
               value:
                 type:
-                  description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+                  description: The type of the identifier (e.g., DOI, UUID).
                   visible: true
                   mapping: null
                   type: dropdown
@@ -1751,7 +1760,7 @@ interoperability:
                   required: false
                   value: ''
             relationship:
-              description: 'The relationship of the source dataset to the current dataset. Allowed values: is_cited_by | cites | in_series | is_supplement_to | is_supplemented_by | is_continued_by | continues | describes | is_described_by | has_metadata | is_metadata_for | has_version | is_version_of | is_previous_version_of | is_part_of | has_part | is_published_in | is_referenced_by | references | is_documented_by | documents | is_compiled_by | compiles | is_variant_form_of | is_original_form_of | is_identical_to | is_reviewed_by | reviews | is_derived_from | is_source_of | is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by | collects | is_translation_of | has_translation | other | generates | is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by | is_trained_on | is_used_for_training | is_evaluated_on | is_used_for_evaluation | tested_on | validated_on | fine_tuned_from | has_evaluation'
+              description: The relationship of the source dataset to the current dataset.
               visible: true
               mapping: null
               type: dropdown
@@ -1859,7 +1868,7 @@ interoperability:
               visible: true
               value:
                 type:
-                  description: 'The type of the identifier (e.g., DOI, UUID). Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+                  description: The type of the identifier (e.g., DOI, UUID).
                   visible: true
                   mapping: null
                   type: dropdown
@@ -1877,7 +1886,7 @@ interoperability:
                   required: false
                   value: ''
             relationship:
-              description: 'Relationship to other datasets or resources. This can include links to related datasets, publications, software, or other resources that are relevant to understanding and using the dataset effectively. Allowed values: is_cited_by | cites | in_series | is_supplement_to | is_supplemented_by | is_continued_by | continues | describes | is_described_by | has_metadata | is_metadata_for | has_version | is_version_of | is_previous_version_of | is_part_of | has_part | is_published_in | is_referenced_by | references | is_documented_by | documents | is_compiled_by | compiles | is_variant_form_of | is_original_form_of | is_identical_to | is_reviewed_by | reviews | is_derived_from | is_source_of | is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by | collects | is_translation_of | has_translation | other | generates | is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by | is_trained_on | is_used_for_training | is_evaluated_on | is_used_for_evaluation | tested_on | validated_on | fine_tuned_from | has_evaluation'
+              description: Relationship to other datasets or resources. This can include links to related datasets, publications, software, or other resources that are relevant to understanding and using the dataset effectively.
               visible: true
               mapping: null
               type: dropdown
@@ -1901,7 +1910,7 @@ interoperability:
               required: false
               value: ''
             type:
-              description: 'The type of the Identifier. Allowed values: ark | doi | handle | local | purl | url | urn | uuid | other | unregistered'
+              description: The type of the Identifier.
               visible: true
               mapping: null
               type: dropdown
@@ -1910,7 +1919,7 @@ interoperability:
               required: false
               value: ''
             relationship:
-              description: 'Relationship to other datasets or resources. This can include links to related datasets, publications, software, or other resources that are relevant to understanding and using the dataset effectively. Allowed values: is_cited_by | cites | in_series | is_supplement_to | is_supplemented_by | is_continued_by | continues | describes | is_described_by | has_metadata | is_metadata_for | has_version | is_version_of | is_previous_version_of | is_part_of | has_part | is_published_in | is_referenced_by | references | is_documented_by | documents | is_compiled_by | compiles | is_variant_form_of | is_original_form_of | is_identical_to | is_reviewed_by | reviews | is_derived_from | is_source_of | is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by | collects | is_translation_of | has_translation | other | generates | is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by | is_trained_on | is_used_for_training | is_evaluated_on | is_used_for_evaluation | tested_on | validated_on | fine_tuned_from | has_evaluation'
+              description: Relationship to other datasets or resources. This can include links to related datasets, publications, software, or other resources that are relevant to understanding and using the dataset effectively.
               visible: true
               mapping: null
               type: dropdown
@@ -1943,7 +1952,7 @@ interoperability:
               required: false
               value: ''
             role:
-              description: 'Required if an entry is added. The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+              description: Required if an entry is added. The function of an entity or agent with respect to another entity or resource.
               visible: true
               mapping: null
               type: dropdown
@@ -1952,7 +1961,7 @@ interoperability:
               required: false
               value: ''
             relationship:
-              description: 'Required if an entry is added. The relationship of this software to the datacard or dataset. Allowed values: is_cited_by | cites | in_series | is_supplement_to | is_supplemented_by | is_continued_by | continues | describes | is_described_by | has_metadata | is_metadata_for | has_version | is_version_of | is_previous_version_of | is_part_of | has_part | is_published_in | is_referenced_by | references | is_documented_by | documents | is_compiled_by | compiles | is_variant_form_of | is_original_form_of | is_identical_to | is_reviewed_by | reviews | is_derived_from | is_source_of | is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by | collects | is_translation_of | has_translation | other | generates | is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by | is_trained_on | is_used_for_training | is_evaluated_on | is_used_for_evaluation | tested_on | validated_on | fine_tuned_from | has_evaluation'
+              description: Required if an entry is added. The relationship of this software to the datacard or dataset.
               visible: true
               mapping: null
               type: dropdown
@@ -1994,7 +2003,7 @@ interoperability:
               required: false
               value: ''
             role:
-              description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+              description: The function of an entity or agent with respect to another entity or resource.
               visible: true
               mapping: null
               type: dropdown
@@ -2003,7 +2012,7 @@ interoperability:
               required: false
               value: ''
             relationship:
-              description: 'Required if an entry is added. The relationship of this AI model to the datacard or dataset Allowed values: is_cited_by | cites | in_series | is_supplement_to | is_supplemented_by | is_continued_by | continues | describes | is_described_by | has_metadata | is_metadata_for | has_version | is_version_of | is_previous_version_of | is_part_of | has_part | is_published_in | is_referenced_by | references | is_documented_by | documents | is_compiled_by | compiles | is_variant_form_of | is_original_form_of | is_identical_to | is_reviewed_by | reviews | is_derived_from | is_source_of | is_required_by | requires | obsoletes | is_obsoleted_by | is_collected_by | collects | is_translation_of | has_translation | other | generates | is_generated_by | processes | is_processed_by | analyzes | is_analyzed_by | is_trained_on | is_used_for_training | is_evaluated_on | is_used_for_evaluation | tested_on | validated_on | fine_tuned_from | has_evaluation'
+              description: Required if an entry is added. The relationship of this AI model to the datacard or dataset
               visible: true
               mapping: null
               type: dropdown
@@ -2019,7 +2028,7 @@ interoperability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2028,7 +2037,7 @@ interoperability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2037,7 +2046,7 @@ interoperability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: dropdown
           options: null
           length: null
           required: false
@@ -2050,7 +2059,7 @@ interoperability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -2059,7 +2068,7 @@ interoperability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2068,7 +2077,7 @@ interoperability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2076,14 +2085,14 @@ interoperability:
         fields:
           description: ''
           visible: false
-          type: null
-          length: null
+          type: list
+          length: 3
           value:
             name:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2092,7 +2101,7 @@ interoperability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2101,7 +2110,7 @@ interoperability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: dropdown
               options: null
               length: null
               required: false
@@ -2110,7 +2119,7 @@ interoperability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2119,7 +2128,7 @@ interoperability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2174,7 +2183,7 @@ reusability:
       visible: true
       value:
         level:
-          description: 'The stewardship level of the dataset from a controlled vocabulary, StewardshipLevelEnum, indicating the management level of stewardship. Allowed values: Project_Managed | Repository_Managed | Externally_Managed | not_applicable'
+          description: The stewardship level of the dataset from a controlled vocabulary, StewardshipLevelEnum, indicating the management level of stewardship.
           visible: true
           mapping: null
           type: dropdown
@@ -2231,7 +2240,7 @@ reusability:
                       required: false
                       value: ''
                 role:
-                  description: 'The function of an entity or agent with respect to another entity or resource. Allowed values: Conceptualization | Contact_Person | Contributor | Creator | Data_Curator | Data_Manager | Distributor | Editor | Formal_Analysis | Funding_Acquisition | Hosting_Institution | Investigation | Methodology | Producer | Project_Administration | Project_Leader | Project_Manager | Project_Member | Publisher | Registration_Agency | Registration_Authority | Related_Person | Researcher | Research_Group | Resources | Rights_Holder | Software | Sponsor | Supervision | Translator | Validation | Visualization | Work_Package_Leader | Writing_Original_Draft | Writing_Review_Editing | Other'
+                  description: The function of an entity or agent with respect to another entity or resource.
                   visible: true
                   mapping: null
                   type: dropdown
@@ -2247,7 +2256,7 @@ reusability:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2256,13 +2265,13 @@ reusability:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
                   value: ''
         update_frequency:
-          description: 'How often the dataset is updated or expected to be updated, if applicable. Allowed values: None | Ad_Hoc | Monthly | Quarterly | Annually | Continuously | Other'
+          description: How often the dataset is updated or expected to be updated, if applicable.
           visible: true
           mapping: null
           type: dropdown
@@ -2296,7 +2305,7 @@ reusability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: true
@@ -2305,7 +2314,7 @@ reusability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: true
@@ -2314,7 +2323,7 @@ reusability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: true
@@ -2323,7 +2332,7 @@ reusability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2332,7 +2341,7 @@ reusability:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2340,14 +2349,14 @@ reusability:
         missing_data_codes:
           description: ''
           visible: false
-          type: null
-          length: null
+          type: list
+          length: 3
           value:
             code:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2356,7 +2365,7 @@ reusability:
               description: ''
               visible: false
               mapping: null
-              type: null
+              type: string
               options: null
               length: null
               required: false
@@ -2513,7 +2522,7 @@ governed_use:
           visible: true
           value:
             export_control_status:
-              description: 'The export control status of the dataset. Allowed values: "Yes" | "No" | Pending_Review | Unknown'
+              description: The export control status of the dataset.
               visible: true
               mapping: null
               type: dropdown
@@ -2522,7 +2531,7 @@ governed_use:
               required: true
               value: ''
             export_control_basis:
-              description: 'The basis for the export control status. Required is `export_control_status` = "Yes". Allowed values: ITAR | EAR | DOE_Nuclear_Export_Control | Other | not_applicable'
+              description: The basis for the export control status. Required is `export_control_status` = "Yes".
               visible: true
               mapping: null
               type: dropdown
@@ -2531,7 +2540,7 @@ governed_use:
               required: false
               value: ''
             foreign_national_access_status:
-              description: 'Governance-facing outcome field indicating whether foreign national access is allowed, restricted, prohibited, or conditional, based on the combined effect of applicable export, classification, dissemination, agreement, or other source-authoritative constraints. This is not an export-only field. Allowed values: Allowed | Restricted | Prohibited | Conditional | Unknown'
+              description: Governance-facing outcome field indicating whether foreign national access is allowed, restricted, prohibited, or conditional, based on the combined effect of applicable export, classification, dissemination, agreement, or other source-authoritative constraints. This is not an export-only field.
               visible: true
               mapping: null
               type: dropdown
@@ -2544,7 +2553,7 @@ governed_use:
           visible: true
           value:
             privacy_status:
-              description: 'The privacy status of the dataset. Allowed values: "Yes" | "No" | Pending_Review | Unknown'
+              description: The privacy status of the dataset.
               visible: true
               mapping: null
               type: dropdown
@@ -2553,7 +2562,7 @@ governed_use:
               required: true
               value: ''
             pii_status:
-              description: 'Whether the dataset contains personally identifiable information (PII). Allowed values: "Yes" | "No" | Pending_Review | Unknown'
+              description: Whether the dataset contains personally identifiable information (PII).
               visible: true
               mapping: null
               type: dropdown
@@ -2562,7 +2571,7 @@ governed_use:
               required: true
               value: ''
             phi_status:
-              description: 'Whether the dataset contains protected health information (PHI). Use quotes to distinguish from boolean values. Allowed values: "Yes" | "No" | Pending_Review | Unknown'
+              description: Whether the dataset contains protected health information (PHI). Use quotes to distinguish from boolean values.
               visible: true
               mapping: null
               type: dropdown
@@ -2571,7 +2580,7 @@ governed_use:
               required: false
               value: ''
             privacy_control_basis:
-              description: 'The basis for the privacy status. Be explicit about the privacy regime(s) - e.g. use "not_applicable" if no privacy regime applies. Allowed values: HIPAA | Privacy_Act | Human_Subjects | Other_Regulated_Privacy | Site_Specific | not_applicable'
+              description: The basis for the privacy status. Be explicit about the privacy regime(s) - e.g. use "not_applicable" if no privacy regime applies.
               visible: true
               mapping: null
               type: dropdown
@@ -2593,7 +2602,7 @@ governed_use:
           visible: true
           value:
             ip_restriction_type:
-              description: 'The type of intellectual property (IP) restriction that applies to the dataset, if any. Allowed values: Proprietary | Limited_Rights | Restricted_Rights | Government_Purpose_Rights | Unlimited_Rights | Third_Party_Licensed | None'
+              description: The type of intellectual property (IP) restriction that applies to the dataset, if any.
               visible: true
               mapping: null
               type: dropdown
@@ -2614,13 +2623,13 @@ governed_use:
               description: 'The type of agreement required to access or use the dataset. Required is `agreement_required` = "Yes". Allowed values: DUA | CRADA | MOU | NDA | LICENSE | WFO | OTHER'
               visible: true
               mapping: null
-              type: dropdown
-              options: [DUA, CRADA, MOU, NDA, LICENSE, WFO, OTHER]
-              length: null
+              type: list
+              options: null
+              length: 3
               required: false
-              value: ''
+              value: []
             public_release_status:
-              description: 'The public release status of the dataset. Allowed values: Approved | Pending | Not_Approved | Requires_STI_Review'
+              description: The public release status of the dataset.
               visible: true
               mapping: null
               type: dropdown
@@ -2629,7 +2638,7 @@ governed_use:
               required: true
               value: ''
             record_status:
-              description: 'The record status of the dataset. Allowed values: Federal_Record | Contractor_Record | Non_Record | Mixed | Unknown'
+              description: The record status of the dataset.
               visible: true
               mapping: null
               type: dropdown
@@ -2645,7 +2654,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: dropdown
           options: null
           length: null
           required: true
@@ -2654,7 +2663,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: dropdown
           options: null
           length: null
           required: true
@@ -2663,7 +2672,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: dropdown
           options: null
           length: null
           required: true
@@ -2671,14 +2680,14 @@ governed_use:
     review_provenance_companion:
       description: ''
       visible: false
-      type: null
-      length: null
+      type: list
+      length: 3
       value:
         source_review_reference:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2687,7 +2696,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2696,7 +2705,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2705,7 +2714,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2714,7 +2723,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2731,7 +2740,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2740,7 +2749,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2749,7 +2758,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2762,7 +2771,7 @@ governed_use:
                       description: ''
                       visible: false
                       mapping: null
-                      type: null
+                      type: string
                       options: null
                       length: null
                       required: false
@@ -2771,7 +2780,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
@@ -2784,7 +2793,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2793,7 +2802,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
@@ -2806,7 +2815,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2815,7 +2824,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2824,7 +2833,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2833,7 +2842,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
@@ -2842,7 +2851,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
@@ -2855,7 +2864,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2864,7 +2873,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: string
                   options: null
                   length: null
                   required: false
@@ -2873,7 +2882,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
@@ -2882,7 +2891,7 @@ governed_use:
                   description: ''
                   visible: false
                   mapping: null
-                  type: null
+                  type: dropdown
                   options: null
                   length: null
                   required: false
@@ -2891,7 +2900,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2900,7 +2909,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2909,7 +2918,7 @@ governed_use:
           description: ''
           visible: false
           mapping: null
-          type: null
+          type: string
           options: null
           length: null
           required: false
@@ -2924,7 +2933,7 @@ ai_usability:
       visible: true
       value:
         training_use_status:
-          description: 'The status of whether this dataset can be used for training in AI/ML workflows. Allowed values: "Yes" | "No" | Conditional'
+          description: The status of whether this dataset can be used for training in AI/ML workflows.
           visible: true
           mapping: null
           type: dropdown
@@ -2942,7 +2951,7 @@ ai_usability:
           required: false
           value: ''
         inference_use_status:
-          description: 'The status of whether this dataset can be used for inference in AI/ML workflows. Allowed values: "Yes" | "No" | Conditional'
+          description: The status of whether this dataset can be used for inference in AI/ML workflows.
           visible: true
           mapping: null
           type: dropdown
@@ -2960,7 +2969,7 @@ ai_usability:
           required: false
           value: ''
         evaluation_use_status:
-          description: 'The status of whether this dataset can be used for evaluation in AI/ML workflows. Allowed values: "Yes" | "No" | Conditional'
+          description: The status of whether this dataset can be used for evaluation in AI/ML workflows.
           visible: true
           mapping: null
           type: dropdown

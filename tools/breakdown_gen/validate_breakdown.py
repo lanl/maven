@@ -175,7 +175,9 @@ def validate(template_text, breakdown, allow_missing=(), allow_extra_keys=("agen
             add("ERROR", p, "template has a value, breakdown has a group")
         elif "visible" in bd[p] and bv in ("", []):
             pass  # v2 format: leaf values start empty
-        elif "visible" in bd[p] and bd[p].get("type") == "dropdown" and bv not in bd[p].get("options", []):
+        elif "visible" in bd[p] and bd[p].get("type") == "dropdown" and bv not in (
+                bd[p].get("options")  # a hidden dropdown has options null: check the template's own list instead
+                or vocabulary(comments.get(p)) or re.findall(r'[^"|${}_]+', str(tv)) or [bv]):
             add("ERROR", p, f"pre-filled value {bv!r} is not one of the options")
         elif "visible" in bd[p] and PLACEHOLDER.fullmatch(str(tv).strip()) and not same_value(tv, bv):
             add("EXPECTED", p, f"pre-filled: template {tv!r} -> breakdown {bv!r}")  # v2: a placeholder may be filled in
@@ -197,7 +199,8 @@ def validate(template_text, breakdown, allow_missing=(), allow_extra_keys=("agen
                 + (f" (inside optional block `{optional}`; MAVEN would otherwise force it)" if optional else ""))
         vocab = vocabulary(comments.get(p))
         no_type = "visible" in f and not f["visible"] and f.get("type") is None  # v2: hidden + pre-filled / mapped
-        if vocab and f.get("type") not in ("dropdown", "radio") and "." in p and not no_type:  # top-level supports_* are drawn as Yes/No by MAVEN itself
+        # a v2 list may hold several values from the vocabulary (Vedant, 2026-11-06), so it counts as handled
+        if vocab and f.get("type") not in ("dropdown", "radio", "list") and "." in p and not no_type:  # top-level supports_* are drawn as Yes/No by MAVEN itself
             add("WARNING", p, f"comment lists choices {vocab[:6]}{'…' if len(vocab) > 6 else ''} but there is no dropdown")
         text = ((comments.get(p) or "") + " " + str(tmpl[p])).lower()  # choices may sit in the placeholder: ${"Yes|No"}
         for o in f.get("options") or []:

@@ -499,6 +499,14 @@ class V2Dumper(yaml.SafeDumper):
 V2Dumper.add_representer(list, lambda d, v: d.represent_sequence("tag:yaml.org,2002:seq", v, flow_style=True))
 
 
+def drop_options_text(desc, options):
+    """Vedant (2026-11-06): a dropdown already shows its options, so 'Allowed values: A | "B" | C' leaves the
+    description. Only this field's own options are matched, so a sentence after the list stays."""
+    alt = "|".join(re.escape(o) for o in sorted(options, key=len, reverse=True))  # longest first: Other_Federal, Other
+    item = rf'"?(?:{alt})"?'
+    return " ".join(re.sub(rf"\s*Allowed values:\s*{item}(?:\s*\|\s*{item})*\.?", " ", desc).split())
+
+
 def to_v2_format(tree, top=True, list_length=0):
     """Vedant's field format (2026-11-04, `output_format: v2`): every field has description / visible / value; a
     leaf also has type (int | float | string | list | dropdown), options, length, required and mapping. A leaf
@@ -519,6 +527,8 @@ def to_v2_format(tree, top=True, list_length=0):
             if typ not in LEAF_TYPES:
                 raise ValueError(f"{key}: type {typ!r} is not one of {LEAF_TYPES}")
             g["mapping"] = f.get("mapping")  # Vedant (2026-11-05): right under visible
+            if typ == "dropdown" and f.get("options"):
+                g["description"] = drop_options_text(g["description"], f["options"])
             g.update(type=typ, options=f.get("options", ["Yes", "No"]) if typ == "dropdown" else None,
                      length=list_length if typ == "list" else None, required=bool(f["required"]),
                      value=([] if typ == "list" else "") if isinstance(v, RawValue) else v)  # RawValue = placeholder
@@ -529,8 +539,8 @@ def to_v2_format(tree, top=True, list_length=0):
 def apply_hidden_and_mapping(tree, hidden=(), map_from=None):
     """v2 format: `hidden` patterns (path or fnmatch '*') set visible: false on the field and everything under it;
     `map_from` {target block: source block} points every leaf of the target at the same leaf of the source.
-    Every hidden field keeps only what MAVEN uses (Vedant, 2026-11-06): description '', type / options / length null;
-    visible, mapping, required and value stay. Returns report lines; a pattern or block that matches nothing stops the run."""
+    Every hidden field gets description '' and options null (Vedant, 2026-11-06); type, length (3 for a list), visible,
+    mapping, required and value stay. Returns report lines; a pattern or block that matches nothing stops the run."""
     map_from = map_from or {}
     hits = {p: 0 for p in list(hidden) + list(map_from)}
 
@@ -542,12 +552,11 @@ def apply_hidden_and_mapping(tree, hidden=(), map_from=None):
                 hits[pat] += 1
             # a hidden parent hides every child, whether it was hidden here or by an override {visible: false}
             h = hide or bool(matched) or not f.get("visible", True)
-            if h:
+            if h:  # Vedant (2026-11-06): type and list length stay, so the value can be stored with its type
                 f["visible"] = False
                 f["description"] = ""
-                for key in ("type", "options", "length"):
-                    if key in f:  # leaves, and blocks that are lists
-                        f[key] = None
+                if "options" in f:
+                    f["options"] = None
             if isinstance(f["value"], dict):
                 walk(f["value"], p, h)
                 continue

@@ -7,7 +7,7 @@
 |---|---|---|---|---|---|
 | xCard | 2 | 2 | 0 | 0 | 0 |
 | intended capabilities (supports_*) | 6 | 6 | 0 | 0 | 6 |
-| discoverability | 242 | 169 | 0 | 1 | 78 |
+| discoverability | 242 | 170 | 0 | 1 | 77 |
 | accessibility | 29 | 29 | 0 | 1 | 0 |
 | interoperability | 94 | 61 | 0 | 1 | 33 |
 | reusability | 57 | 42 | 0 | 0 | 15 |
@@ -23,7 +23,7 @@
 - `accessibility.access.intended_repositories.access_level`: tagged [accessibility_required] but required: false
 - `interoperability.provenance.processing_steps`: tagged [interoperability_required] but required: false
 
-## EXPECTED (141)
+## EXPECTED (140)
 
 - `discoverability.datacard.created_by.creator.person.orcid`: not in breakdown: excluded by --allow-missing
 - `discoverability.datacard.created_by.creator.person.affiliation.ror_id`: not in breakdown: excluded by --allow-missing
@@ -39,7 +39,6 @@
 - `discoverability.contact.person.orcid`: not in breakdown: excluded by --allow-missing
 - `discoverability.contact.person.affiliation.ror_id`: not in breakdown: excluded by --allow-missing
 - `discoverability.contact.organization.ror_id`: not in breakdown: excluded by --allow-missing
-- `discoverability.contact.valid_until`: not in breakdown: excluded by --allow-missing
 - `discoverability.additional_contacts.person.orcid`: not in breakdown: excluded by --allow-missing
 - `discoverability.additional_contacts.person.affiliation.ror_id`: not in breakdown: excluded by --allow-missing
 - `discoverability.additional_contacts.organization.ror_id`: not in breakdown: excluded by --allow-missing
