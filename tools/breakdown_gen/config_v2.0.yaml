@@ -50,7 +50,6 @@ exclude:
   - "*.ai_models.identifier"        # related_resources.ai_models is a list of ai_model entries (to confirm)
   - discoverability.contributors
   - discoverability.dataset_type
-  - discoverability.contact.valid_until
   - discoverability.authors.ai_model
   - discoverability.authors.software
   - interoperability.data_structure.features
@@ -66,8 +65,8 @@ exclude:
 
 # 2026-11-05: hidden fields (Vedant, part 4; output_format v2 only). A path hides the field and everything under it;
 # '*' matches any part of the path. Pre-filled values are in `overrides` below ({value: ...}).
-# 2026-11-06 (Vedant): every hidden field gets description '' and type / options / length null (only visible,
-# mapping, required and value are kept).
+# 2026-11-06 (Vedant): every hidden field gets description '' and options null; type is kept (every leaf has a type)
+# and a list keeps length 3. visible, mapping, required and value stay. identification.project is visible and empty.
 hidden:
   - "*.organization"                                    # every organization block and its leaves
   - "supports_*"                                       # 2026-11-05 (Vedant): the 6 capability flags, value Yes (overrides)
@@ -80,7 +79,7 @@ hidden:
   - discoverability.datacard.sensitivity
   - discoverability.datacard.change_log
   - discoverability.datacard.created_by
-  - discoverability.identification.project
+  - discoverability.dataset_description.tags.project       # 2026-11-06 (Vedant): mapped from identification.project
   # Vedant: check whether Alexandria stores these; visible if so, removed if not (to confirm)
   - discoverability.identification.additional_ids
   - discoverability.identification.supersedes
@@ -88,7 +87,8 @@ hidden:
   - discoverability.identification.parent_collection
   - discoverability.dataset_description.task_subcategory
   - discoverability.product_type
-  - discoverability.additional_contacts.valid_until    # contact.valid_until was removed in part 2
+  - discoverability.contact.valid_until                # 2026-11-06 (Vedant): added back, hidden and empty
+  - discoverability.additional_contacts.valid_until
   - interoperability.domain_metadata                   # until the AI-ready metadata is finished
   - reusability.data_quality                           # until the AI-ready metadata is finished
   - governed_use.compliance
@@ -107,17 +107,19 @@ overrides:
   discoverability.contact.person.email: {required: true}            # Vedant (2026-10-28): the primary contact needs an email
   # 2026-10-29: the comment calls this a controlled vocabulary but lists it after 'e.g.', so no dropdown is made
   interoperability.domain_metadata.fields.data_type: {type: dropdown, options: [float, int, string, boolean, datetime, other]}
-  # 2026-10-30: same list as v1.2 (dropdown there), now written as 'such as samples, files, ..., other)'
-  accessibility.dataset_scale.record_unit: {type: dropdown, options: [samples, files, records, timesteps, images, tokens, other]}
+  # 2026-11-06 (Vedant): free text, any unit (was a dropdown of the v1.2 list since 2026-10-30)
+  accessibility.dataset_scale.record_unit: {type: string}
   # 2026-10-29: all four values describe a release request; datasets never submitted for public release need not_applicable
   governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status: {options: [Approved, Pending, Not_Approved, Requires_STI_Review, not_applicable]}
+  # 2026-11-06 (Vedant): several values each (type list), not a single-choice dropdown
+  accessibility.access_policy.authorization_required: {type: list}
+  accessibility.access_policy.intended_partner_classes: {type: list}
+  accessibility.access_policy.approved_environments: {type: list}
+  governed_use.non_sensitivity_governance_metadata.rights_release_records.agreement_type: {type: list}
+  # 2026-11-06 (Vedant): tags.project is hidden, empty, and copied from identification.project
+  discoverability.dataset_description.tags.project: {mapping: discoverability.identification.project}
   # 2026-11-04: [situational_required] with no condition in the comment; the v2.0 reference guide (lines 73, 97, 130) says
-  # required when the parent block is present (tags) / when a preferred_citation is provided. Parents are optional, so false stays.
-  discoverability.dataset_description.tags.project:
-    description: " Required when tags is provided. Replace default value if necessary with a single human-readable name
-      from the project this dataset belongs to. May be a Genesis project or sub-project, or a non-Genesis project or
-      sub-project. Use the same name in the datacard filename. e.g., genesis | genesis-fusion | genesis-lightsource |
-      nuclear-physics"
+  # required when a preferred_citation is provided. The parent is optional, so false stays.
   # 2026-11-05: numeric leaves for the v2 format (int); the template only says "number of" / "in bytes"
   accessibility.dataset_scale.record_count: {type: int}
   accessibility.dataset_scale.compressed_bytes: {type: int}
@@ -129,15 +131,15 @@ overrides:
       In Repository | As Supplementary Material"
   # 2026-11-05: pre-filled values of hidden fields (Vedant, part 4)
   xCard.card_type: {value: dataset, description: "The xCard type (from the template header: for datasets, the xCard type is \"dataset\")."}
-  discoverability.datacard.template_version: {value: "2.0.0"}
-  discoverability.datacard.datacard_version: {value: "1.0.0"}
+  # 2026-11-06 (Vedant): type int for the pre-filled versions
+  discoverability.datacard.template_version: {value: "2.0.0", type: int}
+  discoverability.datacard.datacard_version: {value: "1.0.0", type: int}
   discoverability.datacard.language: {value: en}
   discoverability.datacard.id.type: {value: unregistered}
   discoverability.datacard.created_by.creator.ai_model.role: {value: Writing_Original_Draft}
   discoverability.datacard.created_by.creator.ai_model.relationship: {value: generates}
   discoverability.datacard.created_by.creator.software.role: {value: Software}
   discoverability.datacard.created_by.creator.software.relationship: {value: processes}
-  discoverability.identification.project: {value: genesis}
   discoverability.product_type: {value: Dataset}
   # 2026-11-05 (Vedant): supports_* are not shown and are always Yes
   supports_discoverability: {value: "Yes"}

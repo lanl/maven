@@ -73,7 +73,7 @@ def test_v20_uses_vedants_field_format():
         {"type": "list", "options": None, "length": 3, "required": True, "value": [], "mapping": None}
     # Vedant (2026-11-05): the supports_* flags are not shown and are always Yes
     flags = [k for k in tree if k.startswith("supports_")]
-    assert len(flags) == 6 and all((tree[k]["type"], tree[k]["visible"], tree[k]["value"]) == (None, False, "Yes") for k in flags)
+    assert len(flags) == 6 and all((tree[k]["type"], tree[k]["visible"], tree[k]["value"]) == ("dropdown", False, "Yes") for k in flags)
 
 
 def test_v20_excluded_fields_are_gone():
@@ -98,11 +98,9 @@ def test_v20_single_value_fields():
     single = [p for p in f if p.endswith(".role")] + [
         "discoverability.datacard.sensitivity.classification_category",
         "governed_use.non_sensitivity_governance_metadata.privacy.privacy_control_basis"]
-    # creator.ai_model.role / software.role are hidden + pre-filled, so their type is null (Vedant, 2026-11-05)
-    filled = lambda p: not f[p]["visible"]  # every hidden field has type null (Vedant, 2026-11-06)  # noqa: E731
-    assert len(single) == 22 and all(f[p]["type"] == (None if filled(p) else "dropdown")
+    assert len(single) == 22 and all(f[p]["type"] == "dropdown"
                                      and isinstance(f[p]["value"], str) for p in single)
-    assert f["discoverability.datacard.created_by.contribution_date"]["type"] != "list"  # hidden: type null
+    assert f["discoverability.datacard.created_by.contribution_date"]["type"] == "string"  # hidden, still typed
     for block in ("discoverability.contact.person", "interoperability.provenance.source_data",
                   "accessibility.access.intended_repositories"):  # single blocks (de-listed in Vedant's template)
         assert isinstance(f[block]["value"], dict)
@@ -124,11 +122,34 @@ def test_v20_hidden_prefilled_and_mapped():
         "discoverability.contact.person.affiliation.name"
     assert hidden("discoverability.contact.organization.name") and not hidden("discoverability.contact.person.given_name")
     assert not hidden("discoverability.contact.person.email") and not hidden("discoverability.sensitivity.cui_status")
-    # Vedant (2026-11-06): every hidden field has an empty description and type / options / length null
+    # Vedant (2026-11-06): every hidden field has an empty description and options null, but keeps its type
     for p, n in f.items():
         if hidden(p):
-            assert n["description"] == "" and all(n.get(k) is None for k in ("type", "options", "length")), p
-    assert f["discoverability.datacard.filename"]["type"] is None and f["discoverability.datacard.filename"]["value"] == ""
+            assert n["description"] == "" and n.get("options") is None, p
+            if not isinstance(n["value"], dict):
+                assert n["type"] in ("int", "float", "string", "list", "dropdown"), p
+    assert f["discoverability.datacard.filename"]["type"] == "string" and f["discoverability.datacard.filename"]["value"] == ""
+    assert (f["discoverability.datacard.template_version"]["type"], f["discoverability.datacard.template_version"]["value"]) == ("int", "2.0.0")  # Vedant: int (2026-11-06)
+    # identification.project is visible and empty; tags.project is hidden, empty and copied from it (2026-11-06)
+    ip, tp = f["discoverability.identification.project"], f["discoverability.dataset_description.tags.project"]
+    assert (ip["visible"], ip["value"], ip["mapping"]) == (True, "", None)
+    assert (tp["visible"], tp["value"], tp["mapping"]) == (False, "", "discoverability.identification.project")
+    # contact.valid_until is back, hidden and empty like additional_contacts.valid_until (2026-11-06)
+    assert f["discoverability.contact.valid_until"] == f["discoverability.additional_contacts.valid_until"]
+    assert (f["discoverability.contact.valid_until"]["visible"], f["discoverability.contact.valid_until"]["value"]) == (False, "")
+    # several values each: type list, length 3 (2026-11-06)
+    for k in ("authorization_required", "intended_partner_classes", "approved_environments"):
+        n = f[f"accessibility.access_policy.{k}"]
+        assert (n["visible"], n["type"], n["options"], n["length"], n["value"]) == (True, "list", None, 3, [])
+    at = f["governed_use.non_sensitivity_governance_metadata.rights_release_records.agreement_type"]
+    assert (at["type"], at["options"], at["length"], at["value"]) == ("list", None, 3, [])
+    ru = f["accessibility.dataset_scale.record_unit"]
+    assert (ru["type"], ru["options"], ru["value"]) == ("string", None, "")  # free text (2026-11-06)
+    # a dropdown shows its options, so its description no longer lists them (2026-11-06); text after the list stays
+    assert not [p for p, n in f.items() if n.get("type") == "dropdown" and "Allowed values" in n["description"]]
+    assert f["discoverability.sensitivity.source_marking_scheme"]["description"].endswith(
+        "governance purposes. If the data is open (public), select None.")
+    assert f["discoverability.release_status"]["description"].endswith("readiness for use.")
     assert f["discoverability.datacard.created_by.creator.ai_model.role"]["value"] == "Writing_Original_Draft"  # value kept
 
 
@@ -156,9 +177,7 @@ def test_v20_repeated_blocks_are_lists():
     blocks = {p for p, n in f.items() if isinstance(n["value"], dict) and "type" in n}
     assert {"discoverability.additional_contacts.person", "discoverability.authors.person",
             "discoverability.sponsor_organizations", "governed_use.review_provenance_companion"} <= blocks and len(blocks) == 12
-    # visible list blocks: list / 3; hidden ones (e.g. review_provenance_companion) have type / length null
-    assert all((f[p]["type"], f[p]["length"]) == (("list", 3) if f[p]["visible"] else (None, None)) for p in blocks)
-    assert sum(f[p]["visible"] for p in blocks) == 9
+    assert all((f[p]["type"], f[p]["length"]) == ("list", 3) for p in blocks)  # hidden ones too (2026-11-06)
     assert list(f["discoverability.authors.person"]) == ["description", "visible", "type", "length", "value"]
     assert "type" not in f["discoverability.authors"] and "type" not in f["discoverability.authors.person.affiliation"]
     assert all(n["length"] == 3 for n in f.values() if not isinstance(n["value"], dict) and n.get("type") == "list")
