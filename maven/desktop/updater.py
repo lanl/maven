@@ -588,41 +588,119 @@ trace "outer script end"
     os._exit(0)
 
 
+def _ps_quote(text):
+    """Escapes a string for embedding inside a single-quoted PowerShell
+    string literal (doubling an embedded single quote is PowerShell's own
+    escape for it, same idea as _sh_quote for POSIX shells)."""
+    return "'" + text.replace("'", "''") + "'"
+
+
 def _install_windows(installer_path, current_exe):
-    """Runs the NSIS installer silently, then relaunches. If the installer
-    itself reports failure (nonzero exit code), the failure marker is
-    written and the *current* exe is relaunched as a fallback instead of
-    the (possibly not actually installed) new one, so a failed update still
-    leaves a working app running."""
+    """Runs the NSIS installer, waits for it to actually finish (with a
+    timeout) rather than assuming /S always returns promptly, then retries
+    relaunching the app and verifies it actually stays alive -- mirroring
+    the liveness-check-and-retry pattern _install_macos needed for the same
+    underlying problem: a "successful" (exit code 0) install is not proof
+    the app comes back up.
+
+    This is written as PowerShell rather than a .bat file specifically so
+    the installer run can have a timeout. /S suppresses the installer
+    wizard's *pages*, but not a genuine runtime error dialog (e.g. "Error
+    opening file for writing" if something is still holding a handle on the
+    just-exited old exe -- the tasklist-based wait below only confirms the
+    PID is gone, not that Windows has released the file/image mapping). A
+    plain .bat has no way to put a timeout on a blocking child process, so
+    a lost race there would hang the whole (invisible, detached) script
+    forever: no relaunch, no failure marker, and the app simply never comes
+    back -- which looks like the update being stuck, and then repeats on
+    every subsequent launch since the on-disk version never actually
+    changed. PowerShell's WaitForExit(timeout) lets this detect that case,
+    kill the stuck installer, and fall back to relaunching the current exe
+    with a failure marker instead of hanging silently."""
     pid = os.getpid()
     fail_marker = str(_update_failure_marker_path())
+    exe_stem = os.path.splitext(os.path.basename(current_exe))[0]
 
-    script_path = os.path.join(tempfile.gettempdir(), f"maven_update_{pid}.bat")
-    script_body = (
-        "@echo off\r\n"
-        f":wait\r\n"
-        f'tasklist /FI "PID eq {pid}" 2>NUL | find "{pid}" >NUL\r\n'
-        f"if not errorlevel 1 (\r\n"
-        f"  ping 127.0.0.1 -n 2 > nul\r\n"
-        f"  goto wait\r\n"
-        f")\r\n"
-        f'"{installer_path}" /S\r\n'
-        f"if errorlevel 1 (\r\n"
-        f'  echo installer exited with a non-zero status> "{fail_marker}"\r\n'
-        f'  start "" "{current_exe}"\r\n'
-        f'  del "{installer_path}"\r\n'
-        f'  del "%~f0"\r\n'
-        f"  exit /b 1\r\n"
-        f")\r\n"
-        f'start "" "{current_exe}"\r\n'
-        f'del "{installer_path}"\r\n'
-        f'del "%~f0"\r\n'
-    )
-    DETACHED_PROCESS = 0x00000008
+    script_path = os.path.join(tempfile.gettempdir(), f"maven_update_{pid}.ps1")
+    script_template = r"""
+$oldPid = %(pid)s
+$installer = %(installer)s
+$currentExe = %(current_exe)s
+$exeStem = %(exe_stem)s
+$failMarker = %(fail_marker)s
+
+while (Get-Process -Id $oldPid -ErrorAction SilentlyContinue) {
+    Start-Sleep -Milliseconds 500
+}
+
+function Fallback($reason) {
+    Set-Content -Path $failMarker -Value $reason
+    Start-Process -FilePath $currentExe
+}
+
+function Cleanup {
+    Remove-Item -Path $installer -ErrorAction SilentlyContinue
+    Remove-Item -Path $PSCommandPath -ErrorAction SilentlyContinue
+}
+
+try {
+    $proc = Start-Process -FilePath $installer -ArgumentList "/S" -PassThru
+    $null = $proc.Handle  # required before WaitForExit() works reliably on a Start-Process object
+} catch {
+    Fallback("failed to start the installer: $_")
+    Cleanup
+    exit 1
+}
+
+if (-not $proc.WaitForExit(120000)) {
+    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    Fallback("installer did not finish within 2 minutes (possibly blocked waiting for a locked file)")
+    Cleanup
+    exit 1
+}
+
+if ($proc.ExitCode -ne 0) {
+    Fallback("installer exited with status $($proc.ExitCode)")
+    Cleanup
+    exit 1
+}
+
+$relaunched = $false
+for ($attempt = 1; $attempt -le 15; $attempt++) {
+    Start-Process -FilePath $currentExe
+    Start-Sleep -Seconds 2
+    if (Get-Process -Name $exeStem -ErrorAction SilentlyContinue) {
+        $relaunched = $true
+        break
+    }
+}
+if (-not $relaunched) {
+    Set-Content -Path $failMarker -Value "app did not stay open after being relaunched post-update (tried 15 times)"
+}
+
+Cleanup
+"""
+    script_body = script_template % {
+        "pid": pid,
+        "installer": _ps_quote(installer_path),
+        "current_exe": _ps_quote(current_exe),
+        "exe_stem": _ps_quote(exe_stem),
+        "fail_marker": _ps_quote(fail_marker),
+    }
     with open(script_path, "w") as f:
         f.write(script_body)
+    DETACHED_PROCESS = 0x00000008
     subprocess.Popen(
-        ["cmd", "/c", script_path],
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-WindowStyle",
+            "Hidden",
+            "-File",
+            script_path,
+        ],
         creationflags=DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
         close_fds=True,
     )
