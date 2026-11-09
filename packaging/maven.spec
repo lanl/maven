@@ -36,7 +36,10 @@ datas = []
 binaries = []
 hiddenimports = collect_submodules("maven")
 
-for pkg in ("streamlit", "ursa", "langchain", "dsi", "pypdf", "pptx", "docx", "reportlab"):
+# boto3 is only reachable through a guarded `importlib.util.find_spec` check inside
+# dsi's s3_utils.py, so PyInstaller's static analysis never walks into it (or its
+# botocore/python-dateutil/six dependency chain) unless it's collected explicitly here.
+for pkg in ("streamlit", "ursa", "langchain", "dsi", "pypdf", "pptx", "docx", "reportlab", "boto3"):
     pkg_datas, pkg_binaries, pkg_hiddenimports = collect_all(pkg)
     datas += pkg_datas
     binaries += pkg_binaries
