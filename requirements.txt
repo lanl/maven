@@ -11,3 +11,12 @@ reportlab>=4.4.6
 linkml-runtime>=1.11.1
 python-pptx>=1.0.2
 requests
+# ursa-ai pulls in mp-api, whose loose boto3 constraint lets pip's resolver
+# satisfy it with an ancient boto3/botocore/six chain (boto3==0.0.3,
+# botocore==0.76.0, six==1.7.3). That old six implements six.moves via a
+# legacy import-finder protocol Python 3.12 no longer calls, so
+# `from six.moves import configparser` (inside botocore/config.py) raises
+# ModuleNotFoundError at runtime -- in or out of a PyInstaller build.
+# Pinning boto3 forces the resolver onto a modern botocore/six chain instead.
+boto3>=1.40
+six>=1.16.0
