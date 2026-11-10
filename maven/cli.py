@@ -52,7 +52,7 @@ def main():
         else:
             print(f' {Style.BRIGHT}putty.exe -load "PuTTY Session Name" -N -T -L {LOCAL_PORT}:localhost:{PORT}{Style.RESET_ALL}')
 
-        print(" (Keep the new server connection open while using MAVEN)")
+        print("\nKeep that server tunnel connection open while using MAVEN)")
     else:
         PORT = 8505
 
