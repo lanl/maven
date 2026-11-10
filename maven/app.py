@@ -78,6 +78,7 @@ try:
     from openai import OpenAI
 except Exception as e:
     st.error("Could not access OpenAI API. Please try again and check internet connection.")
+    st.code(str(e))
     st.stop()
 import httpx
 # from linkml_runtime import SchemaView
