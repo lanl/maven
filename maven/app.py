@@ -96,7 +96,7 @@ from maven.ursa_autofill import (
     summarize_autofill,
 )
 
-from maven.tier1_genesis_dc_agent import run_tier1_yaml, run_tier1_markdown
+from maven.tier1_genesis_dc_agent import run_tier1_yaml #, run_tier1_markdown
 from ursa.agents.chat_agent import ChatAgent
 try:
     from ursa.util.http import inject_truststore_into_ssl
@@ -131,10 +131,10 @@ PROJECTS_TABLE = "projects"
 DATASHEET_TABLE = "datasheet"
 FILE_POINTERS_TABLE = "metadata_file_paths"
 TIER1_YAML_TABLE = "datacard_yaml"
-TIER1_MARKDOWN_TABLE = "datacard_markdown"
+# TIER1_MARKDOWN_TABLE = "datacard_markdown"
 
 DATASHEET_SUFFIX = "_datasheet.pdf"
-DATACARD_SUFFIX = "_genesis_datacard_v1.2.md"
+DATACARD_SUFFIX = "_genesis_datacard_v1.2.yaml"
 
 TIER_2_TABLE = "data_and_hpc_info"
 TIER_2_FILES_TABLE = "tier2_files"
@@ -367,19 +367,18 @@ def update_datasheet(qid: int, updates: Dict[str, Any]) -> None:
 def get_tier1_table(project_id: int, update=False, check_exists=False) -> Dict[str, pd.DataFrame] | bool:
     tier1_db = get_tier1_db_path(project_id)
     store = get_db(tier1_db)
-
     curr_tables = store.list(True)
-    curr_tables = [t for t in curr_tables if t not in [DATASHEET_TABLE, FILE_POINTERS_TABLE, "filesystem", "federated"]]
+    # curr_tables = [t for t in curr_tables if t not in [DATASHEET_TABLE, FILE_POINTERS_TABLE, "filesystem", "federated"]]
     if check_exists:
         store.close()
-        if not curr_tables:
+        if TIER1_YAML_TABLE not in curr_tables:
             return False
         return True
 
     all_tbls = {}
-    for tbl in curr_tables:
-        df = store.get_table(tbl, collection=True, update=update)
-        all_tbls[tbl] = df
+    # for tbl in curr_tables:
+    df = store.get_table(TIER1_YAML_TABLE, collection=True, update=update)
+    all_tbls[TIER1_YAML_TABLE] = df
     store.close()
     return all_tbls
 
@@ -416,6 +415,10 @@ def delete_project(qid: int) -> None:
     datasheet_path = get_maven_dir() / (full_proj_name + DATASHEET_SUFFIX)
     datasheet_path.unlink(missing_ok=True)
     datacard_path = get_maven_dir() / (full_proj_name + DATACARD_SUFFIX)
+    datacard_path.unlink(missing_ok=True)
+    # old datacard deletion
+    old_datacard_suffix = DATACARD_SUFFIX.removesuffix(".yaml") + ".md"
+    datacard_path = get_maven_dir() / (full_proj_name + old_datacard_suffix)
     datacard_path.unlink(missing_ok=True)
 
     if len(projects_df) == 1:
@@ -463,8 +466,8 @@ def get_tier1_fields():
     # creates a dict of all flattened fields whose value is if it is required or not (true/false)
     flattened_fields = flattened_tier1_fields(datacard_dict)
 
-    # MD str
-    tier1_cards["markdown_template"] = GENESIS_MISSION_DATA_CARD_MD.read_text(encoding="utf-8")
+    # # MD str
+    # tier1_cards["markdown_template"] = GENESIS_MISSION_DATA_CARD_MD.read_text(encoding="utf-8")
 
     # Reference guide str
     tier1_cards["card_reference"] = GENESIS_MISSION_DATA_CARD_REFERENCE.read_text(encoding="utf-8")
@@ -737,27 +740,30 @@ def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
 
         current[keys[-1]] = value
 
-    output_path = Path(output_file).with_suffix(".md")
+    # output_path = Path(output_file).with_suffix(".md")
 
     front_matter = {
         **({"ResourceURI": data_pointer} if data_pointer is not None else {}),
         **yaml_portion,
     }
 
-    yaml_content = "\n\n".join(
-            yaml.safe_dump({key: value}, sort_keys=False, allow_unicode=True, default_flow_style=False,).rstrip()
-            for key, value in front_matter.items()
-        )
+    with open(output_file, "w", encoding="utf-8") as f:
+        yaml.safe_dump(front_matter, f, sort_keys=False)
 
-    markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
-    file_content = (
-        "---\n"
-        f"{yaml_content}\n"
-        "---\n\n"
-        f"{markdown_string}\n"
-    )
+    # yaml_content = "\n\n".join(
+    #         yaml.safe_dump({key: value}, sort_keys=False, allow_unicode=True, default_flow_style=False,).rstrip()
+    #         for key, value in front_matter.items()
+    #     )
 
-    output_path.write_text(file_content, encoding="utf-8")
+    # markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
+    # file_content = (
+    #     "---\n"
+    #     f"{yaml_content}\n"
+    #     "---\n\n"
+    #     f"{markdown_string}\n"
+    # )
+
+    # output_path.write_text(yaml_content, encoding="utf-8")
 
 
 def has_text(val: Any) -> bool:
@@ -1606,41 +1612,41 @@ def confirm_context_files_dialog(context_files): # add :str or :list
         st.rerun()
 
 
-@st.dialog("Valid markdown confirmation", width="medium", dismissible=False)
-def confirm_markdown_valid_dialog():
-    st.warning("Have you confirmed that the Markdown section follows the provided template?")
+# @st.dialog("Valid markdown confirmation", width="medium", dismissible=False)
+# def confirm_markdown_valid_dialog():
+#     st.warning("Have you confirmed that the Markdown section follows the provided template?")
     
-    confirm_col, cancel_col = st.columns(2)
+#     confirm_col, cancel_col = st.columns(2)
 
-    with confirm_col:
-        if st.button("Confirm", key="confirm_submit_markdown_btn", type="primary", width="stretch"):
-            store = get_db(get_master_db_name())
-            long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
-                                    True).iloc[0,0].strip()
-            store.close()
+#     with confirm_col:
+#         if st.button("Confirm", key="confirm_submit_markdown_btn", type="primary", width="stretch"):
+#             store = get_db(get_master_db_name())
+#             long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
+#                                     True).iloc[0,0].strip()
+#             store.close()
 
-            datacard_name = to_snake_case(long_proj_name) + DATACARD_SUFFIX
-            generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
+#             datacard_name = to_snake_case(long_proj_name) + DATACARD_SUFFIX
+#             generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
 
-            st.session_state.screen = "tier2"
-            st.session_state.render_t1_markdown = False
-            st.session_state.section_idx = 0
-            st.session_state._scroll_to_top = True
-            st.session_state.render_hpc_move_btn = False
-            st.session_state.local_to_staging_moved = False
-            st.session_state.staging_to_campaign_moved = False
-            st.rerun()
+#             st.session_state.screen = "tier2"
+#             st.session_state.render_t1_markdown = False
+#             st.session_state.section_idx = 0
+#             st.session_state._scroll_to_top = True
+#             st.session_state.render_hpc_move_btn = False
+#             st.session_state.local_to_staging_moved = False
+#             st.session_state.staging_to_campaign_moved = False
+#             st.rerun()
 
-    with cancel_col:
-        if st.button("Cancel", key="cancel_confirm_markdown_btn", width="stretch"):
-            st.session_state.screen = "tier1"
-            st.session_state.render_t1_markdown = True
-            st.session_state.section_idx = 0
-            st.session_state._scroll_to_top = False
-            st.session_state.render_hpc_move_btn = False
-            st.session_state.local_to_staging_moved = False
-            st.session_state.staging_to_campaign_moved = False
-            st.rerun()
+#     with cancel_col:
+#         if st.button("Cancel", key="cancel_confirm_markdown_btn", width="stretch"):
+#             st.session_state.screen = "tier1"
+#             st.session_state.render_t1_markdown = True
+#             st.session_state.section_idx = 0
+#             st.session_state._scroll_to_top = False
+#             st.session_state.render_hpc_move_btn = False
+#             st.session_state.local_to_staging_moved = False
+#             st.session_state.staging_to_campaign_moved = False
+#             st.rerun()
 
 
 @st.fragment
@@ -1809,7 +1815,7 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
         with save_col:
             submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
         with next_col:
-            next_clicked = st.form_submit_button("Continue to Findability Metadata (Markdown) ➡", key=f"next_tier1_{qid}", 
+            next_clicked = st.form_submit_button("Continue to Usability/AI-Ready Metadata ➡", key=f"next_tier2_{qid}", 
                                                     width="stretch", type="primary")
 
     if st.session_state.invalid_fields:
@@ -1843,39 +1849,47 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                 store.read(updated_values, "Collection", TIER1_YAML_TABLE)
                 store.close()
 
-            if next_clicked:
-                if TIER1_MARKDOWN_TABLE not in curr_tables:
-                    with next_col:
-                        with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                            ai_model_error_msg = None
-                            tier1_yaml_df = pd.DataFrame([updated_values])
-                            try:
-                                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
-                                tier1_db_path = get_tier1_db_path(qid)
-                                store = get_db(tier1_db_path)
-                                for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                                    store.read(tier1_dict, "Collection", tier1_table_name)
-                                store.close()
-                            except Exception as e:
-                                ai_model_error_msg = str(e)
-                        if ai_model_error_msg is not None:
-                            if "connection error" in ai_model_error_msg.lower():
-                                st.error("Cannot access AI Model. Ensure you are on the correct network.")
-                            else:
-                                st.error("Error connecting to AI Model:")
-                                st.exception(ai_model_error_msg)
-                            st.stop()
+            store = get_db(get_master_db_name())
+            long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
+                                    True).iloc[0,0].strip()
+            store.close()
 
-                st.session_state.screen = "tier1"
-                st.session_state.render_t1_markdown = True
+            datacard_name = to_snake_case(long_proj_name) + DATACARD_SUFFIX
+            generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
+
+            if next_clicked:
+                # if TIER1_MARKDOWN_TABLE not in curr_tables:
+                #     with next_col:
+                #         with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+                #             ai_model_error_msg = None
+                #             tier1_yaml_df = pd.DataFrame([updated_values])
+                #             try:
+                #                 all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
+                #                 tier1_db_path = get_tier1_db_path(qid)
+                #                 store = get_db(tier1_db_path)
+                #                 for tier1_table_name, tier1_dict in all_tier1_dicts.items():
+                #                     store.read(tier1_dict, "Collection", tier1_table_name)
+                #                 store.close()
+                #             except Exception as e:
+                #                 ai_model_error_msg = str(e)
+                #         if ai_model_error_msg is not None:
+                #             if "connection error" in ai_model_error_msg.lower():
+                #                 st.error("Cannot access AI Model. Ensure you are on the correct network.")
+                #             else:
+                #                 st.error("Error connecting to AI Model:")
+                #                 st.exception(ai_model_error_msg)
+                #             st.stop()                
+
+                st.session_state.screen = "tier2"
+                # st.session_state.render_t1_markdown = False
                 st.session_state.section_idx = 0
                 st.session_state._scroll_to_top = True
                 st.session_state.render_hpc_move_btn = False
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
-                st.rerun(scope="app")
+                st.rerun()
             else:
-                st.success("Findability Metadata (YAML Portion) Updated.")
+                st.success("Findability Metadata Saved.")
 
 # -----------------------------
 # App start
@@ -1919,8 +1933,8 @@ if "screen" not in st.session_state:
     st.session_state.screen = "datasheet"
 if "confirm_delete_qid" not in st.session_state:
     st.session_state.confirm_delete_qid = None
-if "render_t1_markdown" not in st.session_state:
-    st.session_state.render_t1_markdown = False
+# if "render_t1_markdown" not in st.session_state:
+#     st.session_state.render_t1_markdown = False
 if "render_hpc_move_btn" not in st.session_state:
     st.session_state.render_hpc_move_btn = False
 if "tier2_loc_dict" not in st.session_state:
@@ -2104,7 +2118,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
             st.session_state.draft_mode = False
             st.session_state.screen = "datasheet"
             st.session_state.ran_change_dialog = False
-            st.session_state.render_t1_markdown = False
+            # st.session_state.render_t1_markdown = False
             st.session_state.invalid_fields = []
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
@@ -2130,7 +2144,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.session_state.draft_mode = True
         st.session_state.screen = "datasheet"
         st.session_state.ran_change_dialog = False
-        st.session_state.render_t1_markdown = False
+        # st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.local_to_staging_moved = False
         st.session_state.staging_to_campaign_moved = False
@@ -2174,7 +2188,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
                 update_datasheet(qid, updates)
             st.session_state.section_idx = 0
             st.session_state._scroll_to_top = True
-            st.session_state.render_t1_markdown = False
+            # st.session_state.render_t1_markdown = False
             st.session_state.invalid_fields = []
             st.session_state.ran_change_dialog = False
             st.session_state.local_to_staging_moved = False
@@ -2203,7 +2217,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
                             update_datasheet(qid, updates)
                         st.session_state.section_idx = idx
                         st.session_state._scroll_to_top = True
-                        st.session_state.render_t1_markdown = False
+                        # st.session_state.render_t1_markdown = False
                         st.session_state.invalid_fields = []
                         st.session_state.ran_change_dialog = False
                         st.session_state.local_to_staging_moved = False
@@ -2232,13 +2246,13 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
     else:
         t2_exists = Path(get_tier2_db_path(qid)).is_file()
 
-    t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists or len(get_tier1_table(qid)) != 2 else "✅ "
+    t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists else "✅ "
     if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
                         help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
         st.session_state.screen = "tier1"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
+        # st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.ran_change_dialog = False
         st.session_state.local_to_staging_moved = False
@@ -2252,7 +2266,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.session_state.screen = "tier2"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
+        # st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.render_hpc_move_btn = False
         st.session_state.local_to_staging_moved = False
@@ -2267,7 +2281,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.session_state.screen = "hpc_move"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
+        # st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.render_hpc_move_btn = False
         st.session_state.local_to_staging_moved = False
@@ -2622,7 +2636,7 @@ if st.session_state.screen == "datasheet":
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
                         flattened_fields, tier1_cards, datacard_dict = get_tier1_fields()
-                        with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+                        with st.spinner("Populating Findability Metadata. May take a few minutes..."):
                             ai_model_error_msg = None
                             try:
                                 all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
@@ -2670,120 +2684,23 @@ elif st.session_state.screen == "tier1":
     curr_tables = get_tier1_table(qid, update=True)
     datasheet_df = get_datasheet(qid, df_return=True)
 
-    if not st.session_state.render_t1_markdown: # Render YAML
-        
-        st.title("Findability Metadata (YAML Portion)")
-        st.subheader("Click the Save button at the bottom of the screen to apply any changes")
-        st.write("NOTE: If a section's Support field is set to *No*, all fields in that section are optional.")
+    # if not st.session_state.render_t1_markdown: # Render YAML
 
-        if not curr_tables: # no tier 1 yaml or markdown table
-            if datasheet_df.empty: # no datasheet data so go home
-                delete_project(qid)
-                st.session_state.active_qid = None
-                st.session_state.section_idx = 0
-                st.session_state.screen = "datasheet"
-                st.session_state.local_to_staging_moved = False
-                st.session_state.staging_to_campaign_moved = False
-                st.rerun()
-            else: # run t1 agent
-                with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
-                    ai_model_error_msg = None
-                    try:
-                        all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
-                    except Exception as e:
-                        ai_model_error_msg = str(e)
-                if ai_model_error_msg is not None:
-                    if "connection error" in ai_model_error_msg.lower():
-                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
-                    else:
-                        st.error("Error connecting to AI Model:")
-                        st.exception(ai_model_error_msg)
-                    st.stop()
+    st.title("Findability Metadata")
+    st.subheader("Click the Save button at the bottom of the screen to apply any changes")
+    # st.write("NOTE: If a section's Support field is set to *No*, all fields in that section are optional.")
 
-                if not isinstance(all_tier1_dicts, dict):
-                    if isinstance(all_tier1_dicts, None):
-                        st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
-                    else:
-                        st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
-                    st.stop()
-                tier1_db_path = get_tier1_db_path(qid)
-                store = get_db(tier1_db_path)
-                for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                    store.read(tier1_dict, "Collection", tier1_table_name)
-                store.close()
-                st.rerun()
-
-        # TODO - uncomment portion that updates datacard db with new template once datacard template is stable
-        # template_dict = get_breakdown_fields(datacard_dict)
-        # diff_tables_dict = {}
-        # new_cols = []
-        # for dc_tbl, tbl_cols in template_dict.items():
-        #     if dc_tbl not in curr_tables.keys():
-        #         diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
-        #         new_cols.extend(tbl_cols)
-        #     else:
-        #         curr_tbl_cols = curr_tables[dc_tbl].columns.to_list()
-        #         diff = list(set(tbl_cols) - set(curr_tbl_cols))
-        #         if diff:
-        #             diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
-        #             new_cols.extend(diff)
-
-        # # if there are tier 1 md columns not in db, add them to the db and run agent to fill them
-        # if diff_tables_dict:
-        #     # new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
-        #     datasheet_df = get_datasheet(qid, True)
-        #     # yaml_card_out = str(get_diana_dbs_dir()) + "/" + to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
-        #     # yaml_card_out = get_tier1_YAML_MD_path(qid)
-        #     with st.spinner("Updating tier 1 metadata catalog with new fields..."):
-        #         new_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, diff_tables_dict, tier1_cards)
-
-        #     for tbl_name, new_tbl_data in new_tier1_dicts.items():
-        #         if tbl_name in curr_tables.keys():
-        #             for new_col, new_val in new_tbl_data.items():
-        #                 curr_tables[tbl_name][new_col] = new_val
-        #             update_tier1_table(qid, curr_tables[tbl_name])
-        #         else:
-        #             tier1_db = get_tier1_db_path(qid)
-        #             store2 = get_db(tier1_db)
-        #             store2.read(new_tbl_data, "Collection", tbl_name)
-        #             curr_tables[tbl_name] = store2.get_table(tbl_name, True, True)
-        #             store2.close()
-
-        #         # yaml_card_out = get_diana_dbs_dir() / to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
-        #         # with open(yaml_card_out, 'w') as f:
-        #         #     yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
-
-        render_tier1_yaml_form(qid, curr_tables, tier1_cards)
-
-
-    else: # Render markdown
-        st.title("Findability Metadata (Markdown Portion)")
-        st.markdown(
-        """
-        <input autofocus style= "position: absolute; top: 0; left: 0; width: 0px;
-        height: 0px; opacity: 0; border: 0; padding: 0; margin: 0; pointer-events: none;"/>
-        """, unsafe_allow_html=True)
-
-        back_col, other = st.columns([1, 4], width="stretch")
-        with back_col:
-            if st.button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_top_btn"):
-                st.session_state.screen = "tier1"
-                st.session_state.section_idx = 0
-                st.session_state._scroll_to_top = True
-                st.session_state.render_t1_markdown = False
-                st.session_state.invalid_fields = []
-                st.session_state.ran_change_dialog = False
-                st.session_state.local_to_staging_moved = False
-                st.session_state.staging_to_campaign_moved = False
-                st.session_state.confirm_submit_context_files = False
-                st.session_state.render_hpc_move_btn = False
-                st.session_state.tier2_loc_dict = None
-                st.rerun()
-
-        st.subheader("Click the Save button at the bottom of the screen to apply any changes")
-
-        if not curr_tables:
-            with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+    if not curr_tables: # no tier 1 yaml or markdown table
+        if datasheet_df.empty: # no datasheet data so go home
+            delete_project(qid)
+            st.session_state.active_qid = None
+            st.session_state.section_idx = 0
+            st.session_state.screen = "datasheet"
+            st.session_state.local_to_staging_moved = False
+            st.session_state.staging_to_campaign_moved = False
+            st.rerun()
+        else: # run t1 agent
+            with st.spinner("Populating Findability Metadata. May take a few minutes..."):
                 ai_model_error_msg = None
                 try:
                     all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
@@ -2797,27 +2714,12 @@ elif st.session_state.screen == "tier1":
                     st.exception(ai_model_error_msg)
                 st.stop()
 
-            tier1_db_path = get_tier1_db_path(qid)
-            store = get_db(tier1_db_path)
-            for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                store.read(tier1_dict, "Collection", tier1_table_name)
-            store.close()
-            st.rerun()
-        if TIER1_MARKDOWN_TABLE not in curr_tables:
-            with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                ai_model_error_msg = None
-                try:
-                    all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, curr_tables[TIER1_YAML_TABLE], tier1_cards)
-                except Exception as e:
-                    ai_model_error_msg = str(e)
-            if ai_model_error_msg is not None:
-                if "connection error" in ai_model_error_msg.lower():
-                    st.error("Cannot access AI Model. Ensure you are on the correct network.")
+            if not isinstance(all_tier1_dicts, dict):
+                if isinstance(all_tier1_dicts, None):
+                    st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
                 else:
-                    st.error("Error connecting to AI Model:")
-                    st.exception(ai_model_error_msg)
+                    st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
                 st.stop()
-
             tier1_db_path = get_tier1_db_path(qid)
             store = get_db(tier1_db_path)
             for tier1_table_name, tier1_dict in all_tier1_dicts.items():
@@ -2825,69 +2727,181 @@ elif st.session_state.screen == "tier1":
             store.close()
             st.rerun()
 
-        with st.form(f"tier1_metadata_form_{qid}"):
-            st.write("#### Ensure the model-generated text in the second block follows the template shown in the first block.")
-            _, tier1_cards, _ = get_tier1_fields()
-            st.code(tier1_cards["markdown_template"], wrap_lines=True, height = 700)
-            updated_values = {}
+    # TODO - uncomment portion that updates datacard db with new template once datacard template is stable
+    # template_dict = get_breakdown_fields(datacard_dict)
+    # diff_tables_dict = {}
+    # new_cols = []
+    # for dc_tbl, tbl_cols in template_dict.items():
+    #     if dc_tbl not in curr_tables.keys():
+    #         diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
+    #         new_cols.extend(tbl_cols)
+    #     else:
+    #         curr_tbl_cols = curr_tables[dc_tbl].columns.to_list()
+    #         diff = list(set(tbl_cols) - set(curr_tbl_cols))
+    #         if diff:
+    #             diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
+    #             new_cols.extend(diff)
+
+    # # if there are tier 1 md columns not in db, add them to the db and run agent to fill them
+    # if diff_tables_dict:
+    #     # new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
+    #     datasheet_df = get_datasheet(qid, True)
+    #     # yaml_card_out = str(get_diana_dbs_dir()) + "/" + to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
+    #     # yaml_card_out = get_tier1_YAML_MD_path(qid)
+    #     with st.spinner("Updating tier 1 metadata catalog with new fields..."):
+    #         new_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, diff_tables_dict, tier1_cards)
+
+    #     for tbl_name, new_tbl_data in new_tier1_dicts.items():
+    #         if tbl_name in curr_tables.keys():
+    #             for new_col, new_val in new_tbl_data.items():
+    #                 curr_tables[tbl_name][new_col] = new_val
+    #             update_tier1_table(qid, curr_tables[tbl_name])
+    #         else:
+    #             tier1_db = get_tier1_db_path(qid)
+    #             store2 = get_db(tier1_db)
+    #             store2.read(new_tbl_data, "Collection", tbl_name)
+    #             curr_tables[tbl_name] = store2.get_table(tbl_name, True, True)
+    #             store2.close()
+
+    #         # yaml_card_out = get_diana_dbs_dir() / to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
+    #         # with open(yaml_card_out, 'w') as f:
+    #         #     yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
+
+    render_tier1_yaml_form(qid, curr_tables, tier1_cards)
+
+
+    # else: # Render markdown
+    #     st.title("Findability Metadata (Markdown Portion)")
+    #     st.markdown(
+    #     """
+    #     <input autofocus style= "position: absolute; top: 0; left: 0; width: 0px;
+    #     height: 0px; opacity: 0; border: 0; padding: 0; margin: 0; pointer-events: none;"/>
+    #     """, unsafe_allow_html=True)
+
+    #     back_col, other = st.columns([1, 4], width="stretch")
+    #     with back_col:
+    #         if st.button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_top_btn"):
+    #             st.session_state.screen = "tier1"
+    #             st.session_state.section_idx = 0
+    #             st.session_state._scroll_to_top = True
+    #             st.session_state.render_t1_markdown = False
+    #             st.session_state.invalid_fields = []
+    #             st.session_state.ran_change_dialog = False
+    #             st.session_state.local_to_staging_moved = False
+    #             st.session_state.staging_to_campaign_moved = False
+    #             st.session_state.confirm_submit_context_files = False
+    #             st.session_state.render_hpc_move_btn = False
+    #             st.session_state.tier2_loc_dict = None
+    #             st.rerun()
+
+    #     st.subheader("Click the Save button at the bottom of the screen to apply any changes")
+
+    #     if not curr_tables:
+    #         with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
+    #             ai_model_error_msg = None
+    #             try:
+    #                 all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
+    #             except Exception as e:
+    #                 ai_model_error_msg = str(e)
+    #         if ai_model_error_msg is not None:
+    #             if "connection error" in ai_model_error_msg.lower():
+    #                 st.error("Cannot access AI Model. Ensure you are on the correct network.")
+    #             else:
+    #                 st.error("Error connecting to AI Model:")
+    #                 st.exception(ai_model_error_msg)
+    #             st.stop()
+
+    #         tier1_db_path = get_tier1_db_path(qid)
+    #         store = get_db(tier1_db_path)
+    #         for tier1_table_name, tier1_dict in all_tier1_dicts.items():
+    #             store.read(tier1_dict, "Collection", tier1_table_name)
+    #         store.close()
+    #         st.rerun()
+    #     if TIER1_MARKDOWN_TABLE not in curr_tables:
+    #         with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
+    #             ai_model_error_msg = None
+    #             try:
+    #                 all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, curr_tables[TIER1_YAML_TABLE], tier1_cards)
+    #             except Exception as e:
+    #                 ai_model_error_msg = str(e)
+    #         if ai_model_error_msg is not None:
+    #             if "connection error" in ai_model_error_msg.lower():
+    #                 st.error("Cannot access AI Model. Ensure you are on the correct network.")
+    #             else:
+    #                 st.error("Error connecting to AI Model:")
+    #                 st.exception(ai_model_error_msg)
+    #             st.stop()
+
+    #         tier1_db_path = get_tier1_db_path(qid)
+    #         store = get_db(tier1_db_path)
+    #         for tier1_table_name, tier1_dict in all_tier1_dicts.items():
+    #             store.read(tier1_dict, "Collection", tier1_table_name)
+    #         store.close()
+    #         st.rerun()
+
+    #     with st.form(f"tier1_metadata_form_{qid}"):
+    #         st.write("#### Ensure the model-generated text in the second block follows the template shown in the first block.")
+    #         _, tier1_cards, _ = get_tier1_fields()
+    #         st.code(tier1_cards["markdown_template"], wrap_lines=True, height = 700)
+    #         updated_values = {}
             
-            tbl_data = curr_tables[TIER1_MARKDOWN_TABLE].iloc[0].to_dict()
+    #         tbl_data = curr_tables[TIER1_MARKDOWN_TABLE].iloc[0].to_dict()
 
-            # dont show the dsi metadata column on the form
-            dsi_key = next(iter(tbl_data))
-            updated_values[dsi_key] = tbl_data.pop(dsi_key)
+    #         # dont show the dsi metadata column on the form
+    #         dsi_key = next(iter(tbl_data))
+    #         updated_values[dsi_key] = tbl_data.pop(dsi_key)
 
-            markdown_col_key = next(iter(tbl_data))
+    #         markdown_col_key = next(iter(tbl_data))
 
-            updated_values[markdown_col_key] = st.text_area(
-                "enter",
-                height = 1750,
-                value=tbl_data[markdown_col_key],
-                key="datacard_markdown_portion",
-                label_visibility="collapsed"
-            )
+    #         updated_values[markdown_col_key] = st.text_area(
+    #             "enter",
+    #             height = 1750,
+    #             value=tbl_data[markdown_col_key],
+    #             key="datacard_markdown_portion",
+    #             label_visibility="collapsed"
+    #         )
 
-            back_col, save_col, next_col = st.columns(3)
-            with back_col:
-                if st.form_submit_button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_bottom_btn"):
-                    st.session_state.screen = "tier1"
-                    st.session_state.section_idx = 0
-                    st.session_state._scroll_to_top = True
-                    st.session_state.render_t1_markdown = False
-                    st.session_state.invalid_fields = []
-                    st.session_state.ran_change_dialog = False
-                    st.session_state.local_to_staging_moved = False
-                    st.session_state.staging_to_campaign_moved = False
-                    st.session_state.confirm_submit_context_files = False
-                    st.session_state.render_hpc_move_btn = False
-                    st.session_state.tier2_loc_dict = None
-                    st.rerun()
-            with save_col:
-                submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
-            with next_col:
-                next_clicked = st.form_submit_button(
-                    "Continue to Usability/AI-Ready Metadata ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
+    #         back_col, save_col, next_col = st.columns(3)
+    #         with back_col:
+    #             if st.form_submit_button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_bottom_btn"):
+    #                 st.session_state.screen = "tier1"
+    #                 st.session_state.section_idx = 0
+    #                 st.session_state._scroll_to_top = True
+    #                 st.session_state.render_t1_markdown = False
+    #                 st.session_state.invalid_fields = []
+    #                 st.session_state.ran_change_dialog = False
+    #                 st.session_state.local_to_staging_moved = False
+    #                 st.session_state.staging_to_campaign_moved = False
+    #                 st.session_state.confirm_submit_context_files = False
+    #                 st.session_state.render_hpc_move_btn = False
+    #                 st.session_state.tier2_loc_dict = None
+    #                 st.rerun()
+    #         with save_col:
+    #             submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
+    #         with next_col:
+    #             next_clicked = st.form_submit_button(
+    #                 "Continue to Usability/AI-Ready Metadata ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
 
-            if submitted or next_clicked:
-                markdown_field_value = updated_values[markdown_col_key]
-                if markdown_field_value is None or not str(markdown_field_value).strip():
-                    st.error("Markdown section is incomplete. Please complete before continuing")
-                    st.stop()
+    #         if submitted or next_clicked:
+    #             markdown_field_value = updated_values[markdown_col_key]
+    #             if markdown_field_value is None or not str(markdown_field_value).strip():
+    #                 st.error("Markdown section is incomplete. Please complete before continuing")
+    #                 st.stop()
 
-                try:
-                    tier1_df = pd.DataFrame([updated_values])
-                    update_tier1_table(qid, tier1_df)
-                except Exception:
-                    tier1_db = get_tier1_db_path(qid)
-                    store = get_db(tier1_db)
-                    store.read(updated_values, "Collection", TIER1_MARKDOWN_TABLE)
-                    store.close()
+    #             try:
+    #                 tier1_df = pd.DataFrame([updated_values])
+    #                 update_tier1_table(qid, tier1_df)
+    #             except Exception:
+    #                 tier1_db = get_tier1_db_path(qid)
+    #                 store = get_db(tier1_db)
+    #                 store.read(updated_values, "Collection", TIER1_MARKDOWN_TABLE)
+    #                 store.close()
 
-                if next_clicked:
-                    confirm_markdown_valid_dialog()
-                else:
-                    st.success("Findability Metadata (Markdown Portion) Updated.")
-                    st.session_state._scroll_to_top = False
+    #             if next_clicked:
+    #                 confirm_markdown_valid_dialog()
+    #             else:
+    #                 st.success("Findability Metadata (Markdown Portion) Updated.")
+    #                 st.session_state._scroll_to_top = False
 
 
 # -----------------------------
@@ -2946,7 +2960,7 @@ elif st.session_state.screen == "tier2":
 
         if next_clicked:
             st.session_state.screen = "hpc_move"
-            st.session_state.render_t1_markdown = False
+            # st.session_state.render_t1_markdown = False
             st.session_state.section_idx = 0
             st.session_state._scroll_to_top = True
             st.session_state.render_hpc_move_btn = False
