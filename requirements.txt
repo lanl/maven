@@ -10,6 +10,5 @@ pyyaml>=6.0.3
 reportlab>=4.4.6
 linkml-runtime>=1.11.1
 python-pptx>=1.0.2
-boto3>=1.42.91
-python-dateutil>=4.0.0
-six>=1.17.0
+# keeps dateutil compatible with ursa's botocore
+python-dateutil>=2.8.2,<3
