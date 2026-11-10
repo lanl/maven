@@ -3750,7 +3750,7 @@ elif st.session_state.screen == "hpc_move":
                         output = remote_run.stdout.lower()
                         if "conduit get" in output and ("no credentials" in output or "failed" in output):
                             st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
-                        elif "SyntaxWarning: invalid escape sequence" in output:
+                        elif any("SyntaxWarning: invalid escape sequence" in text for text in (remote_run.stdout, remote_run.stderr)):
                             st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                         else:
                             st.code(remote_run.stdout[idx + len(marker):])
