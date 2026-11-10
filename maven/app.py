@@ -76,9 +76,8 @@ import re
 import tempfile
 try:
     from openai import OpenAI
-except Exception as e:
-    st.error("Could not access OpenAI API. Please try again and check internet connection.")
-    st.code(str(e))
+except Exception:
+    st.error("Could not load OpenAI due to an SSL Error. If on a server, ensure you are using the latest global Python version.")
     st.stop()
 import httpx
 # from linkml_runtime import SchemaView

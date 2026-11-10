@@ -50,7 +50,7 @@ def main():
         if os.name != "nt":
             print(f' \033[1mputty.exe -load "Your PuTTY Session Name" -N -T -L {LOCAL_PORT}:localhost:{PORT}\033[0m')
         else:
-            print(f' {Style.BRIGHT}putty.exe -load "PuTTY Session Name" -N -T -L {LOCAL_PORT}:localhost:{PORT}{Style.RESET_ALL}')
+            print(f' {Style.BRIGHT}putty.exe -load "Your PuTTY Session Name" -N -T -L {LOCAL_PORT}:localhost:{PORT}{Style.RESET_ALL}')
 
         print("\nKeep that server tunnel connection open while using MAVEN")
     else:
