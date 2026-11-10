@@ -3028,7 +3028,7 @@ elif st.session_state.screen == "hpc_move":
                 st.stop()
 
             if new_using_ssh_value.lower() == "putty" and (not plink or not pscp):
-                st.error("Could not find PuTTY tools; install PuTTY from company software center and relaunch MAVEN after")
+                st.error("Could not find PuTTY tools. Quit MAVEN, install PuTTY from company software center, and then relaunch MAVEN.")
                 st.stop()
         
         else:
