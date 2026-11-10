@@ -38,7 +38,7 @@ def main():
         remote_user = getpass.getuser()
         remote_host = socket.getfqdn() or socket.gethostname()
 
-        print("To access MAVEN from your local machine, open a new terminal and run:")
+        print("To access MAVEN from your local computer, open a new terminal and run:")
         if os.name != "nt":
             print(f" \033[1mssh -L {LOCAL_PORT}:localhost:{PORT} {remote_user}@{remote_host}\033[0m")
         else:
@@ -52,7 +52,7 @@ def main():
         else:
             print(f' {Style.BRIGHT}putty.exe -load "Your PuTTY Session Name" -N -T -L {LOCAL_PORT}:localhost:{PORT}{Style.RESET_ALL}')
 
-        print("\nKeep that server tunnel connection open while using MAVEN")
+        print("\nKeep the tunnel connection open while using MAVEN")
     else:
         PORT = 8505
 
