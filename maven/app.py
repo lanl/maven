@@ -74,7 +74,11 @@ import getpass
 import socket
 import re
 import tempfile
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except Exception as e:
+    st.error("Could not access OpenAI API. Please try again and check internet connection.")
+    st.stop()
 import httpx
 # from linkml_runtime import SchemaView
 from datetime import UTC, datetime
