@@ -1701,17 +1701,19 @@ def confirm_duplicate_project(qid: int):
 
         curr_tier1_path = get_tier1_db_path(qid)
         new_tier1_name = new_short_title + "_tier1.db"
-        shutil.copy2(curr_tier1_path, str(get_maven_dir() / new_tier1_name))
+        if os.path.exists(curr_tier1_path):
+            shutil.copy2(curr_tier1_path, str(get_maven_dir() / new_tier1_name))
 
-        new_tier1_store = get_db(str(get_maven_dir() / new_tier1_name))
-        datasheet_df = new_tier1_store.get_table(DATASHEET_TABLE, True, True)
-        datasheet_df["project_name"] = new_full_title
-        new_tier1_store.update(datasheet_df)
-        new_tier1_store.close()
+            new_tier1_store = get_db(str(get_maven_dir() / new_tier1_name))
+            datasheet_df = new_tier1_store.get_table(DATASHEET_TABLE, True, True)
+            datasheet_df["project_name"] = new_full_title
+            new_tier1_store.update(datasheet_df)
+            new_tier1_store.close()
 
         curr_tier2_path = get_tier2_db_path(qid)
         new_tier2_name = new_short_title + "_tier2.db"
-        shutil.copy2(curr_tier2_path, str(get_maven_dir() / new_tier2_name))
+        if os.path.exists(curr_tier2_path):
+            shutil.copy2(curr_tier2_path, str(get_maven_dir() / new_tier2_name))
 
         master_store = get_db(get_master_db_name())
         df = master_store.query(f"SELECT project_id FROM {PROJECTS_TABLE} ORDER BY project_id DESC LIMIT 1;", True)
