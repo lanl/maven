@@ -74,7 +74,14 @@ import getpass
 import socket
 import re
 import tempfile
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except Exception:
+    import platform
+    st.error("Could not load OpenAI due to an SSL Error. If on a server, ensure you are using the latest global Python version.")
+    version = platform.python_version()
+    st.code(f"Current Python version: {version}")
+    st.stop()
 import httpx
 # from linkml_runtime import SchemaView
 from datetime import UTC, datetime
@@ -3007,7 +3014,7 @@ elif st.session_state.screen == "hpc_move":
                 st.stop()
 
             if new_using_ssh_value.lower() == "putty" and (not plink or not pscp):
-                st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
+                st.error("Could not find PuTTY tools. Quit MAVEN, install PuTTY from company software center, and then relaunch MAVEN.")
                 st.stop()
         
         else:
@@ -3729,7 +3736,7 @@ elif st.session_state.screen == "hpc_move":
                         output = remote_run.stdout.lower()
                         if "conduit get" in output and ("no credentials" in output or "failed" in output):
                             st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
-                        elif "SyntaxWarning: invalid escape sequence" in output:
+                        elif any("SyntaxWarning: invalid escape sequence" in text for text in (remote_run.stdout, remote_run.stderr)):
                             st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                         else:
                             st.code(remote_run.stdout[idx + len(marker):])

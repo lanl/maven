@@ -38,14 +38,21 @@ def main():
         remote_user = getpass.getuser()
         remote_host = socket.getfqdn() or socket.gethostname()
 
-        print("Open a new terminal window on your local machine and run:")
+        print("To access MAVEN from your local computer, open a new terminal and run:")
         if os.name != "nt":
             print(f" \033[1mssh -L {LOCAL_PORT}:localhost:{PORT} {remote_user}@{remote_host}\033[0m")
         else:
             from colorama import Fore, Style, init
             init(autoreset=True)
             print(f" {Style.BRIGHT}ssh -L {LOCAL_PORT}:localhost:{PORT} {remote_user}@{remote_host}{Style.RESET_ALL}")
-        print(" (Leave the new terminal running while using the app)")
+
+        print("\nIf you use PuTTY on Windows, run this in Command Prompt instead:")
+        if os.name != "nt":
+            print(f' \033[1mputty.exe -load "Your PuTTY Session Name" -N -T -L {LOCAL_PORT}:localhost:{PORT}\033[0m')
+        else:
+            print(f' {Style.BRIGHT}putty.exe -load "Your PuTTY Session Name" -N -T -L {LOCAL_PORT}:localhost:{PORT}{Style.RESET_ALL}')
+
+        print("\nKeep the tunnel connection open while using MAVEN")
     else:
         PORT = 8505
 
