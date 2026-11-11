@@ -3196,6 +3196,13 @@ elif st.session_state.screen == "hpc_move":
             else:
                 hpc_staging_path = PurePosixPath(hpc_staging_input)
 
+            is_lanl_remote = is_remote and "lanl.gov" in socket.getfqdn().lower()
+            data_input = hpc_staging_input if is_lanl_remote else local_data_input
+            label = "HPC Staging Directory" if is_lanl_remote else "Local Data Location"
+            if "maven_files" in data_input.lower():
+                st.error(f"{label} is **NOT** the `maven_files` directory. Enter the folder where your data is stored.")
+                st.stop()
+
             hpc_campaign_input = updated_tier2_dict["hpc_campaign_space"].strip()
             if "campaign" not in hpc_campaign_input.lower():
                 st.error("HPC Campaign Directory must be in the 'campaign' cluster.")
