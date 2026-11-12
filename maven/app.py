@@ -74,7 +74,14 @@ import getpass
 import socket
 import re
 import tempfile
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except Exception:
+    import platform
+    st.error("Could not load OpenAI due to an SSL Error. If on a server, ensure you are using the latest global Python version.")
+    version = platform.python_version()
+    st.code(f"Current Python version: {version}")
+    st.stop()
 import httpx
 # from linkml_runtime import SchemaView
 from datetime import UTC, datetime
@@ -1686,6 +1693,86 @@ def confirm_markdown_valid_dialog():
             st.rerun()
 
 
+@st.dialog("Duplicate Project", width="medium", dismissible=False)
+def confirm_duplicate_project(qid: int):
+    store = get_db(get_master_db_name())
+    projects_df = store.get_table(PROJECTS_TABLE, True, True)
+    store.close()
+
+    full_proj_name = projects_df.loc[projects_df["project_id"] == str(qid), "project_name"]
+    if not full_proj_name.empty:
+        full_proj_name = full_proj_name.iloc[0]
+        curr_short_title = projects_df.loc[projects_df["project_id"] == str(qid), "tier1_db_path"].iloc[0].removesuffix("_tier1.db")
+    else:
+        full_proj_name = projects_df.loc[projects_df["project_id"] == int(qid), "project_name"].iloc[0]
+        curr_short_title = projects_df.loc[projects_df["project_id"] == int(qid), "tier1_db_path"].iloc[0].removesuffix("_tier1.db")
+
+    st.subheader(f"Enter new Title fields to duplicate `{full_proj_name}`")
+
+    st.write("Full Project Title")
+    new_full_title_input = st.text_input("Full Project Title", value="", label_visibility="collapsed", key="new_full_title")
+
+    st.write("Short Descriptive Title")
+    st.caption(f"Current Short Descriptive Title: `{curr_short_title}`")
+    new_short_title_input = st.text_input("Short Descriptive Title", value="", label_visibility="collapsed", key="new_short_title")
+
+    duplicate_col, cancel_col = st.columns(2)
+    
+    with duplicate_col:
+        duplicate_btn = st.button("Duplicate", key="duplicate_proj_btn", type="primary", width="stretch")
+
+    with cancel_col:
+        cancel_duplicate_btn = st.button("Cancel", key="cancel_duplicate_proj_btn", width="stretch")
+
+    if duplicate_btn:
+        new_full_title = new_full_title_input.strip().upper()
+        new_short_title = new_short_title_input.strip().lower().replace(" ", "_").replace("/", "_")
+        if not new_full_title or not new_short_title:
+            st.error("Both Full Project Title and Short Descriptive Title must be provided.")
+            st.stop()
+
+        curr_proj_list = projects_df["tier1_db_path"].str.removesuffix("_tier1.db").tolist()
+        if new_short_title in curr_proj_list:
+            st.error("Short Descriptive Title must be unique. A project with this title already exists locally.")
+            st.stop()
+
+        curr_tier1_path = get_tier1_db_path(qid)
+        new_tier1_name = new_short_title + "_tier1.db"
+        if os.path.exists(curr_tier1_path):
+            shutil.copy2(curr_tier1_path, str(get_maven_dir() / new_tier1_name))
+
+            new_tier1_store = get_db(str(get_maven_dir() / new_tier1_name))
+            datasheet_df = new_tier1_store.get_table(DATASHEET_TABLE, True, True)
+            datasheet_df["project_name"] = new_full_title
+            new_tier1_store.update(datasheet_df)
+            new_tier1_store.close()
+
+        curr_tier2_path = get_tier2_db_path(qid)
+        new_tier2_name = new_short_title + "_tier2.db"
+        if os.path.exists(curr_tier2_path):
+            shutil.copy2(curr_tier2_path, str(get_maven_dir() / new_tier2_name))
+
+        master_store = get_db(get_master_db_name())
+        df = master_store.query(f"SELECT project_id FROM {PROJECTS_TABLE} ORDER BY project_id DESC LIMIT 1;", True)
+        curr_proj_id = 1 if df.empty else int(df.iloc[0, 0]) + 1
+
+        master_dict = {"project_id": curr_proj_id, "project_name": new_full_title,
+                        "tier1_db_path": new_tier1_name, "tier2_db_path": new_tier2_name, "has_moved": "no"}
+        master_store.read(master_dict, "Collection", table_name=PROJECTS_TABLE)
+        master_store.close()
+
+        if st.session_state.active_qid == qid:
+            st.session_state.active_qid = None
+            st.session_state.section_idx = 0
+        st.rerun()
+
+    if cancel_duplicate_btn:
+        if st.session_state.active_qid == qid:
+            st.session_state.active_qid = None
+            st.session_state.section_idx = 0
+        st.rerun()
+
+
 @st.fragment
 def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
     st.markdown(
@@ -2370,7 +2457,7 @@ if st.session_state.screen == "datasheet":
                     qid = int(r.project_id)
                     pname = (r.project_name or "").strip()
 
-                    col_project, col_delete = st.columns([5, 1])
+                    col_project, col_duplicate, col_delete = st.columns([6, 0.75, 0.75])
 
                     with col_project:
                         if st.button(pname, key=f"pick_{qid}", width="stretch"):
@@ -2396,6 +2483,10 @@ if st.session_state.screen == "datasheet":
                             st.session_state.select_model_screen = False
                             st.session_state.update_ai_info_screen = False
                             st.rerun()
+
+                    with col_duplicate:
+                        if st.button(":material/content_copy:", key=f"duplicate_{qid}", width="stretch"):
+                            confirm_duplicate_project(qid)
 
                     with col_delete:
                         if st.button("🗑️", key=f"delete_{qid}", width="stretch"):
@@ -3054,7 +3145,7 @@ elif st.session_state.screen == "hpc_move":
                 st.stop()
 
             if new_using_ssh_value.lower() == "putty" and (not plink or not pscp):
-                st.error("Could not find PuTTY tools; install PuTTY at https://www.puttyssh.org/")
+                st.error("Could not find PuTTY tools. Quit MAVEN, install PuTTY from company software center, and then relaunch MAVEN.")
                 st.stop()
         
         else:
@@ -3234,6 +3325,13 @@ elif st.session_state.screen == "hpc_move":
                 hpc_staging_path = Path(hpc_staging_input)
             else:
                 hpc_staging_path = PurePosixPath(hpc_staging_input)
+
+            is_lanl_remote = is_remote and "lanl.gov" in socket.getfqdn().lower()
+            data_input = hpc_staging_input if is_lanl_remote else local_data_input
+            label = "HPC Staging Directory" if is_lanl_remote else "Local Data Location"
+            if "maven_files" in data_input.lower():
+                st.error(f"{label} is **NOT** the `maven_files` directory. Enter the folder where your data is stored.")
+                st.stop()
 
             hpc_campaign_input = updated_tier2_dict["hpc_campaign_space"].strip()
             if "campaign" not in hpc_campaign_input.lower():
@@ -3829,7 +3927,7 @@ elif st.session_state.screen == "hpc_move":
                         output = remote_run.stdout.lower()
                         if "conduit get" in output and ("no credentials" in output or "failed" in output):
                             st.code(f"In a new terminal session on '{hpc_name}', run 'conduit get' to enable data transfer to campaign.")
-                        elif "SyntaxWarning: invalid escape sequence" in output:
+                        elif any("SyntaxWarning: invalid escape sequence" in text for text in (remote_run.stdout, remote_run.stderr)):
                             st.code(f"Unable to move '{proj_name}' to {hpc_campaign}. Verify you have write permissions.")
                         else:
                             st.code(remote_run.stdout[idx + len(marker):])
