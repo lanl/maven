@@ -88,7 +88,7 @@ discoverability:
           description: ''
           visible: false
           mapping: null
-          type: int
+          type: string
           options: null
           length: null
           required: true
@@ -101,7 +101,7 @@ discoverability:
           options: null
           length: null
           required: true
-          value: 1.0.0
+          value: 1.0
         filename:
           description: ''
           visible: false
@@ -283,13 +283,13 @@ discoverability:
               value: ''
         creation_method:
           description: The method by which the datacard was created, following a controlled vocabulary. This provides context on how the datacard was generated and can inform trust and maintenance practices.
-          visible: true
+          visible: false
           mapping: null
           type: dropdown
           options: [Manual, Automated, Hybrid]
           length: null
           required: true
-          value: ''
+          value: Hybrid
         created_date:
           description: The date the datacard was first created, in ISO 8601 format (YYYY-MM-DD). Provides temporal context for the datacard and can be used for tracking its age and relevance.
           visible: true
@@ -325,11 +325,11 @@ discoverability:
               description: ''
               visible: false
               mapping: null
-              type: string
+              type: int
               options: null
               length: null
               required: true
-              value: ''
+              value: 1.0
             summary:
               description: ''
               visible: false
@@ -338,7 +338,7 @@ discoverability:
               options: null
               length: null
               required: true
-              value: ''
+              value: Initial datacard creation
         created_by:
           description: ''
           visible: false
@@ -360,7 +360,7 @@ discoverability:
               options: null
               length: null
               required: false
-              value: ''
+              value: Combination of an AI model generating metadata, a software interfacing person and AI model, and a person reviewing and editing datacard metadata.
             creator:
               description: ''
               visible: false
@@ -501,7 +501,7 @@ discoverability:
                       options: null
                       length: null
                       required: true
-                      value: ''
+                      value: URSA
                     version:
                       description: ''
                       visible: false
@@ -773,7 +773,7 @@ discoverability:
               required: false
               value: ''
         task_category:
-          description: A task category is the kind of AI/ML task the dataset is meant to support, i.e. what a model trained or evaluated on it is asked to do (e.g., classify images, predict a value, detect objects). Primary task category or categories for this dataset. Helps ML practitioners find relevant datasets in the catalog. e.g., classification | regression | segmentation | detection | generation | translation | summarization | ranking | anomaly_detection | clustering | reinforcement_learning | other
+          description: A task category is the type of AI/ML task the dataset is meant to support, i.e. what a model trained or evaluated on it is asked to do (e.g., classify images, predict a value, detect objects). Helps users find relevant datasets in the catalog. e.g., classification | regression | segmentation | detection | generation | translation | summarization | ranking | anomaly_detection | clustering | reinforcement_learning | other
           visible: true
           mapping: null
           type: list
