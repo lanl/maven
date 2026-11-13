@@ -1757,7 +1757,7 @@ def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_
     with st.spinner("Populating Findability Metadata. May take a few minutes..."):
         ai_model_error_msg = None
         try:
-            tier1_dict_new = run_tier1_yaml(*args)
+            tier1_dict = run_tier1_yaml(*args)
         except Exception as e:
             ai_model_error_msg = str(e)
     
@@ -1768,19 +1768,19 @@ def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_
             st.error("Error connecting to AI Model:")
             st.exception(ai_model_error_msg)
         st.stop()
-    if tier1_dict_new is None or tier1_dict_new == {}:
+    if tier1_dict is None or tier1_dict == {}:
         st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
         st.stop()
-    if not isinstance(tier1_dict_new, dict):
+    if not isinstance(tier1_dict, dict):
         st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
         st.stop()
     # TODO: remove once v2.0 changes finished
     # mainly for maven devs to know if model forgot to include all leaf node fields
-    if flattened_fields.keys() != tier1_dict_new.keys():
+    if flattened_fields.keys() != tier1_dict.keys():
         st.error(f"AI model returned incomplete set of fields from datacard {incomplete_message}. Try again.")
         st.stop()
 
-    return complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict_new)
+    return complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict)
 
 
 # TODO: after changing to duckdb, don't need to convert string list to just list
@@ -2754,7 +2754,7 @@ if st.session_state.screen == "datasheet":
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
                         datacard_dict, reference_guide, flattened_fields = get_tier1_fields()
-                        tier1_dict_new = generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_fields,
+                        tier1_dict = generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_fields,
                                                              incomplete_message=" generation")
                         
                         store = get_db(get_tier1_db_path(qid))
@@ -2786,6 +2786,7 @@ elif st.session_state.screen == "tier1":
     st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
     needs_tier1 = not tier1_dict
+    # this is field in v1.2 card. if present must migrate to v2.0 (current) card
     needs_tier1_migration = tier1_dict and any("westBoundLongitude" in field_name for field_name in tier1_dict)
 
     if needs_tier1 and datasheet_df.empty:
