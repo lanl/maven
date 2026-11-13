@@ -84,7 +84,7 @@ def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields:
         {old_datacard_dict}
         '''
 
-        input_context_string = f'''
+        input_context_string = '''
         **OLD_DATACARD_CONTEXT** is a dict of fields and values from a previous datacard version. 
         These values can be useful if the field keys match the keys in **FLATTENED_FIELDS_INPUT**
         '''
