@@ -73,6 +73,7 @@ import shlex
 import getpass
 import socket
 import re
+import sys
 import tempfile
 try:
     from openai import OpenAI
@@ -93,6 +94,7 @@ from importlib.metadata import version
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
+from dsi.core import Terminal
 
 from maven.ursa_autofill import (
     AGENT_META_COLUMNS,
@@ -139,6 +141,7 @@ ALL_QUESTIONS = [q for s in SECTIONS for q in s["questions"]]
 
 MASTER_DB_PATH = "maven.db"
 PROJECTS_TABLE = "projects"
+MIGRATED_TABLE = "migrated_projects"
 
 DATASHEET_TABLE = "datasheet"
 FILE_POINTERS_TABLE = "metadata_file_paths"
@@ -251,7 +254,9 @@ def load_env_keys() -> None:
 
 
 def get_db(db_path: str) -> DSI:
-    return DSI(db_path, check_same_thread=False, silence_messages=True)
+    if db_path == get_master_db_name():
+        return DSI(db_path, check_same_thread=False, silence_messages=True)
+    return DSI(db_path, backend_name="DuckDB", silence_messages=True)
 
 
 def all_question_columns() -> List[str]:
@@ -293,8 +298,32 @@ def create_master_db():
     master_dict = {"project_id": "", "project_name": "", "tier1_db_path": "",
                    "tier2_db_path": "", "has_moved": ""}
     store.read(master_dict, "Collection", table_name=PROJECTS_TABLE)
-    store.close()
 
+    # migrate any tier 1 and tier 2 dbs that are sqlite to duckdb -- have to do this every run
+    projects_df = store.get_table(PROJECTS_TABLE, True)
+    if not projects_df.empty:
+        t = Terminal()
+        db_paths = [str(get_maven_dir() / path) for column in ("tier1_db_path", "tier2_db_path") for path in projects_df[column]]
+
+        if MIGRATED_TABLE in store.list(True):
+            migrated_table_df = store.get_table(MIGRATED_TABLE, True)
+            migrated_projects_list = migrated_table_df.iloc[:, 0].tolist()
+            db_paths = list(set(db_paths) - set(migrated_projects_list))
+            if not db_paths:
+                store.close()
+                return
+
+        for db in db_paths:
+            if os.path.exists(db) and t.identify_backend(db).lower() == "sqlite":
+                shutil.copy2(db, db+".backup")
+                os.remove(db)
+                temp_store = DSI(db+".backup", check_same_thread=False, silence_messages=True)
+                temp_store.process("DuckDB", db)
+                temp_store.close()
+                os.remove(db+".backup")
+
+        store.read({"project_files": db_paths}, "Collection", table_name=MIGRATED_TABLE)
+    store.close()
 
 def create_tier1_db(db_path: str):
     question_cols = all_question_columns()
@@ -1567,12 +1596,31 @@ def update_short_project_title_dialog(qid: int, short_proj_name: str, hpc_campai
 @st.dialog("Update MAVEN Directory", width="medium")
 def update_maven_dir_dialog():
     st.write("Enter a directory where MAVEN should store all metadata databases.")
+    st.caption("NOTE: MAVEN will create its own folder here called 'maven_files'")
 
-    curr_dir = get_maven_dir()
-    dir_input = st.text_input("MAVEN Directory", value=curr_dir, key="update_maven_dir")
+    curr_dir = str(get_maven_dir())
+    dir_input = st.text_input("MAVEN Directory", value=curr_dir.removesuffix("maven_files"), key="update_maven_dir")
 
     if st.button("Save", type="primary", width="stretch"):
+        if dir_input.endswith("maven_files/") or dir_input.endswith("maven_files"):
+            st.error("Do not specify the 'maven_files' folder. MAVEN will create it separately")
+            st.stop()
+
         if save_maven_dir(dir_input):
+            # update migrated project table with new maven dir
+            new_dir = str(get_maven_dir())
+            store = get_db(get_master_db_name())
+            if MIGRATED_TABLE in store.list(True):
+                curr_migrated_tbl = store.get_table(MIGRATED_TABLE, True, True)
+                mask = curr_migrated_tbl["project_files"].str.startswith(curr_dir, na=False)
+
+                curr_migrated_tbl.loc[mask, "project_files"] = (
+                    curr_migrated_tbl.loc[mask, "project_files"]
+                    .str.replace(rf"^{re.escape(curr_dir)}", new_dir, regex=True)
+                )
+                store.update(curr_migrated_tbl)
+            store.close()
+
             st.success("MAVEN Directory saved.")
             st.rerun()
 
@@ -2084,6 +2132,7 @@ if "t2_uploader_version" not in st.session_state:
     st.session_state.t2_uploader_version = 0
 if "bashrc_path" not in st.session_state:
     st.session_state.bashrc_path = None
+
 
 if get_maven_dir() is None:
     st.title("Welcome to the MAVEN App")
