@@ -118,10 +118,10 @@ from langchain.chat_models import init_chat_model
 curr_dir = Path(__file__).parent
 files_dir = curr_dir / "metadata_template"
 
-# GENESIS v1.2 datacard files
-GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
-GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_dc_v1.2_MD.md"
-GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "genesis_dc_v1.2_reference_guide.md"
+# # GENESIS v1.2 datacard files
+# GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
+# GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_dc_v1.2_MD.md"
+# GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "genesis_dc_v1.2_reference_guide.md"
 
 # GENESIS v2.0 datacard files
 GENESIS_DATACARD_BREAKDOWN_V2 = files_dir / "genesis_dc_v2.0_breakdown.yaml"
@@ -362,16 +362,6 @@ def get_tier1_db_path(project_id: int, only_name: bool = False) -> str:
     return str(maven_dir / df.iloc[0, 0])
 
 
-def get_tier1_YAML_MD_path(project_id: int, only_name: bool = False) -> str:
-    store = get_db(get_master_db_name())
-    df = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {project_id}", True)
-    store.close()
-    if only_name:
-        return df.iloc[0, 0]
-    maven_dir = get_maven_dir()
-    return str(maven_dir / df.iloc[0, 0]).replace(".db", ".yaml")
-
-
 def get_tier2_db_path(project_id: int, only_name: bool = False) -> str:
     store = get_db(get_master_db_name())
     df = store.query(f"SELECT tier2_db_path FROM {PROJECTS_TABLE} WHERE project_id = {project_id}", True)
@@ -461,6 +451,10 @@ def delete_project(qid: int) -> None:
         projects_df["project_id"] = projects_df["project_id"].astype(int)
         projects_df = projects_df[projects_df["project_id"] != qid]
         store.update(projects_df)
+
+        migrated_dbs_df = store.get_table(MIGRATED_TABLE, True, True)
+        migrated_dbs_df = migrated_dbs_df[~migrated_dbs_df["project_files"].isin([tier1_path, tier2_path])]
+        store.update(migrated_dbs_df)
         store.close()
 
 
@@ -1957,9 +1951,9 @@ def render_tier1_yaml_form(qid, tier1_dict, datacard_dict, flattened_fields):
                         for num_parent_val in range(nested_value["length"]):
                             with content:
                                 if depth == 0:
-                                    st.write(f"### {key} {num_parent_val+1}")
+                                    st.write(f"### {key.replace("_", " ")} {num_parent_val+1}")
                                     st.caption(datacard_dict[key]["description"])
-                                st.write(f"**{key} {num_parent_val+1}**")
+                                st.write(f"**{key.replace("_", " ")} {num_parent_val+1}**")
                                 render_yaml_portion(
                                     value,
                                     path=current_path,
@@ -1970,9 +1964,9 @@ def render_tier1_yaml_form(qid, tier1_dict, datacard_dict, flattened_fields):
                     else:
                         with content:
                             if depth == 0:
-                                st.write(f"### {key}")
+                                st.write(f"### {key.replace("_", " ")}")
                                 st.caption(datacard_dict[key]["description"])
-                            st.write(f"**{key}**")
+                            st.write(f"**{key.replace("_", " ")}**")
                         render_yaml_portion(
                             value,
                             path=current_path,
@@ -1987,7 +1981,7 @@ def render_tier1_yaml_form(qid, tier1_dict, datacard_dict, flattened_fields):
                             is_required = field_dict["required"]
                             actual_field_reqs.setdefault(widget_key, is_required)
 
-                            st.write(key + (" *" if is_required else ""))
+                            st.write(key.replace("_", " ") + (" *" if is_required else ""))
                             st.caption(field_dict["description"])
 
                             new_value = render_leaf_input(field_dict, widget_key, value, parent_num if parent_list else None)
@@ -3524,7 +3518,6 @@ elif st.session_state.screen == "hpc_move":
             temp_t2_db_name = proj_name + ".db"
             shutil.copy2(t2_db_name, temp_t2_db_name)
 
-            # add col in tier 1 md table that is absolute path to tier 2 db on campaign. Use the temp name (actually being moved to campaign)
             t2_db_campaign_path = os.path.join(hpc_campaign, proj_name, temp_t2_db_name)
             t1_store = get_db(t1_db_name)
             datasheet_df = t1_store.get_table(DATASHEET_TABLE, True)
