@@ -135,39 +135,39 @@ would otherwise exclude this intentionally-committed build spec.
 
 ## Installing the macOS `.dmg`
 
-Since the `.dmg` is only ad-hoc codesigned (no Apple Developer ID / no
-notarization), Gatekeeper treats it as "unidentified developer" at best, and
-on some machines refuses to open it at all with a "is damaged and can't be
-opened" message. To install:
+The `.dmg` and the `.app` inside it are signed with a Developer ID
+Application certificate and notarized by Apple, so Gatekeeper accepts them
+with no manual steps: open the `.dmg` and drag `MAVEN.app` into
+`/Applications`, then launch it normally.
 
-1. Open the `.dmg` and drag `maven.app` into `/Applications`.
-2. Try launching it normally first: right-click (or Control-click)
-   `maven.app` → **Open**, then confirm the "unidentified developer" prompt.
-   This works on most machines and only needs to be done once.
-3. If step 2 doesn't offer an "Open" option, or macOS claims the app is
-   damaged, Gatekeeper is refusing to honor the ad-hoc signature at all.
-   Clear the quarantine extended attribute macOS attaches to anything
-   downloaded from the internet, which re-signs it as adhoc-trusted locally:
+### Code signing & notarization secrets
 
-   ```
-   xattr -cr /Applications/maven.app
-   ```
+Building the signed `.dmg` in `release.yml` requires five GitHub Actions
+repo secrets:
 
-   This strips the `com.apple.quarantine` flag (and any other extended
-   attributes) recursively from the app bundle, so Gatekeeper no longer
-   evaluates it against the (missing) notarization/Developer ID checks.
-   This is a one-time, per-machine workaround — it doesn't persist across
-   reinstalling or updating the app, so re-run it if a future self-update
-   re-triggers the same warning.
+| Secret | Contents |
+|---|---|
+| `APPLE_CERTIFICATE_P12` | Base64 of the exported Developer ID Application `.p12` certificate |
+| `APPLE_CERTIFICATE_PASSWORD` | The password the `.p12` was exported with |
+| `APPLE_API_KEY_P8` | Base64 of an App Store Connect API key (role: Developer or higher) `.p8` file |
+| `APPLE_API_KEY_ID` | The Key ID shown for that API key in App Store Connect |
+| `APPLE_API_ISSUER_ID` | The Issuer ID shown alongside that API key |
+
+No Team ID secret is needed — the workflow derives the signing identity
+string from the imported certificate itself, and `notarytool` doesn't
+require a team ID when authenticating with an API key.
 
 ## Known limitations / things to validate further
 
 - **Binary size**: ~250 MB per platform (Streamlit + pandas + LangChain +
   ursa-ai + dsi-workflow bundled into one file). Acceptable for now; revisit
   `--onefile` vs `--onedir` if download size becomes a problem.
-- **macOS Gatekeeper**: the `.dmg` is ad-hoc codesigned (no Apple Developer
-  ID), so first launch requires right-click → Open to bypass the
-  "unidentified developer" warning.
+- **macOS hardened runtime entitlements**: the `.app` is signed with
+  `--options runtime` (required for notarization) plus the entitlements in
+  `packaging/macos/entitlements.plist`. Those entitlements exist because
+  this is a PyInstaller onefile build — its bundled `.so`/`.dylib`s aren't
+  part of the on-disk `.app`, they self-extract into a temp directory at
+  runtime, and hardened runtime would otherwise refuse to load them.
 - **Windows WebView2**: `pywebview`'s Windows backend needs the Edge WebView2
   runtime, which ships with modern Windows but isn't guaranteed present on
   older/locked-down images. Not yet validated against a managed Windows

@@ -91,7 +91,7 @@ jobs:
             "/DICON_PATH=$icon_path" \
             packaging/windows/installer.nsi
 
-      - name: Build macOS .dmg
+      - name: Build macOS .app bundle
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
@@ -109,8 +109,80 @@ jobs:
           sips -z 32 32 packaging/icon.png --out icon.iconset/icon_32x32.png
           sips -z 16 16 packaging/icon.png --out icon.iconset/icon_16x16.png
           iconutil -c icns icon.iconset -o "$app_dir/Contents/Resources/icon.icns"
+          rm -rf icon.iconset
 
-          codesign --force --deep -s - "$app_dir"
+      - name: Import Developer ID certificate
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain_path="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -base64 24)"
+          cert_path="$RUNNER_TEMP/developer_id.p12"
+
+          echo -n "$CERTIFICATE_P12_BASE64" | base64 --decode -o "$cert_path"
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$cert_path" -k "$keychain_path" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" $(security list-keychains -d user | sed 's/"//g')
+
+          identity="$(security find-identity -v -p codesigning "$keychain_path" | grep "Developer ID Application" | head -n1 | sed -E 's/.*"(.+)"/\1/')"
+          if [ -z "$identity" ]; then
+            echo "No Developer ID Application identity found in the imported certificate" >&2
+            exit 1
+          fi
+
+          rm -f "$cert_path"
+          echo "SIGNING_KEYCHAIN=$keychain_path" >> "$GITHUB_ENV"
+          echo "SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+
+      - name: Sign, notarize, and staple macOS app
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        env:
+          NOTARY_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          app_dir="release/MAVEN.app"
+          notary_key_path="$RUNNER_TEMP/notary_key.p8"
+          echo -n "$NOTARY_KEY_P8_BASE64" | base64 --decode -o "$notary_key_path"
+
+          codesign --force --timestamp --options runtime \
+            --entitlements packaging/macos/entitlements.plist \
+            --sign "$SIGNING_IDENTITY" \
+            "$app_dir/Contents/MacOS/${{ matrix.asset_name }}"
+
+          codesign --force --timestamp --options runtime \
+            --entitlements packaging/macos/entitlements.plist \
+            --sign "$SIGNING_IDENTITY" \
+            "$app_dir"
+
+          codesign --verify --deep --strict --verbose=2 "$app_dir"
+
+          zip_path="$RUNNER_TEMP/MAVEN.zip"
+          ditto -c -k --keepParent "$app_dir" "$zip_path"
+
+          xcrun notarytool submit "$zip_path" \
+            --key "$notary_key_path" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" \
+            --wait
+
+          xcrun stapler staple "$app_dir"
+
+          rm -f "$notary_key_path" "$zip_path"
+
+      - name: Build macOS .dmg
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          app_dir="release/MAVEN.app"
 
           brew install create-dmg
 
@@ -135,7 +207,39 @@ jobs:
 
           test -f "$dmg_path"
 
-          rm -rf "$dmg_staging" icon.iconset
+          rm -rf "$dmg_staging"
+
+      - name: Sign, notarize, and staple macOS .dmg
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        env:
+          NOTARY_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          dmg_path="release/maven-macos-installer.dmg"
+          notary_key_path="$RUNNER_TEMP/notary_key.p8"
+          echo -n "$NOTARY_KEY_P8_BASE64" | base64 --decode -o "$notary_key_path"
+
+          codesign --force --timestamp --sign "$SIGNING_IDENTITY" "$dmg_path"
+
+          xcrun notarytool submit "$dmg_path" \
+            --key "$notary_key_path" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" \
+            --wait
+
+          xcrun stapler staple "$dmg_path"
+
+          rm -f "$notary_key_path"
+
+      - name: Clean up signing keychain
+        if: always() && matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          if [ -n "$SIGNING_KEYCHAIN" ] && [ -f "$SIGNING_KEYCHAIN" ]; then
+            security delete-keychain "$SIGNING_KEYCHAIN" || true
+          fi
 
       - name: Build Linux AppImage
         if: matrix.os == 'ubuntu-latest'
