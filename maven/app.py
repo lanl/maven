@@ -3204,6 +3204,53 @@ elif st.session_state.screen == "hpc_move":
                     st.session_state.tier2_loc_dict = existing_loc_dict
                     st.rerun()
 
+            # check if active kerberos ticket on linux and mac
+            if sys.platform in {"darwin", "linux"}:
+                klist_path = shutil.which("klist")
+                if klist_path is None:
+                    st.error("Kerberos is required to access HPC")
+                    st.stop()
+        
+                result = subprocess.run([klist_path], capture_output=True, text=True, check=False)
+        
+                output = f"{result.stdout}\n{result.stderr}"
+        
+                principal_line = next((line for line in output.splitlines() if re.match(r"^\s*(default\s+)?principal\s*:", line, re.IGNORECASE)), None)
+        
+                if principal_line is None:
+                    if sys.platform == "linux":
+                        st.error("No Kerberos ticket found. Run 'kinit' in a terminal to create one and try again.")
+                    else:
+                        st.error("No Kerberos ticket found. Create one and try again.")
+                    st.stop()
+        
+                match = re.search(r"principal:\s*(.+)$", principal_line, re.IGNORECASE)
+                if match is None:
+                    if sys.platform == "linux":
+                        st.error("Kerberos ticket check returns incorrect value. Run 'kdestroy' in a terminal, then run 'kinit' to recreate one, and try again.")
+                    else:
+                        st.error("Kerberos ticket check returns incorrect value. Close existing ticket, recreate one, and try again.")
+                    st.stop()
+        
+                principal = match.group(1).strip()
+        
+                username, separator, realm = principal.partition("@")
+        
+                if not separator or not username or not realm:
+                    if sys.platform == "linux":
+                        st.error("Kerberos ticket must resemble 'user@lanl.gov'. Run 'kdestroy' in a terminal, then run 'kinit' to recreate one, and try again.")
+                    else:
+                        st.error("Kerberos ticket must resemble 'user@lanl.gov'. Close existing ticket, recreate one, and try again.")
+                    st.stop()
+        
+                if username.isnumeric():
+                    st.error(f"Kerberos ticket must have an alphabetical username not '{username}'")
+                    st.stop()
+        
+                if realm.lower() != "lanl.gov":
+                    st.error(f"Kerberos ticket must end with 'lanl.gov' not '{realm}'")
+                    st.stop()
+
             if local_data_input.lower() == "n/a":
                 if not (hpc_staging_path.is_absolute() and hpc_staging_path.is_dir()):
                     st.error("HPC Staging Directory must be an absolute path to the data you can access")
@@ -3433,6 +3480,52 @@ elif st.session_state.screen == "hpc_move":
                 confirm_unchanged_data_dialog(qid, has_moved)
                 st.stop()
 
+            # check if active kerberos ticket on linux and mac
+            if sys.platform in {"darwin", "linux"}:
+                klist_path = shutil.which("klist")
+                if klist_path is None:
+                    st.error("Kerberos is required to access HPC")
+                    st.stop()
+        
+                result = subprocess.run([klist_path], capture_output=True, text=True, check=False)
+        
+                output = f"{result.stdout}\n{result.stderr}"
+        
+                principal_line = next((line for line in output.splitlines() if re.match(r"^\s*(default\s+)?principal\s*:", line, re.IGNORECASE)), None)
+        
+                if principal_line is None:
+                    if sys.platform == "linux":
+                        st.error("No Kerberos ticket found. Run 'kinit' in a terminal to create one and try again.")
+                    else:
+                        st.error("No Kerberos ticket found. Create one and try again.")
+                    st.stop()
+        
+                match = re.search(r"principal:\s*(.+)$", principal_line, re.IGNORECASE)
+                if match is None:
+                    if sys.platform == "linux":
+                        st.error("Kerberos ticket check returns incorrect value. Run 'kdestroy' in a terminal, then run 'kinit' to recreate one, and try again.")
+                    else:
+                        st.error("Kerberos ticket check returns incorrect value. Close existing ticket, recreate one, and try again.")
+                    st.stop()
+        
+                principal = match.group(1).strip()
+        
+                username, separator, realm = principal.partition("@")
+        
+                if not separator or not username or not realm:
+                    if sys.platform == "linux":
+                        st.error("Kerberos ticket must resemble 'user@lanl.gov'. Run 'kdestroy' in a terminal, then run 'kinit' to recreate one, and try again.")
+                    else:
+                        st.error("Kerberos ticket must resemble 'user@lanl.gov'. Close existing ticket, recreate one, and try again.")
+                    st.stop()
+        
+                if username.isnumeric():
+                    st.error(f"Kerberos ticket must have an alphabetical username not '{username}'")
+                    st.stop()
+        
+                if realm.lower() != "lanl.gov":
+                    st.error(f"Kerberos ticket must end with 'lanl.gov' not '{realm}'")
+                    st.stop()
 
             # if local data has been moved in this session and user hasn't changed screens, then check for existing folders already happened earlier
             if not st.session_state.local_to_staging_moved:
