@@ -763,8 +763,9 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
 def move_into_group(data, original_key, group_key):
     value = data[original_key]
     # TODO: once using duckdb, remove this try/except to convert string list to just list
-    import ast
-    value = ast.literal_eval(value)
+    if isinstance(value, str):
+        import ast
+        value = ast.literal_eval(value)
     just_field_name = original_key.rsplit(".", 1)[-1]
 
     if group_key in data:
@@ -780,8 +781,11 @@ def move_into_group(data, original_key, group_key):
     for key, current_value in data.items():
         if key == original_key:
             # TODO: once using duckdb, remove this try/except to convert string list to just list
-            import ast
-            value1 = ast.literal_eval(current_value)
+            if isinstance(current_value, list):
+                import ast
+                value1 = ast.literal_eval(current_value)
+            else:
+                value1 = current_value
             rebuilt[group_key] = [{} for _ in range(len(value1))]
             for index, val in enumerate(value1):
                 rebuilt[group_key][index][just_field_name] = val
@@ -2030,10 +2034,6 @@ def render_tier1_yaml_form(qid, tier1_dict, datacard_dict, flattened_fields):
             tier1_db = get_tier1_db_path(qid)
             store = get_db(tier1_db)
             query = (f'UPDATE {TIER1_YAML_TABLE} SET ' + ", ".join(f'"{k}" = ?' for k in updated_values))
-            #TODO: once migrated to duckdb, don't have to convert list to string list to ingest into db
-            for k, v in updated_values.items():
-                if isinstance(v, list):
-                    updated_values[k] = str(v)
             store.query(query, params=list(updated_values.values()))
             store.close()
 
