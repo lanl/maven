@@ -3176,6 +3176,7 @@ elif st.session_state.screen == "hpc_move":
                 diana_endpoint_path = PurePosixPath(diana_endpoint_input)
 
             username_input = updated_tier2_dict["username"].strip()
+            updated_tier2_dict["hpc_system"] = updated_tier2_dict["hpc_system"].lower()
             hpc_system_input = updated_tier2_dict["hpc_system"].strip()
 
             user_group_input = str(updated_tier2_dict["user_group"]).strip()

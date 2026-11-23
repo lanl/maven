@@ -2667,7 +2667,7 @@ governed_use:
           options: null
           length: null
           required: true
-          value: ''
+          value: Unknown
         irb_approved:
           description: ''
           visible: false
