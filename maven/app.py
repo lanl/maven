@@ -763,9 +763,9 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
 def move_into_group(data, original_key, group_key):
     value = data[original_key]
     # TODO: once using duckdb, remove this try/except to convert string list to just list
-    if isinstance(value, str):
-        import ast
-        value = ast.literal_eval(value)
+    # if isinstance(value, str):
+    #     import ast
+    #     value = ast.literal_eval(value)
     just_field_name = original_key.rsplit(".", 1)[-1]
 
     if group_key in data:
@@ -781,11 +781,12 @@ def move_into_group(data, original_key, group_key):
     for key, current_value in data.items():
         if key == original_key:
             # TODO: once using duckdb, remove this try/except to convert string list to just list
-            if isinstance(current_value, list):
-                import ast
-                value1 = ast.literal_eval(current_value)
-            else:
-                value1 = current_value
+            value1 = current_value
+            # if isinstance(current_value, list):
+            #     import ast
+            #     value1 = ast.literal_eval(current_value)
+            # else:
+            #     value1 = current_value
             rebuilt[group_key] = [{} for _ in range(len(value1))]
             for index, val in enumerate(value1):
                 rebuilt[group_key][index][just_field_name] = val
@@ -834,11 +835,12 @@ def generate_tier1_datacard(qid: int, output_file: str, hpc_name = None, hpc_cam
             current = current.setdefault(key, {})
 
         # TODO: once using duckdb, remove this try/except that converts string list to list --> instead just use value
-        try:
-            import ast
-            value1 = ast.literal_eval(value)
-        except Exception:
-            value1 = value
+        value1 = value
+        # try:
+        #     import ast
+        #     value1 = ast.literal_eval(value)
+        # except Exception:
+        #     value1 = value
         current[keys[-1]] = value1
 
     front_matter = {
@@ -1830,9 +1832,10 @@ def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_
 
 
 # TODO: after changing to duckdb, don't need to convert string list to just list
-from ast import literal_eval
-def parse_list_value(value):
-    return literal_eval(value) if isinstance(value, str) else value
+# TODO: check if all places where parse_list_value() is called are also commented out/deleted
+# from ast import literal_eval
+# def parse_list_value(value):
+#     return literal_eval(value) if isinstance(value, str) else value
 
 INPUT_TEST_IDS = {
     "string": "stTextInput",
@@ -1864,7 +1867,8 @@ def render_leaf_input(field_dict, widget_key, value, parent_num=None):
 
     # A leaf list renders one text input for each item.
     if field_type == "list":
-        values = parse_list_value(value)
+        values = value
+        # values = parse_list_value(value)
         result = []
 
         for index, item in enumerate(values):
@@ -1877,7 +1881,8 @@ def render_leaf_input(field_dict, widget_key, value, parent_num=None):
         return result
 
     if parent_num is not None:
-        value = parse_list_value(value)[parent_num]
+        value = value[parent_num]
+        # value = parse_list_value(value)[parent_num]
         label = f"{widget_key}_{parent_num}"
         state_key = f"field{parent_num}_{widget_key}"
     else:
