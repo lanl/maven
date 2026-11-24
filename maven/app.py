@@ -3615,6 +3615,7 @@ elif st.session_state.screen == "hpc_move":
             t2_db_campaign_path = os.path.join(hpc_campaign, proj_name, temp_t2_db_name)
             t1_store = get_db(t1_db_name)
             datasheet_df = t1_store.get_table(DATASHEET_TABLE, True)
+            t1_store.close()
 
             # create datasheet pdf in local data loc (or hpc staging if already starting from there)
             full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATASHEET_SUFFIX
@@ -3633,6 +3634,7 @@ elif st.session_state.screen == "hpc_move":
 
             datasheet_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_name)
             datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_genesis_dc_name)
+            t1_store = get_db(t1_db_name)
             if FILE_POINTERS_TABLE in t1_store.list(True):
                 t1_store.query(f"UPDATE {FILE_POINTERS_TABLE} SET datsheet_file = ?, datacard_file = ?, tier2_db_path = ?;", 
                                params=(datasheet_campaign_path, datacard_campaign_path, t2_db_campaign_path))
