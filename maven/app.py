@@ -121,8 +121,8 @@ files_dir = curr_dir / "metadata_template"
 
 
 # GENESIS v2.0 datacard files
-GENESIS_DATACARD_BREAKDOWN_V2 = files_dir / "genesis_dc_v2.0_breakdown.yaml"
-GENESIS_DATACARD_REFERENCE_V2 = files_dir / "genesis_dc_v2.0_reference_guide.md"
+GENESIS_DATACARD_BREAKDOWN_V2 = files_dir / "genesis_v2.0_breakdown.yaml"
+GENESIS_DATACARD_REFERENCE_V2 = files_dir / "genesis_v2.0_reference_guide.md"
 
 # Genesis datasheet 
 datasheet_file = files_dir / "datasheet_sections.yaml"
