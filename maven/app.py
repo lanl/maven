@@ -119,10 +119,6 @@ from langchain.chat_models import init_chat_model
 curr_dir = Path(__file__).parent
 files_dir = curr_dir / "metadata_template"
 
-# # GENESIS v1.2 datacard files
-# GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
-# GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_dc_v1.2_MD.md"
-# GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "genesis_dc_v1.2_reference_guide.md"
 
 # GENESIS v2.0 datacard files
 GENESIS_DATACARD_BREAKDOWN_V2 = files_dir / "genesis_dc_v2.0_breakdown.yaml"
@@ -2447,7 +2443,6 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
     else:
         tier1_dict_test = get_tier1_table(qid)
         _, _, flattened_fields = get_tier1_fields()
-        # ex: fieldA: {required: true, visible: false, value: 'some value' or '' or []}
 
         for field, val in tier1_dict_test.items():
             # only do check on visible and required fields
@@ -3450,10 +3445,6 @@ elif st.session_state.screen == "hpc_move":
                 col_names.remove("using_ssh")
             new_values = list(updated_tier2_dict.values())
             store = get_db(tier2_db_path)
-            # if locations_tbl.empty:
-            #     new_tier2_dict = row_dict = dict(zip(col_names, new_values))
-            #     store.read(new_tier2_dict, "Collection", table_name=TIER_2_TABLE)
-            # else:
             query = (f'UPDATE {TIER_2_TABLE} SET ' + ", ".join(f'"{k}" = ?' for k in col_names))
             store.query(query, params=new_values)
             store.close()
