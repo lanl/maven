@@ -88,7 +88,7 @@ def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields:
         **OLD_DATACARD_CONTEXT** is a dict of fields and values from a previous datacard version. 
         These values can be useful if the field keys match the keys in **FLATTENED_FIELDS_INPUT**
 
-        Specifically, the fields starting with 'provenance.source_data' are a match between **OLD_DATACARD_CONTEXT** and **FLATTENED_FIELDS_INPUT**.
+        Specifically, the fields starting with 'provenance.source_data' appear in both **OLD_DATACARD_CONTEXT** and **FLATTENED_FIELDS_INPUT**.
         If there is a value for those fields in **OLD_DATACARD_CONTEXT**, use those in **FLATTENED_FIELDS_INPUT**
         '''
 
