@@ -3715,8 +3715,8 @@ elif st.session_state.screen == "hpc_move":
                             spinner_msg = "- enter password in pop-up window"
                         else:
                             spinner_msg = "— check the terminal for 3-4 password prompts..."
-                    with st.spinner(f"Moving local data to HPC staging space {spinner_msg}"):
-                        print(" \n \nMoving local data to HPC staging space\n ")
+                    with st.spinner(f"Moving local data to HPC Staging space (might take some time) {spinner_msg}"):
+                        print(" \n \nMoving local data to HPC Staging space\n ")
                         try:
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
@@ -3761,8 +3761,8 @@ elif st.session_state.screen == "hpc_move":
                             spinner_msg = "- enter password in pop-up window"
                         else:
                             spinner_msg = "— check the terminal for 1 password prompt..."
-                    with st.spinner(f"Moving data from HPC staging to HPC campaign {spinner_msg}"):
-                        print(" \n \nMoving data from HPC staging to HPC campaign")
+                    with st.spinner(f"Moving data from HPC Staging to HPC campaign (might take some time) {spinner_msg}"):
+                        print(" \n \nMoving data from HPC Staging to HPC campaign")
                         remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
                         if using_ssh.lower() == "putty":
                             cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
