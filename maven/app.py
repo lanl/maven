@@ -1625,7 +1625,7 @@ def update_maven_dir_dialog():
     dir_input = st.text_input("MAVEN Directory", value=curr_dir.removesuffix("maven_files"), key="update_maven_dir")
 
     if st.button("Save", type="primary", width="stretch"):
-        if dir_input.endswith("maven_files/") or dir_input.endswith("maven_files"):
+        if dir_input.endswith(("maven_files/", "maven_files")):
             st.error("Do not specify the 'maven_files' folder. MAVEN will create it separately")
             st.stop()
 
