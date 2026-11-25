@@ -463,12 +463,12 @@ def delete_project(qid: int) -> None:
 def get_tier1_fields():
     datacard_dict = yaml.safe_load(GENESIS_DATACARD_BREAKDOWN_V2.read_text(encoding="utf-8"))
 
+    # Reference guide str
+    reference_guide = GENESIS_DATACARD_REFERENCE_V2.read_text(encoding="utf-8")
+
     # creates a dict of all flattened leaf nodes whose value is dict of required or not and visible or not
     # ex: fieldA: {required: true, visible: false, value: 'some value' or '' or []}
     flattened_fields = flattened_tier1_fields(datacard_dict)
-
-    # Reference guide str
-    reference_guide = GENESIS_DATACARD_REFERENCE_V2.read_text(encoding="utf-8")
 
     return datacard_dict, reference_guide, flattened_fields
 
@@ -2441,9 +2441,23 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.session_state.confirm_submit_context_files = False
         st.rerun()
 
+    other_metadata_disabled = False
+    if st.session_state.active_qid is None or is_metadata_btn_disabled:
+        other_metadata_disabled = True
+    else:
+        tier1_dict_test = get_tier1_table(qid)
+        _, _, flattened_fields = get_tier1_fields()
+        # ex: fieldA: {required: true, visible: false, value: 'some value' or '' or []}
 
-    if st.sidebar.button("Usability/AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
-                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+        for field, val in tier1_dict_test.items():
+            # only do check on visible and required fields
+            if flattened_fields[field]["required"] and flattened_fields[field]["visible"]:
+                if val is None or val == "" or (isinstance(val, list) and (val[0] is None or val[0] == "")):
+                    other_metadata_disabled = True
+                    break
+
+    if st.sidebar.button("Usability/AI-Ready Metadata", disabled=other_metadata_disabled, width="stretch",
+                        help="First fill out datasheet and findability metadata" if other_metadata_disabled else ""):
         st.session_state.screen = "tier2"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
@@ -2456,8 +2470,8 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
 
     st.sidebar.space()
 
-    if st.sidebar.button("Data Movement", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
-                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+    if st.sidebar.button("Data Movement", disabled=other_metadata_disabled, width="stretch",
+                        help="First fill out datasheet and findability metadata" if other_metadata_disabled else ""):
         st.session_state.screen = "hpc_move"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
