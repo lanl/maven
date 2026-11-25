@@ -62,6 +62,7 @@ import pypdf
 import docx
 from pptx import Presentation
 import pandas as pd
+import numpy as np
 import shutil
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -409,7 +410,8 @@ def get_tier1_table(project_id: int, check_exists=False) -> dict | bool:
     if TIER1_YAML_TABLE not in curr_tables:
         store.close()
         return {}
-    tier1_dict = store.get_table(TIER1_YAML_TABLE, collection=True).iloc[0].to_dict()
+    tier1_vals = store.get_table(TIER1_YAML_TABLE, collection=True).iloc[0]
+    tier1_dict = tier1_vals.map(lambda value: value.tolist() if isinstance(value, np.ndarray) else value).to_dict()
     store.close()
     return tier1_dict
 
@@ -503,23 +505,19 @@ def complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict)
         leaf_value = flattened_dict["value"]
         # identify which leaf nodes are lists and make them the max length
         if flattened_dict["type"] == "list":
-            # TODO: remove once v2.0 changes finished
-            if not isinstance(leaf_value, list):
-                st.error(f"{field_name} value must be empty list in template")
-                st.stop()
             max_length = flattened_dict["length"]
             if tier1_dict[field_name] == "":
                 if flattened_dict["mapping"] is None:
                     leaf_value.extend([None] * max(0, max_length - len(leaf_value)))
-                    tier1_dict[field_name] = leaf_value
+                tier1_dict[field_name] = leaf_value
             elif isinstance(tier1_dict[field_name], list):
                 if len(tier1_dict[field_name]) < max_length:
                     padded_list = tier1_dict[field_name] + [None] * max(0, max_length - len(tier1_dict[field_name]))
                     tier1_dict[field_name] = padded_list
                 elif len(tier1_dict[field_name]) > max_length:
                     tier1_dict[field_name] = tier1_dict[field_name][:max_length]
-            else: # TODO: remove once v2.0 changes finished
-                st.error(f"{field_name} value in AI model output must be empty string or list")
+            else:
+                st.error(f"{field_name} value in AI model output must be empty string or list. Try again.")
                 st.stop()
         elif flattened_dict["type"] == "dropdown" and tier1_dict[field_name] != "" and isinstance(tier1_dict[field_name], list):
             tier1_dict[field_name] = tier1_dict[field_name][0]
@@ -758,10 +756,6 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
 
 def move_into_group(data, original_key, group_key):
     value = data[original_key]
-    # TODO: once using duckdb, remove this try/except to convert string list to just list
-    # if isinstance(value, str):
-    #     import ast
-    #     value = ast.literal_eval(value)
     just_field_name = original_key.rsplit(".", 1)[-1]
 
     if group_key in data:
@@ -776,15 +770,8 @@ def move_into_group(data, original_key, group_key):
 
     for key, current_value in data.items():
         if key == original_key:
-            # TODO: once using duckdb, remove this try/except to convert string list to just list
-            value1 = current_value
-            # if isinstance(current_value, list):
-            #     import ast
-            #     value1 = ast.literal_eval(current_value)
-            # else:
-            #     value1 = current_value
-            rebuilt[group_key] = [{} for _ in range(len(value1))]
-            for index, val in enumerate(value1):
+            rebuilt[group_key] = [{} for _ in range(len(current_value))]
+            for index, val in enumerate(current_value):
                 rebuilt[group_key][index][just_field_name] = val
         else:
             rebuilt[key] = current_value
@@ -830,14 +817,7 @@ def generate_tier1_datacard(qid: int, output_file: str, hpc_name = None, hpc_cam
         for key in keys[:-1]:
             current = current.setdefault(key, {})
 
-        # TODO: once using duckdb, remove this try/except that converts string list to list --> instead just use value
-        value1 = value
-        # try:
-        #     import ast
-        #     value1 = ast.literal_eval(value)
-        # except Exception:
-        #     value1 = value
-        current[keys[-1]] = value1
+        current[keys[-1]] = value
 
     front_matter = {
         **({"ResourceURI": f"{hpc_name}:{hpc_campaign_path}"} if hpc_name is not None else {}),
@@ -1849,7 +1829,8 @@ def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_
     if old_tier1_dict is not None:
         args = (*args, old_tier1_dict)
 
-    with st.spinner("Populating Findability Metadata. May take a few minutes..."):
+    agent_action = "Populating" if old_tier1_dict is None else "Updating"
+    with st.spinner(f"{agent_action} Findability Metadata. May take a few minutes..."):
         ai_model_error_msg = None
         try:
             tier1_dict = run_tier1_yaml(*args)
@@ -1877,23 +1858,17 @@ def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_
     return complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict)
 
 
-# TODO: after changing to duckdb, don't need to convert string list to just list
-# TODO: check if all places where parse_list_value() is called are also commented out/deleted
-# from ast import literal_eval
-# def parse_list_value(value):
-#     return literal_eval(value) if isinstance(value, str) else value
-
-INPUT_TEST_IDS = {
-    "string": "stTextInput",
-    "dropdown": "stSelectbox",
-    "int": "stNumberInput",
-}
-
 def highlight_invalid_field(field_type, label):
     if label not in st.session_state.invalid_fields:
         return
 
-    test_id = INPUT_TEST_IDS[field_type]
+    input_test_ids = {
+        "string": "stTextInput",
+        "dropdown": "stSelectbox",
+        "int": "stNumberInput",
+    }
+
+    test_id = input_test_ids[field_type]
     st.markdown(
         f"""
         <style>
@@ -1913,11 +1888,8 @@ def render_leaf_input(field_dict, widget_key, value, parent_num=None):
 
     # A leaf list renders one text input for each item.
     if field_type == "list":
-        values = value
-        # values = parse_list_value(value)
         result = []
-
-        for index, item in enumerate(values):
+        for index, item in enumerate(value):
             label = f"{widget_key}_{index}"
             highlight_invalid_field("string", label)
             result.append(st.text_input(label=label, value="" if pd.isna(item) else str(item),
@@ -1928,7 +1900,6 @@ def render_leaf_input(field_dict, widget_key, value, parent_num=None):
 
     if parent_num is not None:
         value = value[parent_num]
-        # value = parse_list_value(value)[parent_num]
         label = f"{widget_key}_{parent_num}"
         state_key = f"field{parent_num}_{widget_key}"
     else:
