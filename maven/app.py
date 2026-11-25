@@ -514,7 +514,10 @@ def complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict)
                 st.error(f"{field_name} value in AI model output must be empty string or list. Try again.")
                 st.stop()
         elif flattened_dict["type"] == "dropdown" and tier1_dict[field_name] != "" and isinstance(tier1_dict[field_name], list):
-            tier1_dict[field_name] = tier1_dict[field_name][0] if tier1_dict[field_name] else ""
+            if tier1_dict[field_name] and tier1_dict[field_name][0] in flattened_dict["options"]:
+                tier1_dict[field_name] = tier1_dict[field_name][0]
+            else:
+                tier1_dict[field_name] = ""
         elif leaf_value != "" and tier1_dict[field_name] == "":
             tier1_dict[field_name] = leaf_value
 
@@ -2445,6 +2448,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         for field, val in tier1_dict_test.items():
             # only do check on visible and required fields
             if flattened_fields[field]["required"] and flattened_fields[field]["visible"]:
+                st.sidebar.write(field)
                 if val is None or val == "" or (isinstance(val, list) and (val[0] is None or val[0] == "")):
                     other_metadata_disabled = True
                     break
