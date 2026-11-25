@@ -1532,7 +1532,7 @@ def kerberos_check():
             st.stop()
 
         if username.isnumeric():
-            st.error(f"Kerberos ticket must have an alphabetical username not '{username}'")
+            st.error(f"Select the Kerberos ticket with an alphabetical username not '{username}'")
             st.stop()
 
         if realm.lower() != "lanl.gov":
