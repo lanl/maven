@@ -162,7 +162,7 @@ def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields:
         {example_input}
 
         OUTPUT FORMAT:
-        Output should be a valid JSON that has ALL THE EXACT keys in **FLATTENED_FIELDS_INPUT**. 
+        Output should be a valid JSON that has the EXACT SAME keys in **FLATTENED_FIELDS_INPUT**. 
         IF A FIELD DOES NOT HAVE AN EXTRACTED VALUE OR HAS VISIBLE=FALSE in **FLATTENED_FIELDS_INPUT** IT SHOULD STILL BE A KEY IN THE OUTPUT JSON.
         Keys/leaf nodes who have an extracted info (only if visible=True) should have a filled value. Otherwise, the value should be an empty string.
 
@@ -180,6 +180,8 @@ def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields:
         Ex: if field_C is under field_B which is under field_A, field_C in the JSON will be "field_A.field_B.field_C" : value_for_field_C
 
         Each key should be in dot notation format with the value a representation of the extracted info. If no value, then should be empty string.
+
+        **FLATTENED_FIELDS_INPUT** has {len(flattened_fields)} keys so the output JSON MUST have {len(flattened_fields)} keys too.
 
         ### Example Output (JSON):
         {example_output}

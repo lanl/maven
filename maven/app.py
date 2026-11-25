@@ -500,10 +500,6 @@ def flattened_tier1_fields(yaml_dict: dict, parent_lists = False):
 def complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict):
     # first fill default values for any dataset
     for field_name, flattened_dict in flattened_fields.items():
-        # TODO: remove once v2.0 changes finished
-        if field_name not in tier1_dict.keys():
-            st.error(f"{field_name} not in AI model generated output. Try again")
-            st.stop()
         leaf_value = flattened_dict["value"]
         # identify which leaf nodes are lists and make them the max length
         if flattened_dict["type"] == "list":
@@ -1873,10 +1869,9 @@ def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_
     if not isinstance(tier1_dict, dict):
         st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
         st.stop()
-    # TODO: remove once v2.0 changes finished
-    # mainly for maven devs to know if model forgot to include all leaf node fields
+    # check if agent returned incorrect output fields
     if flattened_fields.keys() != tier1_dict.keys():
-        st.error(f"AI model returned incomplete set of fields from datacard {incomplete_message}. Try again.")
+        st.error(f"AI model returned incomplete output for datacard {incomplete_message}. Refresh page or select a different model and try again.")
         st.stop()
 
     return complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict)
