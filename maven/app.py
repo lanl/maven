@@ -92,6 +92,7 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from textwrap import dedent
 from importlib.metadata import version
+from contextlib import redirect_stdout
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
