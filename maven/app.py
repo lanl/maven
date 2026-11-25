@@ -2420,24 +2420,6 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
             if not get_tier1_table(qid, check_exists=True):
                 is_metadata_btn_disabled = True
 
-    if st.session_state.active_qid is None:
-        t2_exists = False
-    else:
-        t2_exists = Path(get_tier2_db_path(qid)).is_file()
-
-    t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists else "✅ "
-    if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
-                        help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
-        st.session_state.screen = "tier1"
-        st.session_state.section_idx = 0
-        st.session_state._scroll_to_top = True
-        st.session_state.invalid_fields = []
-        st.session_state.ran_change_dialog = False
-        st.session_state.local_to_staging_moved = False
-        st.session_state.staging_to_campaign_moved = False
-        st.session_state.confirm_submit_context_files = False
-        st.rerun()
-
     other_metadata_disabled = False
     if st.session_state.active_qid is None or is_metadata_btn_disabled:
         other_metadata_disabled = True
@@ -2452,10 +2434,22 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
             for field, val in tier1_dict_test.items():
                 # only do check on visible and required fields
                 if flattened_fields[field]["required"] and flattened_fields[field]["visible"]:
-                    st.sidebar.write(field)
                     if val is None or val == "" or (isinstance(val, list) and (val[0] is None or val[0] == "")):
                         other_metadata_disabled = True
                         break
+
+    t1_btn_prefix = "" if is_metadata_btn_disabled or other_metadata_disabled else "✅ "
+    if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
+                        help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
+        st.session_state.screen = "tier1"
+        st.session_state.section_idx = 0
+        st.session_state._scroll_to_top = True
+        st.session_state.invalid_fields = []
+        st.session_state.ran_change_dialog = False
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.session_state.confirm_submit_context_files = False
+        st.rerun()
 
     if st.sidebar.button("Usability/AI-Ready Metadata", disabled=other_metadata_disabled, width="stretch",
                         help="First fill out datasheet and findability metadata" if other_metadata_disabled else ""):
@@ -2644,8 +2638,7 @@ if st.session_state.screen == "datasheet":
                 completed += 1
 
         st.progress(completed / (len(ALL_SECTION_IDXS) - 1))
-        st.write(
-            f"Progress: **{completed}/{(len(ALL_SECTION_IDXS) - 1)}** sections complete")
+        st.write(f"Progress: **{completed}/{(len(ALL_SECTION_IDXS) - 1)}** sections complete")
         st.divider()
     else:
         ok0, _ = section_complete(0, row)
