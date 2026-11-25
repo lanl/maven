@@ -3299,7 +3299,13 @@ elif st.session_state.screen == "hpc_move":
 
                 num_prompts = 5 if user_group_input else 4
                 print(f" \nPassword prompt 1/{num_prompts}: validating HPC access")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 1/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     putty_error = None
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-v", "-no-antispoof", "-load", hpc_system_input, "echo", "test"]
@@ -3350,64 +3356,94 @@ elif st.session_state.screen == "hpc_move":
                         st.error("On first connection to this HPC, you must enter 'y' to trust the host. Try again.")
                         st.stop()
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("Invalid HPC username or system name")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging directory")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 2/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_staging_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("HPC Staging Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign directory")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 3/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_campaign_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("HPC Campaign Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 4/{num_prompts}: validating DIANA endpoint")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 4/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{diana_endpoint_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("DIANA Catalog Endpoint Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 if user_group_input:
                     print(f" \nPassword prompt 5/{num_prompts}: validating user group is valid")
-                    with st.spinner("Validating user group input — check the terminal for 4/{num_prompts} password prompts..."):
+                    spinner_msg = ""
+                    if os.name == "nt":
+                        if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                            spinner_msg = "- enter password in pop-up window"
+                        else:
+                            spinner_msg = f"— check the terminal for 5/{num_prompts} password prompts..."
+                    with st.spinner(f"Validating user group input {spinner_msg}"):
                         if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                             cmd = [plink, "-no-antispoof", "-load", hpc_system_input, shlex.join(["getent", "group", user_group_input])]
                         else:
                             cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
-                        print("View error on app")
+                        if os.name == "nt":
+                            ("View error on app")
                         st.error("User Group does not exist on this HPC")
                         st.code(result.stderr)
                         st.stop()
-                print(" \nGo back to app")
+                if os.name == "nt":
+                    print(" \nGo back to app")
 
             col_names = locations_tbl.columns.tolist()
             if "using_ssh" in col_names:
@@ -3493,8 +3529,14 @@ elif st.session_state.screen == "hpc_move":
                             st.stop()
 
                     else:
-                        print(" \nPassword prompt 1/1: checking existing folders on campaign")
-                        with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
+                        print(" \nChecking existing folders on Campaign")
+                        spinner_msg = ""
+                        if os.name == "nt":
+                            if using_ssh.lower() == "putty":
+                                spinner_msg = "- enter password in pop-up window"
+                            else:
+                                spinner_msg = "— check the terminal for 1 password prompt..."
+                        with st.spinner(f"Checking HPC Campaign for projects {spinner_msg}"):
                             remote_script = (
                                 'id -un && '
                                 'if [ -f /etc/bashrc ]; then '
@@ -3514,7 +3556,8 @@ elif st.session_state.screen == "hpc_move":
                             else:
                                 cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         if result.returncode != 0:
                             st.error("Error checking existing folders in HPC Campaign Directory")
                             st.code(result.stderr)
@@ -3666,8 +3709,14 @@ elif st.session_state.screen == "hpc_move":
             else:
                 if not st.session_state.local_to_staging_moved:
                     local_move_error = None
-                    with st.spinner("Moving local data to HPC staging space - check the terminal for 3-4 password prompts..."):
-                        print(" \n \nMoving local data to HPC staging space - 3-4 password prompts expected:\n ")
+                    spinner_msg = ""
+                    if os.name == "nt":
+                        if using_ssh.lower() == "putty":
+                            spinner_msg = "- enter password in pop-up window"
+                        else:
+                            spinner_msg = "— check the terminal for 3-4 password prompts..."
+                    with st.spinner(f"Moving local data to HPC staging space {spinner_msg}"):
+                        print(" \n \nMoving local data to HPC staging space\n ")
                         try:
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
@@ -3685,7 +3734,8 @@ elif st.session_state.screen == "hpc_move":
                                     s.copy("rsync") # linux/mac supports rsync
                         except Exception as e:
                             local_move_error = e
-                            print(" \nGo back to app")
+                            if os.name == "nt":
+                                print(" \nGo back to app")
 
                     if local_move_error is not None:
                         st.error("Local Data to HPC Staging Move Error:")
@@ -3705,8 +3755,14 @@ elif st.session_state.screen == "hpc_move":
                     script = script.replace('44444', repr(hpc_campaign)) # campaign folder
                     script = script.replace('55555', repr(TIER_2_TABLE)) # t2 locations table name
 
-                    with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
-                        print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
+                    spinner_msg = ""
+                    if os.name == "nt":
+                        if using_ssh.lower() == "putty":
+                            spinner_msg = "- enter password in pop-up window"
+                        else:
+                            spinner_msg = "— check the terminal for 1 password prompt..."
+                    with st.spinner(f"Moving data from HPC staging to HPC campaign {spinner_msg}"):
+                        print(" \n \nMoving data from HPC staging to HPC campaign")
                         remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
                         if using_ssh.lower() == "putty":
                             cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
@@ -3732,7 +3788,8 @@ elif st.session_state.screen == "hpc_move":
                                     st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                             else:
                                 st.code(remote_run.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
 
                     if "Only testing on this HPC for now" in remote_run.stdout:
@@ -3764,8 +3821,14 @@ elif st.session_state.screen == "hpc_move":
                 endpoint_script = endpoint_script.replace('22222', repr(proj_name))
                 endpoint_script = endpoint_script.replace('33333', repr(diana_endpoint))
 
-                with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
-                    print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
+                spinner_msg = ""
+                if os.name == "nt":
+                    if using_ssh.lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = "— check the terminal for 1 password prompt..."
+                with st.spinner(f"Registering project in DIANA Catalog {spinner_msg}"):
+                    print(" \n \nRegistering project in DIANA Catalog")
                     remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
                     if using_ssh.lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
@@ -3792,7 +3855,8 @@ elif st.session_state.screen == "hpc_move":
                         else:
                             st.code(remote_endpoint_run.stderr)
                             st.code(output)
-                    print(" \nGo back to app")
+                    if os.name == "nt":
+                        print(" \nGo back to app")
                     st.stop()                
 
             # set user group and access permissions after move
@@ -3805,36 +3869,54 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting user group for data on Campaign")
                         st.code(result.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
 
-                if access_permissions_code:
+                if access_permissions_code is not None:
                     with st.spinner("Updating data access permissions on Campaign"):
                         cmd = ["chmod", "-R", access_permissions_code, full_campaign_path]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
                         st.error("Error setting access permissions for data on Campaign")
                         st.code(result.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
             else:
                 if user_group and access_permissions_code:
-                    print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
-                    with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
+                    print(" \nUpdating user group and data access permissions on HPC campaign")
+                    spinner_msg = ""
+                    if os.name == "nt":
                         if using_ssh.lower() == "putty":
-                            cmd = [plink, "-load", hpc_name,
-                                f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
+                            spinner_msg = "- enter password in pop-up window"
                         else:
-                            cmd = ["ssh", f"{username}@{hpc_name}",
-                                f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
-                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                            spinner_msg = "— check the terminal for 1 password prompt..."
+                    with st.spinner(f"Updating data group and access permissions on HPC Campaign {spinner_msg}"):
+                        change_cmd_string = ""
+                        if user_group:
+                            change_cmd_string = f"chgrp -R {user_group} {full_campaign_path}"
+                        if access_permissions_code is not None:
+                            if change_cmd_string == "":
+                                change_cmd_string = f"chmod -R {access_permissions_code} {full_campaign_path}"
+                            else:
+                                change_cmd_string += f" && chmod -R {access_permissions_code} {full_campaign_path}"
+
+                        if change_cmd_string != "":
+                            if using_ssh.lower() == "putty":
+                                cmd = [plink, "-load", hpc_name, change_cmd_string]
+                            else:
+                                cmd = ["ssh", f"{username}@{hpc_name}", change_cmd_string]
+                            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
 
-            print(" \nGo back to app")
+            if os.name == "nt":
+                print(" \nGo back to app")
 
             # after move, delete the temp t1 & t2 dbs that were actually moved
             os.remove(temp_t2_db_name)
