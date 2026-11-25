@@ -2445,13 +2445,17 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         tier1_dict_test = get_tier1_table(qid)
         _, _, flattened_fields = get_tier1_fields()
 
-        for field, val in tier1_dict_test.items():
-            # only do check on visible and required fields
-            if flattened_fields[field]["required"] and flattened_fields[field]["visible"]:
-                st.sidebar.write(field)
-                if val is None or val == "" or (isinstance(val, list) and (val[0] is None or val[0] == "")):
-                    other_metadata_disabled = True
-                    break
+        # a v1.2 table (not converted yet) has fields that are not in the v2.0 template
+        if any("westBoundLongitude" in field_name for field_name in tier1_dict_test):
+            other_metadata_disabled = True
+        else:
+            for field, val in tier1_dict_test.items():
+                # only do check on visible and required fields
+                if flattened_fields[field]["required"] and flattened_fields[field]["visible"]:
+                    st.sidebar.write(field)
+                    if val is None or val == "" or (isinstance(val, list) and (val[0] is None or val[0] == "")):
+                        other_metadata_disabled = True
+                        break
 
     if st.sidebar.button("Usability/AI-Ready Metadata", disabled=other_metadata_disabled, width="stretch",
                         help="First fill out datasheet and findability metadata" if other_metadata_disabled else ""):
