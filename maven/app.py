@@ -3714,7 +3714,21 @@ elif st.session_state.screen == "hpc_move":
                                 s.index(local_data, hpc_staging)
                             else:
                                 s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
+
+                            # if on windows, close temp tier 2 db before copying it due to windows locking issue
+                            if os.name == "nt":
+                                fnull = open(os.devnull, 'w')
+                                with redirect_stdout(fnull):
+                                    s.t.unload_module('backend', s.backend_name, 'back-write')
+
                             shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
+
+                            # if on windows, need to reopen temp tier 2 db because closed it above
+                            if os.name == "nt":
+                                fnull = open(os.devnull, 'w')
+                                with redirect_stdout(fnull):
+                                    s.t.load_module('backend', s.backend_name, 'back-write', filename=s.full_db_name)
+
                             if using_ssh.lower() == "putty":
                                 s.copy("putty", putty_session=hpc_name) # use putty command for windows-putty users
                             else:
