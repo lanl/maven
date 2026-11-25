@@ -4150,7 +4150,7 @@ slots:
       Contact information for questions about access to or use of this dataset.
       This can provide users with a direct point of contact for inquiries about the dataset, which can facilitate
       communication and support responsible use of the data.
-      Perfer a person, but an organization can be provided.
+      Prefer a person, but an organization can be provided.
 
   valid_until:
     range: string
