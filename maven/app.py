@@ -95,7 +95,6 @@ from importlib.metadata import version
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
-from dsi.core import Terminal
 
 from maven.ursa_autofill import (
     AGENT_META_COLUMNS,
@@ -299,7 +298,6 @@ def create_master_db():
     # migrate any tier 1 and tier 2 dbs that are sqlite to duckdb -- have to do this every run
     projects_df = store.get_table(PROJECTS_TABLE, True)
     if not projects_df.empty:
-        t = Terminal()
         db_paths = [str(get_maven_dir() / path) for column in ("tier1_db_path", "tier2_db_path") for path in projects_df[column]]
 
         if MIGRATED_TABLE in store.list(True):
@@ -311,7 +309,7 @@ def create_master_db():
                 return
 
         for db in db_paths:
-            if os.path.exists(db) and t.identify_backend(db).lower() == "sqlite":
+            if os.path.exists(db) and store.t.identify_backend(db).lower() == "sqlite":
                 shutil.copy2(db, db+".backup")
                 os.remove(db)
                 temp_store = DSI(db+".backup", check_same_thread=False, silence_messages=True)
