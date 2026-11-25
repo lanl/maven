@@ -516,7 +516,7 @@ def complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict)
                 st.error(f"{field_name} value in AI model output must be empty string or list. Try again.")
                 st.stop()
         elif flattened_dict["type"] == "dropdown" and tier1_dict[field_name] != "" and isinstance(tier1_dict[field_name], list):
-            tier1_dict[field_name] = tier1_dict[field_name][0]
+            tier1_dict[field_name] = tier1_dict[field_name][0] if tier1_dict[field_name] else ""
         elif leaf_value != "" and tier1_dict[field_name] == "":
             tier1_dict[field_name] = leaf_value
 
