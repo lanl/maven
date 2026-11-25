@@ -107,7 +107,7 @@ from maven.ursa_autofill import (
     summarize_autofill,
 )
 
-from maven.tier1_genesis_dc_agent import run_tier1_yaml
+from maven.genesis_dc_agent import run_tier1_yaml
 from ursa.agents.chat_agent import ChatAgent
 try:
     from ursa.util.http import inject_truststore_into_ssl
