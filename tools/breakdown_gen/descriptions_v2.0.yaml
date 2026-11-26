@@ -1,0 +1,234 @@
+# User-facing descriptions for the v2.0 breakdown (Vedant, 2026-11-25): each one says what the user has to do.
+# Applied last by generate_breakdown.py (config key descriptions_file), replacing the template text.
+# Keys are field paths without the 'value' wrappers. Hidden fields are not listed (their description stays empty).
+discoverability: Fields that help people find this dataset in catalogs and repositories. Every datacard needs this section.
+discoverability.datacard: Information about this datacard itself (not the dataset).
+discoverability.datacard.created_date: Date this datacard was first created, as YYYY-MM-DD (e.g., 2026-11-25).
+discoverability.datacard.updated_date: Date this datacard was last changed, as YYYY-MM-DD. Update it every time you edit the datacard, even for small fixes.
+discoverability.identification: Basic fields that identify this dataset.
+discoverability.identification.name: Enter the name of the dataset, as people would refer to it (e.g., Synthetic Weather Sensor Readings 2026).
+discoverability.identification.project: Enter the name of the project this dataset belongs to (a Genesis or non-Genesis project or sub-project). Use the same name in the datacard filename. e.g., genesis-fusion | nuclear-physics
+discoverability.identification.version: Enter the dataset version as MAJOR.MINOR.PATCH, starting at 1.0.0 for the first release. Increase MAJOR for breaking changes, MINOR for additions, PATCH for corrections.
+discoverability.identification.primary_id: The main ID of this dataset. Use a persistent ID such as a DOI or ARK if you have one. Fill in both the ID type and the ID value.
+discoverability.identification.primary_id.type: Pick the kind of ID you are entering (e.g., doi, uuid). Pick unregistered if the dataset has no ID yet.
+discoverability.identification.primary_id.value: Enter the ID itself, in the format of the type you picked (e.g., 10.1234/abcd for a DOI).
+discoverability.dataset_description: 'A high-level description of the dataset: what it is, why it exists and how it was made.'
+discoverability.dataset_description.science_domain: Pick the science area this dataset mainly belongs to (OSTI subject areas). Pick Other if none fits.
+discoverability.dataset_description.dataset_summary: Write 1-3 sentences on what the dataset is, why it was made and what it can be used for. Write for scientists outside your project.
+discoverability.dataset_description.purpose: 'Describe why the dataset was created: the scientific question or problem it was meant to address.'
+discoverability.dataset_description.collection_methodology: Describe how the data was collected or produced. e.g., Experimental sensors | Computational simulation | Human annotation | Derived from prior datasets
+discoverability.dataset_description.data_characteristics: 'Describe the main features of the data: size, dimensions, time span covered, spatial resolution.'
+discoverability.dataset_description.limitations: List known limitations, gaps or caveats users should know before using this dataset.
+discoverability.dataset_description.tags: Tags used to filter and find this dataset in the catalog.
+discoverability.dataset_description.tags.science: Enter a more specific science topic or sub-field. e.g., fusion | materials | synchrotron light source science
+discoverability.dataset_description.tags.object_type: Pick what this datacard describes. For a dataset, pick Dataset.
+discoverability.dataset_description.task_category: List the AI/ML tasks this dataset is meant for, i.e. what a model trained or tested on it would do. e.g., classification | regression | segmentation | detection | anomaly_detection | other
+discoverability.dataset_description.keywords: 'List words that describe the dataset and help people find it: science terms, methods, instruments.'
+discoverability.release_status: Pick where the dataset record is in its release process, from Draft to Deprecated. Keep it consistent with the workflow state below.
+discoverability.dataset_publisher: The organization that publishes the dataset. Fill in if the release status is Approved or Published.
+discoverability.dataset_publisher.name: Enter the name of the publishing organization (e.g., Los Alamos National Laboratory).
+discoverability.dataset_publisher.description: Briefly describe the publishing organization (e.g., what it does or its role for this dataset).
+discoverability.contact: Who to contact with questions about accessing or using this dataset. A person is preferred.
+discoverability.contact.person: The contact person.
+discoverability.contact.person.given_name: Enter the person's first (given) name.
+discoverability.contact.person.family_name: Enter the person's last (family) name.
+discoverability.contact.person.email: Enter the person's email address.
+discoverability.contact.person.affiliation: The organization the person works for.
+discoverability.contact.person.affiliation.name: Enter the name of the person's organization (e.g., Los Alamos National Laboratory).
+discoverability.contact.person.role: Pick this person's role for the dataset (e.g., Contact_Person).
+discoverability.contact.succession_note: Say who to contact if this person can no longer be reached. Give both a person and a team or office. e.g., Contact the ORNL data management office at data@ornl.gov
+discoverability.additional_contacts: Other people to contact, such as an instrument PI or a data steward.
+discoverability.additional_contacts.person: An additional contact person.
+discoverability.additional_contacts.person.given_name: Required if you add this contact. Enter the person's first (given) name.
+discoverability.additional_contacts.person.family_name: Required if you add this contact. Enter the person's last (family) name.
+discoverability.additional_contacts.person.email: Enter the person's email address.
+discoverability.additional_contacts.person.affiliation: The organization the person works for.
+discoverability.additional_contacts.person.affiliation.name: Enter the name of the person's organization (e.g., Los Alamos National Laboratory).
+discoverability.additional_contacts.person.role: Required if you add this contact. Pick this person's role for the dataset (e.g., Data_Manager).
+discoverability.additional_contacts.succession_note: Say who to contact if this person can no longer be reached. e.g., Contact the ORNL data management office at data@ornl.gov
+discoverability.authors: People who authored the dataset. At least one author is required if the release status is Approved or Published.
+discoverability.authors.person: An author of the dataset.
+discoverability.authors.person.given_name: Enter the person's first (given) name.
+discoverability.authors.person.family_name: Enter the person's last (family) name.
+discoverability.authors.person.email: Enter the person's email address.
+discoverability.authors.person.affiliation: The organization the author works for.
+discoverability.authors.person.affiliation.name: Enter the name of the author's organization (e.g., Los Alamos National Laboratory).
+discoverability.authors.person.role: Pick this author's role for the dataset (e.g., Creator).
+discoverability.sponsor_organizations: Organizations that funded or sponsored this dataset.
+discoverability.sponsor_organizations.name: Enter the name of the sponsoring organization. e.g., DOE Office of Science | NNSA | NSF
+discoverability.sponsor_organizations.award_number: Enter the award or contract number for the funding, if any. e.g., DE-AC05-00OR22725
+discoverability.sponsor_organizations.funding_source: Pick the type of funding that paid for this work (e.g., LDRD, DOE_Program_SC).
+discoverability.sponsor_organizations.program: Enter the program or initiative that funded the work. e.g., Advanced Scientific Computing Research | Fusion Energy Sciences
+discoverability.sponsoring_doe_program_office: Enter the DOE program office that funded the work, if any. e.g., Office of Science | National Nuclear Security Administration
+discoverability.sponsoring_doe_subprogram: Enter the DOE subprogram that funded the work, if any. e.g., Advanced Scientific Computing Research | Fusion Energy Sciences
+discoverability.research_organizations: Organizations that created or collected the data.
+discoverability.research_organizations.name: Enter the name of the organization (e.g., Los Alamos National Laboratory).
+discoverability.research_organizations.role: Pick the organization's role for the dataset (e.g., Producer).
+discoverability.facilities: User facilities, HPC centers or other infrastructure used to collect, process or store the data.
+discoverability.facilities.name: Required if you add a facility. Enter the facility's name (e.g., Advanced Photon Source).
+discoverability.facilities.role: Pick the facility's role for the dataset (e.g., Hosting_Institution).
+discoverability.facilities.location: Where the facility is, for data collected at a specific place.
+discoverability.facilities.location.description: 'Describe the location: place name and any useful details (e.g., building, site, city).'
+discoverability.sensitivity: 'How sensitive the dataset is. The datacard''s own sensitivity is filled from these answers. Note: these terms are still under Genesis governance review and may change.'
+discoverability.sensitivity.overall_sensitivity: Pick the overall sensitivity of the dataset, based on its official markings. Pick Public for unclassified, non-sensitive data that can be shared publicly. This is a summary only; the fields below still need to be filled in from the official markings.
+discoverability.sensitivity.source_marking_string: Copy the exact marking or banner text from the dataset or its official review/release output. If there are several, separate them with // and no spaces (e.g., CUI//SP-EXPT//NOFORN). If the data is open (public), enter None. If no marking applies, enter not_applicable.
+discoverability.sensitivity.source_marking_scheme: Pick the marking system the marking text above comes from. If the data is open (public), pick None. If you pick Legacy_OUO and it has not been mapped to a current marking, set normalized control basis to Legacy_Needs_Mapping.
+discoverability.sensitivity.classified_status: Pick Yes if the dataset is classified, otherwise No.
+discoverability.sensitivity.classification_level: Required if classified status is Yes. Pick the classification level.
+discoverability.sensitivity.classification_category: Required if classified status is Yes. Pick the classification category.
+discoverability.sensitivity.classified_control_markings: If the data is classified, list any extra handling markings, one per entry. e.g., NOFORN | CNWDI | SIGMA 15 | ORCON
+discoverability.sensitivity.cui_status: Pick Yes if the dataset is Controlled Unclassified Information (CUI), otherwise No.
+discoverability.sensitivity.cui_basic_categories: If the data is CUI, list each CUI Basic category that applies (official DOE/ISOO names), one per entry.
+discoverability.sensitivity.cui_specified_categories: 'Required if CUI status or UCNI status is Yes: list each CUI Specified category that applies (official DOE/ISOO names), one per entry.'
+discoverability.sensitivity.cui_limited_dissemination_controls: If the data is CUI, list any limited dissemination controls, written as the official guidance says. If you list NOFORN, REL TO or DISPLAY ONLY, make sure foreign national access status (Governed Use) agrees. e.g., NOFORN | REL TO USA, GBR
+discoverability.sensitivity.ucni_status: Pick Yes if the dataset contains UCNI, otherwise No. UCNI is entered here, not as a CUI category.
+discoverability.sensitivity.uk_mda_status: Optional. Pick Yes if the data needs UK Ministry of Defence (MDA) handling; pick not_applicable if this does not concern you.
+discoverability.sensitivity.legacy_label_source: List any old or local labels on the data (e.g., OUO, SBU), one per entry. These are kept for history only. Required if the marking system is Legacy_OUO. e.g., OUO | SBU | Legacy_Site_Marking
+discoverability.sensitivity.normalized_control_basis: Optional. Pick how the data should be treated when its markings are old, mixed or non-standard. Pick Legacy_Needs_Mapping if the marking system is Legacy_OUO and it has not been mapped to a current marking. This does not replace the official markings.
+discoverability.workflow: 'Where the data itself is in its processing life, from raw to archived. Keep it consistent with the release status (Discoverability): Raw, Processing, QA or Analysis usually go with Draft; Review with Under_Review; Embargo or Published with Approved or Published; Archived with Deprecated or Published.'
+discoverability.workflow.state: Pick the stage the data itself is in right now, from Raw (just collected) to Archived. This is about the data, not the datacard. Pick not_applicable if no stage fits.
+discoverability.workflow.is_intermediate: Pick Yes if this dataset is an intermediate output of a larger pipeline, or No if it is a final result.
+discoverability.workflow.pipeline_stage: Optional. Describe where this data sits in the processing pipeline. e.g., raw telemetry, pre-calibration | post-reconstruction, pre-analysis
+discoverability.workflow.embargo_until: 'Required if the state is Embargo: the date the data may be released, as YYYY-MM-DD.'
+accessibility: How people can get access to this dataset and what limits apply. Needed when the dataset will be shared with others, inside or outside your organization.
+accessibility.access_policy: Who may access this dataset and under what conditions.
+accessibility.access_policy.access_level: 'Pick who can access the dataset: Open (anyone), Restricted (limited group) or Controlled (formal approval needed). This does not replace the sensitivity markings in Discoverability, which still need to be filled in.'
+accessibility.access_policy.access_restrictions: Describe any access rules beyond the sensitivity markings. e.g., Requires signed DUA | None - publicly accessible | Access limited to cleared personnel with need-to-know
+accessibility.access_policy.authorization_required: 'If formal approval is needed to access the data, list each one needed, one per entry. Allowed values: Account | User_Agreement | Data_Use_Agreement | Sponsor_Approval | Export_Control_Review | IRB_Approval | Other'
+accessibility.access_policy.intended_partner_classes: 'List the groups expected to use this dataset, one per entry. Use Public if anyone may use it. Leave blank if not known yet. Allowed values: Internal_Team | Tri_Lab | DOE_NNSA_Lab | Federal_Partner | Contractor | Academic_Researchers | External_Research_Partner | Industry_Partner | Public | Other'
+accessibility.access_policy.approved_environments: 'List the computing environments where the data may be used, one per entry. Leave blank if there are none or the data is public. Allowed values: JUCE | Classified Enclave | CUI Approved Enclave | Cloud Enclave (Authorized)'
+accessibility.access_policy.policy_url: Enter the link to the official access policy or data use agreement, if there is one.
+accessibility.access_policy.policy_text: If there is no policy link, summarize the main access and use terms here.
+accessibility.access: Where the dataset is stored and how people and programs can reach it.
+accessibility.access.current_location: Enter where the data is stored right now (path or URL). e.g., /lustre/orion/proj-shared/dataset/ | s3://genesis-bucket/dataset/
+accessibility.access.publicly_facing_landing_page_url: Enter a public web page about the dataset and how to get it, if there is one.
+accessibility.access.intended_repositories: Repositories where the dataset is or will be deposited (e.g., Zenodo, an institutional repository). If the data is moving to a DIANA campaign, leave this empty.
+accessibility.access.intended_repositories.name: Enter the name of the repository (e.g., Zenodo).
+accessibility.access.intended_repositories.access_level: 'Pick the access level of the dataset in this repository: Open, Restricted or Controlled.'
+accessibility.access.intended_repositories.is_primary: Pick Yes if this repository is the main, official copy of the dataset. Mark only one repository as Yes.
+accessibility.access.intended_repositories.date_deposited: Date the dataset was deposited in this repository, as YYYY-MM-DD.
+accessibility.access.intended_repositories.data_services: APIs or services that give access to the dataset, if any.
+accessibility.access.intended_repositories.data_services.name: Enter the name of the API or service. e.g., REST API | GraphQL endpoint
+accessibility.access.intended_repositories.data_services.endpoint: Enter the URL or connection string of the API endpoint.
+accessibility.access.intended_repositories.data_services.documentation_url: Enter the link to the API documentation.
+accessibility.access.intended_repositories.data_services.authentication: Pick the login method the API needs. Pick None if no login is needed.
+accessibility.access.intended_repositories.data_services.version: Enter the version of the API or service (e.g., v2).
+accessibility.access.intended_repositories.data_services.rate_limit: Enter any usage limits of the API. e.g., 1000 requests/hour | 5000 requests/day
+accessibility.dataset_scale: How big the dataset is.
+accessibility.dataset_scale.record_count: Enter the number of records in the dataset (whole number).
+accessibility.dataset_scale.record_unit: Enter what one record is (e.g., samples, files, rows, timesteps, images, tokens).
+accessibility.dataset_scale.compressed_bytes: Enter the compressed size of the dataset in bytes (whole number).
+accessibility.dataset_scale.uncompressed_bytes: Enter the uncompressed size of the dataset in bytes (whole number).
+interoperability: How the data is structured, where it came from and how it links to other resources, so others can combine it with their own data.
+interoperability.data_structure: File formats, encoding and structure of the data.
+interoperability.data_structure.formats: List the file formats in the dataset, one per entry. e.g., csv | json | parquet | hdf5 | netcdf | png | tiff
+interoperability.data_structure.encoding: Enter the character encoding of text files (UTF-8 recommended). Enter not_applicable for binary-only data. e.g., UTF-8 | ASCII | not_applicable
+interoperability.data_structure.schema_version: Enter the version of the data's schema (its columns or structure), if you track one. Change it when the structure changes. This is not the datacard version.
+interoperability.data_structure.modalities: List the kinds of data in the dataset, one per entry. e.g., tabular | image | time-series | text | graph | point-cloud
+interoperability.data_structure.language: Enter the language of any text in the data, as a 2-letter code. e.g., en | es | fr | de | zh
+interoperability.provenance: Where the dataset came from and what was done to it.
+interoperability.provenance.was_generated_by: In one or two sentences, describe how the data was produced. e.g., Neutron scattering experiment at SNS Beamline 1B | Monte Carlo simulation using MCNP 6.2 | Derived from raw telemetry via calibration pipeline v2.1
+interoperability.provenance.source_data: A dataset this dataset was made from, if any.
+interoperability.provenance.source_data.name: Enter the name of the source dataset.
+interoperability.provenance.source_data.description: Briefly describe the source dataset.
+interoperability.provenance.source_data.identifier: The ID of this resource, such as a DOI or ARK. Fill in both the type and the value, or neither.
+interoperability.provenance.source_data.identifier.type: Pick the kind of ID you are entering (e.g., doi, url). Fill in both the type and the value, or neither.
+interoperability.provenance.source_data.identifier.value: Enter the ID itself, in the format of the type you picked (e.g., 10.1234/abcd for a DOI).
+interoperability.provenance.source_data.relationship: Pick how the source dataset relates to this one (e.g., is_derived_from).
+interoperability.provenance.processing_steps: Describe the main processing, cleaning, calibration or transformation steps used to produce this dataset.
+interoperability.provenance.instrumentation: List the instruments, sensors or equipment used to collect the data, with make and model if relevant. e.g., Tektronix TDS2024C oscilloscope | He-3 position-sensitive detector at SNS Beamline 1B
+interoperability.provenance.simulation_details: 'For simulated data: give the code and version, setup and key parameters. e.g., Monte Carlo simulation using MCNP 6.2 with a 10x10x10 grid and 1 million particles | LAMMPS version 3Mar2020'
+interoperability.dates: Key dates for the dataset.
+interoperability.dates.data_collection_start: Date data collection started, as YYYY-MM-DD.
+interoperability.dates.data_collection_end: Date data collection ended, as YYYY-MM-DD.
+interoperability.dates.issued: Date the dataset was first publicly released, as YYYY-MM-DD.
+interoperability.dates.modified: Date the dataset was last changed, as YYYY-MM-DD.
+interoperability.related_resources: Datasets, publications, software and AI models related to this dataset.
+interoperability.related_resources.datasets: A related dataset, if any (e.g., a source, derived or companion dataset).
+interoperability.related_resources.datasets.name: Enter the name of the related dataset.
+interoperability.related_resources.datasets.description: Briefly describe the related dataset.
+interoperability.related_resources.datasets.identifier: The ID of this resource, such as a DOI or ARK. Fill in both the type and the value, or neither.
+interoperability.related_resources.datasets.identifier.type: Pick the kind of ID you are entering (e.g., doi, url). Fill in both the type and the value, or neither.
+interoperability.related_resources.datasets.identifier.value: Enter the ID itself, in the format of the type you picked (e.g., 10.1234/abcd for a DOI).
+interoperability.related_resources.datasets.relationship: Pick how it relates to this dataset (e.g., is_derived_from, is_supplement_to).
+interoperability.related_resources.publications: A publication that describes or uses this dataset, if any.
+interoperability.related_resources.publications.value: Enter the publication's ID, in the format of the type you picked (e.g., 10.1234/abcd for a DOI).
+interoperability.related_resources.publications.type: Pick the kind of ID you are entering for the publication (e.g., doi, url).
+interoperability.related_resources.publications.relationship: Pick how the publication relates to this dataset (e.g., is_described_by, is_cited_by).
+interoperability.related_resources.software: Software used to create, process or analyze this dataset, if any.
+interoperability.related_resources.software.name: Required if you add software. Enter the software's name (e.g., LAMMPS).
+interoperability.related_resources.software.version: Enter the version of the software, if known.
+interoperability.related_resources.software.role: Required if you add software. Pick the software's role for the dataset (e.g., Software).
+interoperability.related_resources.software.relationship: Required if you add software. Pick how the software relates to this dataset (e.g., is_derived_from).
+interoperability.related_resources.ai_models: An AI model trained or tested on this dataset, or otherwise related to it, if any.
+interoperability.related_resources.ai_models.name: Required if you add an AI model. Enter the model's name.
+interoperability.related_resources.ai_models.version: Enter the version of the AI model, if known.
+interoperability.related_resources.ai_models.accessed_date: Required if you add an AI model. Date the model was used to create or update this datacard, as YYYY-MM-DD.
+interoperability.related_resources.ai_models.role: Pick the AI model's role for the dataset (e.g., Contributor).
+interoperability.related_resources.ai_models.relationship: Required if you add an AI model. Pick how the model relates to this dataset (e.g., is_derived_from).
+reusability: 'Information others need to reuse this dataset: license, who maintains it, and how to cite it.'
+reusability.license: The license the dataset is released under. Some controlled datasets have no standard license; their use is governed by an agreement, contract or policy instead.
+reusability.license.spdx_id: Enter the license's SPDX ID (see https://spdx.org/licenses/). Enter Other if it is not in the SPDX list, or Pending if no license is assigned yet. e.g., CC-BY-4.0 | CC0-1.0 | Apache-2.0 | MIT | Other | Pending
+reusability.license.name: Enter the full name of the license (e.g., Creative Commons Attribution 4.0).
+reusability.license.url: Enter the link to the license text.
+reusability.license.known_contractual_rights: Describe any contract rights or obligations not covered by the license or access policy (common for DOE/NNSA data). e.g., Government has unlimited rights | Contractor retains rights with government license
+reusability.stewardship: Who maintains the dataset, how often it is updated, how long it is kept and how versions are handled. The dataset's version number itself is entered under identification (Discoverability).
+reusability.stewardship.level: 'Pick who manages the dataset over time: the project, a repository, or an outside group. Pick not_applicable if none fits.'
+reusability.stewardship.maintainer: The person responsible for maintaining the dataset over time, if different from the contact.
+reusability.stewardship.maintainer.person: The maintainer.
+reusability.stewardship.maintainer.person.given_name: Enter the person's first (given) name.
+reusability.stewardship.maintainer.person.family_name: Enter the person's last (family) name.
+reusability.stewardship.maintainer.person.email: Enter the person's email address.
+reusability.stewardship.maintainer.person.affiliation: The organization the maintainer works for.
+reusability.stewardship.maintainer.person.affiliation.name: Enter the name of the person's organization (e.g., Los Alamos National Laboratory).
+reusability.stewardship.maintainer.person.role: Pick this person's role for the dataset (e.g., Data_Manager).
+reusability.stewardship.update_frequency: Pick how often the dataset is (or will be) updated. Pick None if it will not be updated.
+reusability.stewardship.retention_policy: Describe how long the dataset will be kept and when it may be removed or archived. e.g., Retained for 10 years per DOE data management policy
+reusability.stewardship.versioning_strategy: Describe how new versions of the dataset are made and kept. e.g., Semantic versioning; all versions retained in Zenodo | Major versions only; prior versions available on request
+reusability.citation: How to cite this dataset. Required if the release status is Approved or Published.
+reusability.citation.report_number: Enter the report number or other ID for the dataset, if any. e.g., LA-UR-XX-XXXXX | SAND2024-XXXXX | ORNL/TM-2024/XXXXX
+reusability.citation.preferred_citation: The citation people should use for this dataset (used to build a BibTeX entry). If you fill this in, author, title, year and how published are required, plus a DOI or a URL.
+reusability.citation.preferred_citation.author: Required if you fill in a preferred citation. Enter the author(s) as they should appear in the citation (e.g., Ngo, R. and Iyer, V.).
+reusability.citation.preferred_citation.title: Required if you fill in a preferred citation. Enter the title of the dataset as it should appear in the citation.
+reusability.citation.preferred_citation.year: Required if you fill in a preferred citation. Enter the year the dataset was published or released (e.g., 2026).
+reusability.citation.preferred_citation.publisher: Enter the organization that publishes or distributes the dataset (e.g., Los Alamos National Laboratory).
+reusability.citation.preferred_citation.howpublished: Required if you fill in a preferred citation. Enter how the dataset was published. e.g., Online | In Repository | As Supplementary Material
+reusability.citation.preferred_citation.doi: Enter the dataset's DOI (e.g., 10.1234/abcd). If you fill in a preferred citation, give a DOI or a URL (at least one).
+reusability.citation.preferred_citation.url: Enter the URL of the dataset's landing page. If you fill in a preferred citation, give a DOI or a URL (at least one).
+reusability.citation.preferred_citation.note: 'Optional extra note for the citation. Use it for IDs that have no other field, written like: Available at ark:/12345/abcde'
+governed_use: 'Rules for using and sharing this dataset: export control, privacy, agreements and allowed uses.'
+governed_use.use_governance: Allowed and forbidden uses of this dataset, to guide users and prevent misuse.
+governed_use.use_governance.current_use: Describe what the dataset is being used for right now (e.g., training a surrogate model for project X).
+governed_use.use_governance.intended_use: Describe what the dataset was made to be used for. e.g., ML training | physics analysis | benchmarking | visualization
+governed_use.use_governance.permitted_use: List other uses the dataset is suitable for, beyond its intended use. e.g., AI workflows | research and publication | internal analysis | educational use
+governed_use.use_governance.out_of_scope_use: List uses the dataset is not suited for. e.g., clinical decision-making | real-time control systems
+governed_use.use_governance.prohibited_use: List uses that are explicitly forbidden, for ethical, safety or other governance reasons. e.g., commercial use | redistribution | use by foreign nationals
+governed_use.non_sensitivity_governance_metadata: Other rules that can affect sharing and use (export control, privacy, rights and agreements), separate from the sensitivity markings in Discoverability.
+governed_use.non_sensitivity_governance_metadata.export_control: Export control status of the dataset.
+governed_use.non_sensitivity_governance_metadata.export_control.export_control_status: 'Pick whether the dataset is export controlled: Yes, No, Pending_Review or Unknown.'
+governed_use.non_sensitivity_governance_metadata.export_control.export_control_basis: Required if export control status is Yes. Pick the export control regulation that applies (e.g., EAR, ITAR).
+governed_use.non_sensitivity_governance_metadata.export_control.foreign_national_access_status: Pick whether foreign nationals may access the data, taking all rules into account (export control, classification, dissemination controls, agreements), not only export control.
+governed_use.non_sensitivity_governance_metadata.privacy: Privacy status of the dataset.
+governed_use.non_sensitivity_governance_metadata.privacy.privacy_status: 'Pick whether privacy rules apply to the dataset: Yes, No, Pending_Review or Unknown.'
+governed_use.non_sensitivity_governance_metadata.privacy.pii_status: Pick whether the dataset contains personally identifiable information (PII), such as names, emails or ID numbers.
+governed_use.non_sensitivity_governance_metadata.privacy.phi_status: Pick whether the dataset contains protected health information (PHI).
+governed_use.non_sensitivity_governance_metadata.privacy.privacy_control_basis: Pick the privacy rule that applies (e.g., HIPAA, Privacy_Act). Pick not_applicable if none applies.
+governed_use.non_sensitivity_governance_metadata.privacy.privacy_regime_notes: Optional. Add any privacy details the choices above do not cover.
+governed_use.non_sensitivity_governance_metadata.rights_release_records: Rights, agreements and release records for the dataset.
+governed_use.non_sensitivity_governance_metadata.rights_release_records.ip_restriction_type: Pick the type of intellectual property (IP) restriction on the dataset. Pick None if there is none.
+governed_use.non_sensitivity_governance_metadata.rights_release_records.agreement_required: Pick Yes if an agreement (e.g., data use agreement, license agreement, NDA) is needed to access or use the dataset.
+governed_use.non_sensitivity_governance_metadata.rights_release_records.agreement_type: 'Required if agreement required is Yes. List each agreement type needed, one per entry. Allowed values: DUA | CRADA | MOU | NDA | LICENSE | WFO | OTHER'
+governed_use.non_sensitivity_governance_metadata.rights_release_records.public_release_status: Pick the status of the dataset's public release request. Pick not_applicable if no release was requested.
+governed_use.non_sensitivity_governance_metadata.rights_release_records.record_status: Pick the dataset's federal records status (e.g., Federal_Record, Contractor_Record). Pick Unknown if you are not sure.
+ai_usability: 'Whether and how this dataset may be used for AI: training, inference, evaluation, and the risks involved. Needed when the dataset is meant for AI use.'
+ai_usability.ai_usage: 'Whether and how this dataset may be used in AI/ML work. Be explicit: automated tools read these answers.'
+ai_usability.ai_usage.training_use_status: 'Pick whether the dataset may be used to train AI models: Yes, No or Conditional (only under certain conditions).'
+ai_usability.ai_usage.training_use_conditions: 'Required if training use status is Conditional: describe the conditions that must be met to use this dataset for training. Leave blank otherwise.'
+ai_usability.ai_usage.inference_use_status: 'Pick whether the dataset may be used as input to AI models that are already trained (inference): Yes, No or Conditional.'
+ai_usability.ai_usage.inference_use_conditions: 'Required if inference use status is Conditional: describe the conditions that must be met to use this dataset for inference. Leave blank otherwise.'
+ai_usability.ai_usage.evaluation_use_status: 'Pick whether the dataset may be used to test or benchmark AI models (evaluation): Yes, No or Conditional.'
+ai_usability.ai_usage.evaluation_use_conditions: 'Required if evaluation use status is Conditional: describe the conditions that must be met to use this dataset for evaluation. Leave blank otherwise.'
+ai_usability.ai_usage.restrictions: 'Describe any limits on using this dataset in AI/ML work. Do not leave it blank: enter not_applicable if there are none. e.g., Not for clinical decision-making | Research use only, not commercial | not_applicable'
+ai_usability.ai_usage.bias_risks: 'Describe any known or possible bias in the data that could affect AI models. Do not leave it blank: enter not_applicable if there are none. e.g., Overrepresents samples from facility X | not_applicable'
+ai_usability.ai_usage.safety_considerations: 'Describe any safety concerns when using this dataset in AI/ML work. Do not leave it blank: enter not_applicable if there are none. e.g., Contains PII that could pose privacy risks if mishandled | not_applicable'
+ai_usability.ai_usage.human_review_required: Pick Yes if a person should review results when this dataset is used in AI/ML work (e.g., because of data quality or known risks), otherwise No.

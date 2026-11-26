@@ -34,16 +34,16 @@ discoverability:
       uk_mda_status: ''
       legacy_label_source: []
       normalized_control_basis: ''
-    creation_method: ''
+    creation_method: Hybrid
     created_date: ''
     updated_date: ''
     change_log:
       change_date: ''
-      datacard_version: ''
-      summary: ''
+      datacard_version: 1.0.0
+      summary: Initial datacard creation
     created_by:
       contribution_date: ''
-      description: ''
+      description: Combination of an AI model generating metadata, a software interfacing person and AI model, and a person reviewing and editing datacard metadata.
       creator:
         person:
           given_name: ''
@@ -62,7 +62,7 @@ discoverability:
           role: Writing_Original_Draft
           relationship: generates
         software:
-          name: ''
+          name: URSA
           version: ''
           role: Software
           relationship: processes
@@ -337,7 +337,7 @@ governed_use:
       record_status: ''
   compliance:
     doe_data_management_plan: ''
-    osti_elink2_metadata_compliant: ''
+    osti_elink2_metadata_compliant: Unknown
     irb_approved: ''
   review_provenance_companion:
   - source_review_reference: ''

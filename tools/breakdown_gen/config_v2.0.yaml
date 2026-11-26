@@ -133,8 +133,18 @@ overrides:
   # 2026-11-05: pre-filled values of hidden fields (Vedant, part 4)
   xCard.card_type: {value: dataset, description: "The xCard type (from the template header: for datasets, the xCard type is \"dataset\")."}
   # 2026-11-06 (Vedant): type int for the pre-filled versions
-  discoverability.datacard.template_version: {value: "2.0.0", type: int}
+  # 2026-11-25: synced with Vedant's hand edits on datacard_v2_final (3ed9af6, f14346b)
+  discoverability.datacard.template_version: {value: "2.0.0", type: string}
+  # Vedant's file has value 1.0 for both; the template says 1.0.0 and validate_breakdown.py flags 1.0 (asked Vedant)
   discoverability.datacard.datacard_version: {value: "1.0.0", type: int}
+  discoverability.datacard.change_log.datacard_version: {value: "1.0.0", type: int}
+  discoverability.datacard.change_log.summary: {value: Initial datacard creation}
+  discoverability.datacard.created_by.creator.software.name: {value: URSA}
+  discoverability.datacard.created_by.description:
+    value: Combination of an AI model generating metadata, a software interfacing person and AI model, and a person
+      reviewing and editing datacard metadata.
+  discoverability.datacard.creation_method: {value: Hybrid, visible: false}
+  governed_use.compliance.osti_elink2_metadata_compliant: {value: Unknown}
   discoverability.datacard.language: {value: en}
   discoverability.datacard.id.type: {value: unregistered}
   discoverability.datacard.created_by.creator.ai_model.role: {value: Writing_Original_Draft}
@@ -157,6 +167,10 @@ overrides:
     description: "Sensitivity of the DATASET and of the DATA CARD: the data card's sensitivity
       (discoverability.datacard.sensitivity) is filled from these values. NOTE: Sensitivity terminology is still under
       Genesis governance review. Vocabulary may evolve."
+
+# 2026-11-25 (Vedant): every visible description rewritten so it says what the user has to do. Full texts, applied
+# last (after overrides and description_add), so they replace the template text.
+descriptions_file: descriptions_v2.0.yaml
 
 # 2026-11-05: notes added to a template description (Vedant, part 6). The template text is kept; `before` / `after`
 # are joined to it. The datacard.sensitivity notes are also on discoverability.sensitivity, the copy users fill in.

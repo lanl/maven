@@ -48,14 +48,14 @@ def test_v20_has_no_discriminators():
     # required nests through the person block to its group: contact is required, additional_contacts is not
     assert f["discoverability.contact.person.given_name"]["required"] is True
     extra = f["discoverability.additional_contacts.person.given_name"]
-    assert extra["required"] is False and extra["description"].startswith("Required if an entry is added.")
+    # descriptions_v2.0.yaml (2026-11-25) rewrites the list note as "Required if you add ..."
+    assert extra["required"] is False and extra["description"].startswith("Required if you add")
     # related_resources.software is itself a list (not a one-of sub-block): its fields keep the list note
-    assert f["interoperability.related_resources.software.name"]["description"].startswith("Required if an entry is added.")
+    assert f["interoperability.related_resources.software.name"]["description"].startswith("Required if you add")
     facility = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["facilities"]["value"]["name"]
     is_intermediate = yaml.safe_load(out.read_text(encoding="utf-8"))["discoverability"]["value"]["workflow"]["value"]["is_intermediate"]
     assert (is_intermediate["type"], is_intermediate["options"]) == ("dropdown", ["Yes", "No"])  # from __"Yes|No"__
-    assert facility["description"].strip() ==("Required if an entry is added. Human-readable name or local string "
-                                               "key for the entity.")
+    assert facility["description"].startswith("Required if you add a facility.")
 
 
 def test_v20_uses_vedants_field_format():
@@ -129,7 +129,7 @@ def test_v20_hidden_prefilled_and_mapped():
             if not isinstance(n["value"], dict):
                 assert n["type"] in ("int", "float", "string", "list", "dropdown"), p
     assert f["discoverability.datacard.filename"]["type"] == "string" and f["discoverability.datacard.filename"]["value"] == ""
-    assert (f["discoverability.datacard.template_version"]["type"], f["discoverability.datacard.template_version"]["value"]) == ("int", "2.0.0")  # Vedant: int (2026-11-06)
+    assert (f["discoverability.datacard.template_version"]["type"], f["discoverability.datacard.template_version"]["value"]) == ("string", "2.0.0")  # Vedant's hand edit on datacard_v2_final (was int, 2026-11-06)
     # identification.project is visible and empty; tags.project is hidden, empty and copied from it (2026-11-06)
     ip, tp = f["discoverability.identification.project"], f["discoverability.dataset_description.tags.project"]
     assert (ip["visible"], ip["value"], ip["mapping"]) == (True, "", None)
@@ -147,9 +147,7 @@ def test_v20_hidden_prefilled_and_mapped():
     assert (ru["type"], ru["options"], ru["value"]) == ("string", None, "")  # free text (2026-11-06)
     # a dropdown shows its options, so its description no longer lists them (2026-11-06); text after the list stays
     assert not [p for p, n in f.items() if n.get("type") == "dropdown" and "Allowed values" in n["description"]]
-    assert f["discoverability.sensitivity.source_marking_scheme"]["description"].endswith(
-        "governance purposes. If the data is open (public), select None.")
-    assert f["discoverability.release_status"]["description"].endswith("readiness for use.")
+    assert "If the data is open (public), pick None." in f["discoverability.sensitivity.source_marking_scheme"]["description"]
     assert f["discoverability.datacard.created_by.creator.ai_model.role"]["value"] == "Writing_Original_Draft"  # value kept
 
 
@@ -159,12 +157,25 @@ def test_v20_description_notes():
     out = HERE / "genesis_dc_v2.0_breakdown.generated.yaml"
     subprocess.run([sys.executable, str(HERE / "generate_breakdown.py"), str(HERE / "config_v2.0.yaml")], check=True)
     f = fields(yaml.safe_load(out.read_text(encoding="utf-8")))
+    # the part-6 notes survive the 2026-11-25 rewrite (descriptions_v2.0.yaml)
     p = "discoverability.sensitivity.source_marking_string"
-    assert f[p]["description"].startswith("Exact marking/banner/control text")
-    assert f[p]["description"].endswith("OFFICIAL USE ONLY. If the data is open (public), enter None.")
+    assert "If the data is open (public), enter None." in f[p]["description"]
     assert f["discoverability.datacard.sensitivity.source_marking_string"]["description"] == ""  # hidden + mapped
-    assert f["discoverability.dataset_description.task_category"]["description"].startswith("A task category is")
-    assert "DATA CARD" in f["discoverability.sensitivity"]["description"]
+    assert "AI/ML tasks" in f["discoverability.dataset_description.task_category"]["description"]
+    assert "datacard's own sensitivity" in f["discoverability.sensitivity"]["description"]
+
+
+def test_v20_descriptions_file_is_applied():
+    # Vedant (2026-11-25): every visible description comes from descriptions_v2.0.yaml, word for word
+    from compare_breakdowns import fields
+    out = HERE / "genesis_dc_v2.0_breakdown.generated.yaml"
+    subprocess.run([sys.executable, str(HERE / "generate_breakdown.py"), str(HERE / "config_v2.0.yaml")], check=True)
+    f = fields(yaml.safe_load(out.read_text(encoding="utf-8")))
+    wanted = yaml.safe_load((HERE / "descriptions_v2.0.yaml").read_text(encoding="utf-8"))
+    assert {p: f[p]["description"] for p in wanted} == wanted
+    assert all(f[p]["visible"] for p in wanted)  # hidden fields keep an empty description
+    left = [p for p, n in f.items() if n["visible"] and n["description"] and p not in wanted]
+    assert left == []  # no visible description left with the old template text
 
 
 def test_v20_repeated_blocks_are_lists():
@@ -234,6 +245,7 @@ def test_unknown_override_paths_are_listed():
     assert r.returncode != 0 and not out.exists()
     assert "override paths not in the template" in r.stderr
     assert "discoverability.no_such_field" in r.stderr and "no_such_section.x" in r.stderr
+
 
 def test_v20_plain_datacard():
     # Vedant (2026-11-06): a plain datacard in the template's layout, pre-set values filled, the rest blank

@@ -49,7 +49,7 @@ Items below are where the generator had to choose. Check them, then record any c
 - `reusability.integrity`: 5 template fields
 - `reusability.additional_licenses`: 5 template fields
 
-## Manual overrides applied from the config (42)
+## Manual overrides applied from the config (49)
 
 - `discoverability.identification.name`: {'required': True}
 - `discoverability.identification.primary_id.type`: {'required': True}
@@ -69,8 +69,14 @@ Items below are where the generator had to choose. Check them, then record any c
 - `reusability.citation.preferred_citation.year`: {'type': 'int'}
 - `reusability.citation.preferred_citation.howpublished`: {'description': ' Required when a preferred_citation is provided. How the dataset was published or released. how_published: is intended as a component of a bibtex citation when preferred_citation is provided e.g., Online | In Repository | As Supplementary Material'}
 - `xCard.card_type`: {'value': 'dataset', 'description': 'The xCard type (from the template header: for datasets, the xCard type is "dataset").'}
-- `discoverability.datacard.template_version`: {'value': '2.0.0', 'type': 'int'}
+- `discoverability.datacard.template_version`: {'value': '2.0.0', 'type': 'string'}
 - `discoverability.datacard.datacard_version`: {'value': '1.0.0', 'type': 'int'}
+- `discoverability.datacard.change_log.datacard_version`: {'value': '1.0.0', 'type': 'int'}
+- `discoverability.datacard.change_log.summary`: {'value': 'Initial datacard creation'}
+- `discoverability.datacard.created_by.creator.software.name`: {'value': 'URSA'}
+- `discoverability.datacard.created_by.description`: {'value': 'Combination of an AI model generating metadata, a software interfacing person and AI model, and a person reviewing and editing datacard metadata.'}
+- `discoverability.datacard.creation_method`: {'value': 'Hybrid', 'visible': False}
+- `governed_use.compliance.osti_elink2_metadata_compliant`: {'value': 'Unknown'}
 - `discoverability.datacard.language`: {'value': 'en'}
 - `discoverability.datacard.id.type`: {'value': 'unregistered'}
 - `discoverability.datacard.created_by.creator.ai_model.role`: {'value': 'Writing_Original_Draft'}
@@ -93,6 +99,7 @@ Items below are where the generator had to choose. Check them, then record any c
 - `discoverability.dataset_description.task_category`: {'description_add': {'before': 'A task category is the kind of AI/ML task the dataset is meant to support, i.e. what a model trained or evaluated on it is asked to do (e.g., classify images, predict a value, detect objects).'}}
 - `discoverability.contact.succession_note`: {'description_add': {'after': 'Include both a person and a group (e.g., a team or office) to contact, for clarity.'}}
 - `accessibility.access.intended_repositories`: {'description_add': {'after': 'If the project is moving to a DIANA Campaign, leave this empty.'}}
+- 231 descriptions replaced from `descriptions_v2.0.yaml`
 
 ## Hidden fields and mappings (output_format v2: config hidden, map_from) (26)
 

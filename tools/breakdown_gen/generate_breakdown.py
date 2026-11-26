@@ -477,6 +477,19 @@ class Builder:
             else:
                 node.update(patch)
             self.report["overrides"].append(f"`{path}`: {patch}")
+        # user-facing rewrites (Vedant, 2026-11-25): replace the whole text, applied last so they win
+        for path, text in (self.cfg.get("descriptions") or {}).items():
+            node = root
+            try:
+                for part in path.split("."):
+                    node = node[part] if node is root else node["value"][part]
+            except (KeyError, TypeError):
+                missing.append(path)
+                continue
+            node["description"] = text
+        if self.cfg.get("descriptions"):
+            self.report["overrides"].append(f"{len(self.cfg['descriptions'])} descriptions replaced from "
+                                            f"`{self.cfg.get('descriptions_file')}`")
         if missing:
             raise KeyError(f"override paths not in the template (overrides, description_add): {missing}")
         unknown = sorted(self.no_extra - set(self.by_path))  # a renamed field would otherwise silently get `None` back
@@ -653,6 +666,7 @@ def main():
         nodes, by_path, removed = apply_exclude(nodes, cfg["exclude"])
     schema = load_schema(read_source(cfg.get("schema"), base), cfg.get("root_class"))
     guide = load_guide_table(read_source(cfg.get("guide"), base))
+    cfg["descriptions"] = yaml.safe_load(read_source(cfg.get("descriptions_file"), base) or "{}") or {}
     b = Builder(cfg, nodes, by_path, schema, guide)
     b.report["excluded"] += removed
     tree = b.build()
