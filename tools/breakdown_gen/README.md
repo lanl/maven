@@ -16,6 +16,7 @@ change and a re-run instead of a hand conversion.
 | File | What it is |
 |---|---|
 | `generate_breakdown.py` | The generator. Reads a config, writes a breakdown YAML and a review report. |
+| `breakdown_to_datacard.py` | Writes a plain datacard YAML from a v2 breakdown, in the template's layout: pre-set values filled in, every other value blank (`''`, or `[]` for a list); keys removed by the config are left out. `python breakdown_to_datacard.py config_v2.0.yaml` → `genesis_dc_v2.0_datacard.generated.yaml`. Run it after the generator. |
 | `compare_breakdowns.py` | Checks a breakdown against MAVEN's form rules, and optionally compares it field by field with a reference breakdown. |
 | `test_generate.py` | Regression test: regenerates v1.2 and checks it against Vedant's v1.2 breakdown. |
 | `validate_breakdown.py` | Independent check that a breakdown (hand-made, LLM-made or generated) matches its template, section by section. Does not use the generator's code. |

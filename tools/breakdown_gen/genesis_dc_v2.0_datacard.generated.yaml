@@ -1,0 +1,384 @@
+# Datacard written from the breakdown (tools/breakdown_gen/breakdown_to_datacard.py); do not edit by hand.
+# Layout of templates/genesis_datacard_v2.0.0_vedant.yaml; pre-set values filled in, every other value blank.
+---
+xCard:
+  card_type: dataset
+supports_discoverability: 'Yes'
+supports_accessibility: 'Yes'
+supports_interoperability: 'Yes'
+supports_reusability: 'Yes'
+supports_governed_use: 'Yes'
+supports_ai_usability: 'Yes'
+discoverability:
+  datacard:
+    template_version: 2.0.0
+    datacard_version: 1.0.0
+    filename: ''
+    language: en
+    id:
+      type: unregistered
+      value: ''
+    sensitivity:
+      overall_sensitivity: ''
+      source_marking_string: ''
+      source_marking_scheme: ''
+      classified_status: ''
+      classification_level: ''
+      classification_category: ''
+      classified_control_markings: []
+      cui_status: ''
+      cui_basic_categories: []
+      cui_specified_categories: []
+      cui_limited_dissemination_controls: []
+      ucni_status: ''
+      uk_mda_status: ''
+      legacy_label_source: []
+      normalized_control_basis: ''
+    creation_method: ''
+    created_date: ''
+    updated_date: ''
+    change_log:
+      change_date: ''
+      datacard_version: ''
+      summary: ''
+    created_by:
+      contribution_date: ''
+      description: ''
+      creator:
+        person:
+          given_name: ''
+          family_name: ''
+          email: ''
+          affiliation:
+            name: ''
+          role: ''
+        organization:
+          name: ''
+          role: ''
+        ai_model:
+          name: ''
+          version: ''
+          accessed_date: ''
+          role: Writing_Original_Draft
+          relationship: generates
+        software:
+          name: ''
+          version: ''
+          role: Software
+          relationship: processes
+  identification:
+    name: ''
+    project: ''
+    version: ''
+    primary_id:
+      type: ''
+      value: ''
+    additional_ids:
+      type: ''
+      value: ''
+    supersedes:
+      type: ''
+      value: ''
+    superseded_by:
+      type: ''
+      value: ''
+    parent_collection:
+      name: ''
+      identifier:
+        type: ''
+        value: ''
+  dataset_description:
+    science_domain: ''
+    dataset_summary: ''
+    purpose: ''
+    collection_methodology: ''
+    data_characteristics: ''
+    limitations: ''
+    tags:
+      project: ''
+      science: ''
+      object_type: ''
+    task_category: []
+    task_subcategory: []
+    keywords: []
+  product_type: Dataset
+  release_status: ''
+  dataset_publisher:
+    name: ''
+    description: ''
+  contact:
+    person:
+      given_name: ''
+      family_name: ''
+      email: ''
+      affiliation:
+        name: ''
+      role: ''
+    organization:
+      name: ''
+      role: ''
+    valid_until: ''
+    succession_note: ''
+  additional_contacts:
+  - person:
+      given_name: ''
+      family_name: ''
+      email: ''
+      affiliation:
+        name: ''
+      role: ''
+    organization:
+      name: ''
+      role: ''
+    valid_until: ''
+    succession_note: ''
+  authors:
+  - person:
+      given_name: ''
+      family_name: ''
+      email: ''
+      affiliation:
+        name: ''
+      role: ''
+    organization:
+      name: ''
+      role: ''
+  sponsor_organizations:
+  - name: ''
+    award_number: ''
+    funding_source: ''
+    program: ''
+  sponsoring_doe_program_office: ''
+  sponsoring_doe_subprogram: ''
+  research_organizations:
+  - name: ''
+    role: ''
+  facilities:
+  - name: ''
+    role: ''
+    location:
+      description: ''
+  sensitivity:
+    overall_sensitivity: ''
+    source_marking_string: ''
+    source_marking_scheme: ''
+    classified_status: ''
+    classification_level: ''
+    classification_category: ''
+    classified_control_markings: []
+    cui_status: ''
+    cui_basic_categories: []
+    cui_specified_categories: []
+    cui_limited_dissemination_controls: []
+    ucni_status: ''
+    uk_mda_status: ''
+    legacy_label_source: []
+    normalized_control_basis: ''
+  workflow:
+    state: ''
+    is_intermediate: ''
+    pipeline_stage: ''
+    embargo_until: ''
+accessibility:
+  access_policy:
+    access_level: ''
+    access_restrictions: ''
+    authorization_required: []
+    intended_partner_classes: []
+    approved_environments: []
+    policy_url: ''
+    policy_text: ''
+  access:
+    current_location: ''
+    publicly_facing_landing_page_url: ''
+    intended_repositories:
+      name: ''
+      access_level: ''
+      is_primary: ''
+      date_deposited: ''
+      data_services:
+        name: ''
+        endpoint: ''
+        documentation_url: ''
+        authentication: ''
+        version: ''
+        rate_limit: ''
+  dataset_scale:
+    record_count: ''
+    record_unit: ''
+    compressed_bytes: ''
+    uncompressed_bytes: ''
+interoperability:
+  data_structure:
+    formats: []
+    encoding: ''
+    schema_version: ''
+    modalities: []
+    language: ''
+  provenance:
+    was_generated_by: ''
+    source_data:
+      name: ''
+      description: ''
+      identifier:
+        type: ''
+        value: ''
+      relationship: ''
+    processing_steps: ''
+    instrumentation: ''
+    simulation_details: ''
+  dates:
+    data_collection_start: ''
+    data_collection_end: ''
+    issued: ''
+    modified: ''
+  related_resources:
+    datasets:
+    - name: ''
+      description: ''
+      identifier:
+        type: ''
+        value: ''
+      relationship: ''
+    publications:
+    - value: ''
+      type: ''
+      relationship: ''
+    software:
+    - name: ''
+      version: ''
+      role: ''
+      relationship: ''
+    ai_models:
+    - name: ''
+      version: ''
+      accessed_date: ''
+      role: ''
+      relationship: ''
+  domain_metadata:
+    name: ''
+    description: ''
+    science_domain: ''
+    schema_reference:
+      type: ''
+      value: ''
+      version: ''
+    fields:
+    - name: ''
+      field_value: ''
+      data_type: ''
+      unit: ''
+      description: ''
+reusability:
+  license:
+    spdx_id: ''
+    name: ''
+    url: ''
+    known_contractual_rights: ''
+  stewardship:
+    level: ''
+    maintainer:
+      person:
+        given_name: ''
+        family_name: ''
+        email: ''
+        affiliation:
+          name: ''
+        role: ''
+      organization:
+        name: ''
+        role: ''
+    update_frequency: ''
+    retention_policy: ''
+    versioning_strategy: ''
+  data_quality:
+    completeness: ''
+    known_issues: ''
+    validation_methods: ''
+    noise_characteristics: ''
+    uncertainty_notes: ''
+    missing_data_codes:
+    - code: ''
+      description: ''
+  citation:
+    report_number: ''
+    preferred_citation:
+      author: ''
+      title: ''
+      year: ''
+      publisher: ''
+      howpublished: ''
+      doi: ''
+      url: ''
+      note: ''
+governed_use:
+  use_governance:
+    current_use: ''
+    intended_use: ''
+    permitted_use: ''
+    out_of_scope_use: ''
+    prohibited_use: ''
+  non_sensitivity_governance_metadata:
+    export_control:
+      export_control_status: ''
+      export_control_basis: ''
+      foreign_national_access_status: ''
+    privacy:
+      privacy_status: ''
+      pii_status: ''
+      phi_status: ''
+      privacy_control_basis: ''
+      privacy_regime_notes: ''
+    rights_release_records:
+      ip_restriction_type: ''
+      agreement_required: ''
+      agreement_type: []
+      public_release_status: ''
+      record_status: ''
+  compliance:
+    doe_data_management_plan: ''
+    osti_elink2_metadata_compliant: ''
+    irb_approved: ''
+  review_provenance_companion:
+  - source_review_reference: ''
+    review_purpose: ''
+    source_review_authority: ''
+    review_contact_name: ''
+    review_contact_email: ''
+    reviewed_by:
+      person:
+        given_name: ''
+        family_name: ''
+        email: ''
+        affiliation:
+          name: ''
+        role: ''
+      organization:
+        name: ''
+        role: ''
+      ai_model:
+        name: ''
+        version: ''
+        accessed_date: ''
+        role: ''
+        relationship: ''
+      software:
+        name: ''
+        version: ''
+        role: ''
+        relationship: ''
+    decontrol_or_declassify_on: ''
+    review_date: ''
+    comments: ''
+ai_usability:
+  ai_usage:
+    training_use_status: ''
+    training_use_conditions: ''
+    inference_use_status: ''
+    inference_use_conditions: ''
+    evaluation_use_status: ''
+    evaluation_use_conditions: ''
+    restrictions: ''
+    bias_risks: ''
+    safety_considerations: ''
+    human_review_required: ''

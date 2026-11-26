@@ -2,6 +2,7 @@
 # Paths are relative to this file; "archive::member" reads a file inside a .tar.gz / .zip.
 title: Genesis Data Card Breakdown Schema v2.0
 output: genesis_dc_v2.0_breakdown.generated.yaml
+datacard_output: genesis_dc_v2.0_datacard.generated.yaml   # breakdown_to_datacard.py: the plain datacard (Vedant, 2026-11-06)
 
 # 2026-11-05: Vedant's edited copy of the zip template (7 list blocks made single entries, 'Perfer' typo fixed).
 template: templates/genesis_datacard_v2.0.0_vedant.yaml

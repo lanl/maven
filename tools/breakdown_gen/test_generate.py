@@ -235,8 +235,22 @@ def test_unknown_override_paths_are_listed():
     assert "override paths not in the template" in r.stderr
     assert "discoverability.no_such_field" in r.stderr and "no_such_section.x" in r.stderr
 
+def test_v20_plain_datacard():
+    # Vedant (2026-11-06): a plain datacard in the template's layout, pre-set values filled, the rest blank
+    subprocess.run([sys.executable, str(HERE / "generate_breakdown.py"), str(HERE / "config_v2.0.yaml")], check=True)
+    subprocess.run([sys.executable, str(HERE / "breakdown_to_datacard.py"), str(HERE / "config_v2.0.yaml")], check=True)
+    card = yaml.safe_load((HERE / "genesis_dc_v2.0_datacard.generated.yaml").read_text(encoding="utf-8"))
+    assert card["xCard"] == {"card_type": "dataset"} and card["supports_interoperability"] == "Yes"
+    d = card["discoverability"]
+    assert (d["datacard"]["template_version"], d["datacard"]["filename"], d["product_type"]) == ("2.0.0", "", "Dataset")
+    # a '- person:' list item holds its siblings too, as in the template
+    assert list(d["additional_contacts"][0]) == ["person", "organization", "valid_until", "succession_note"]
+    assert d["sponsor_organizations"][0]["name"] == "" and d["dataset_description"]["keywords"] == []
+    assert "contributors" not in d and "orcid" not in d["contact"]["person"]  # removed by the config
+
 
 if __name__ == "__main__":
+    test_v20_plain_datacard()
     test_v12_matches_reference()
     test_examples_after_eg_are_not_a_vocabulary()
     test_v20_has_no_discriminators()
