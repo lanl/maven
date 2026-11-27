@@ -89,7 +89,7 @@ def main():
 
     def heartbeat():
         while not heartbeat_stop.wait(60):
-            print("", flush=True)
+            print(flush=True)
 
     if is_remote:
         threading.Thread(target=heartbeat, daemon=True).start()
