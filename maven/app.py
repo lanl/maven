@@ -62,6 +62,7 @@ import pypdf
 import docx
 from pptx import Presentation
 import pandas as pd
+import numpy as np
 import shutil
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -73,22 +74,25 @@ import shlex
 import getpass
 import socket
 import re
+import sys
 import tempfile
 try:
     from openai import OpenAI
 except Exception:
     import platform
     st.error("Could not load OpenAI due to an SSL Error. If on a server, ensure you are using the latest global Python version.")
-    version = platform.python_version()
-    st.code(f"Current Python version: {version}")
+    py_version = platform.python_version()
+    st.code(f"Current Python version: {py_version}")
     st.stop()
 import httpx
 # from linkml_runtime import SchemaView
-from datetime import UTC, datetime
+from datetime import UTC, datetime, date
 import requests
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from textwrap import dedent
+from importlib.metadata import version
+from contextlib import redirect_stdout
 
 from dsi.dsi import DSI
 from dsi.sync import Sync
@@ -103,7 +107,7 @@ from maven.ursa_autofill import (
     summarize_autofill,
 )
 
-from maven.tier1_genesis_dc_agent import run_tier1_yaml, run_tier1_markdown
+from maven.genesis_dc_agent import run_tier1_yaml
 from ursa.agents.chat_agent import ChatAgent
 try:
     from ursa.util.http import inject_truststore_into_ssl
@@ -115,10 +119,10 @@ from langchain.chat_models import init_chat_model
 curr_dir = Path(__file__).parent
 files_dir = curr_dir / "metadata_template"
 
-# GENESIS v1.2 datacard files
-GENESIS_MISSION_DATA_CARD_BREAKDOWN = files_dir / "genesis_dc_breakdown.yaml"
-GENESIS_MISSION_DATA_CARD_MD = files_dir / "genesis_dc_v1.2_MD.md"
-GENESIS_MISSION_DATA_CARD_REFERENCE = files_dir / "genesis_dc_v1.2_reference_guide.md"
+
+# GENESIS v2.0 datacard files
+GENESIS_DATACARD_BREAKDOWN_V2 = files_dir / "genesis_v2.0_breakdown.yaml"
+GENESIS_DATACARD_REFERENCE_V2 = files_dir / "genesis_v2.0_reference_guide.md"
 
 # Genesis datasheet 
 datasheet_file = files_dir / "datasheet_sections.yaml"
@@ -128,20 +132,22 @@ REVIEW_SECTION_IDX = -1
 FOLLOWUP_SECTION_IDX = -2
 
 SECTION_BY_IDX = {s["section_idx"]: s for s in SECTIONS}
-ALL_SECTION_IDXS = [s["section_idx"] for s in SECTIONS]
-ALL_QUESTIONS = [q for s in SECTIONS for q in s["questions"]]
+# exclude section 0 from all questions
+ALL_QUESTIONS = {q["id"]:q.get("full_text", q["label"]) for s in SECTIONS for q in s["questions"] if s["section_idx"] != 0}
 
 
 MASTER_DB_PATH = "maven.db"
 PROJECTS_TABLE = "projects"
+MIGRATED_TABLE = "migrated_projects"
 
 DATASHEET_TABLE = "datasheet"
 FILE_POINTERS_TABLE = "metadata_file_paths"
 TIER1_YAML_TABLE = "datacard_yaml"
-TIER1_MARKDOWN_TABLE = "datacard_markdown"
+OLD_TIER1_MARKDOWN_TABLE = "datacard_markdown"
 
 DATASHEET_SUFFIX = "_datasheet.pdf"
-DATACARD_SUFFIX = "_genesis_datacard_v1.2.md"
+OLD_DATACARD_SUFFIX = "_genesis_datacard_v1.2.md"
+DATACARD_SUFFIX = "_genesis_datacard_v2.0.yaml"
 
 TIER_2_TABLE = "data_and_hpc_info"
 TIER_2_FILES_TABLE = "tier2_files"
@@ -245,7 +251,9 @@ def load_env_keys() -> None:
 
 
 def get_db(db_path: str) -> DSI:
-    return DSI(db_path, check_same_thread=False, silence_messages=True)
+    if db_path == get_master_db_name():
+        return DSI(db_path, check_same_thread=False, silence_messages=True)
+    return DSI(db_path, backend_name="DuckDB", silence_messages=True)
 
 
 def all_question_columns() -> List[str]:
@@ -287,8 +295,31 @@ def create_master_db():
     master_dict = {"project_id": "", "project_name": "", "tier1_db_path": "",
                    "tier2_db_path": "", "has_moved": ""}
     store.read(master_dict, "Collection", table_name=PROJECTS_TABLE)
-    store.close()
 
+    # migrate any tier 1 and tier 2 dbs that are sqlite to duckdb -- have to do this every run
+    projects_df = store.get_table(PROJECTS_TABLE, True)
+    if not projects_df.empty:
+        db_paths = [str(get_maven_dir() / path) for column in ("tier1_db_path", "tier2_db_path") for path in projects_df[column]]
+
+        if MIGRATED_TABLE in store.list(True):
+            migrated_table_df = store.get_table(MIGRATED_TABLE, True)
+            migrated_projects_list = migrated_table_df.iloc[:, 0].tolist()
+            db_paths = list(set(db_paths) - set(migrated_projects_list))
+            if not db_paths:
+                store.close()
+                return
+
+        for db in db_paths:
+            if os.path.exists(db) and store.t.identify_backend(db).lower() == "sqlite":
+                shutil.copy2(db, db+".backup")
+                os.remove(db)
+                temp_store = DSI(db+".backup", check_same_thread=False, silence_messages=True)
+                temp_store.process("DuckDB", db)
+                temp_store.close()
+                os.remove(db+".backup")
+
+        store.read({"project_files": db_paths}, "Collection", table_name=MIGRATED_TABLE)
+    store.close()
 
 def create_tier1_db(db_path: str):
     question_cols = all_question_columns()
@@ -327,16 +358,6 @@ def get_tier1_db_path(project_id: int, only_name: bool = False) -> str:
     return str(maven_dir / df.iloc[0, 0])
 
 
-def get_tier1_YAML_MD_path(project_id: int, only_name: bool = False) -> str:
-    store = get_db(get_master_db_name())
-    df = store.query(f"SELECT tier1_db_path FROM {PROJECTS_TABLE} WHERE project_id = {project_id}", True)
-    store.close()
-    if only_name:
-        return df.iloc[0, 0]
-    maven_dir = get_maven_dir()
-    return str(maven_dir / df.iloc[0, 0]).replace(".db", ".yaml")
-
-
 def get_tier2_db_path(project_id: int, only_name: bool = False) -> str:
     store = get_db(get_master_db_name())
     df = store.query(f"SELECT tier2_db_path FROM {PROJECTS_TABLE} WHERE project_id = {project_id}", True)
@@ -371,31 +392,23 @@ def update_datasheet(qid: int, updates: Dict[str, Any]) -> None:
     store.close()
 
 
-def get_tier1_table(project_id: int, update=False, check_exists=False) -> Dict[str, pd.DataFrame] | bool:
+def get_tier1_table(project_id: int, check_exists=False) -> dict | bool:
     tier1_db = get_tier1_db_path(project_id)
     store = get_db(tier1_db)
-
     curr_tables = store.list(True)
-    curr_tables = [t for t in curr_tables if t not in [DATASHEET_TABLE, FILE_POINTERS_TABLE, "filesystem", "federated"]]
     if check_exists:
         store.close()
-        if not curr_tables:
+        if TIER1_YAML_TABLE not in curr_tables:
             return False
         return True
 
-    all_tbls = {}
-    for tbl in curr_tables:
-        df = store.get_table(tbl, collection=True, update=update)
-        all_tbls[tbl] = df
+    if TIER1_YAML_TABLE not in curr_tables:
+        store.close()
+        return {}
+    tier1_vals = store.get_table(TIER1_YAML_TABLE, collection=True).iloc[0]
+    tier1_dict = tier1_vals.map(lambda value: value.tolist() if isinstance(value, np.ndarray) else value).to_dict()
     store.close()
-    return all_tbls
-
-
-def update_tier1_table(project_id: int, update_tier1_df: pd.DataFrame):
-    tier1_db = get_tier1_db_path(project_id)
-    store = get_db(tier1_db)
-    store.update(update_tier1_df)
-    store.close()
+    return tier1_dict
 
 
 def delete_project(qid: int) -> None:
@@ -424,6 +437,9 @@ def delete_project(qid: int) -> None:
     datasheet_path.unlink(missing_ok=True)
     datacard_path = get_maven_dir() / (full_proj_name + DATACARD_SUFFIX)
     datacard_path.unlink(missing_ok=True)
+    # old datacard deletion
+    old_datacard_path = get_maven_dir() / (full_proj_name + OLD_DATACARD_SUFFIX)
+    old_datacard_path.unlink(missing_ok=True)
 
     if len(projects_df) == 1:
         store.close()
@@ -432,168 +448,174 @@ def delete_project(qid: int) -> None:
         projects_df["project_id"] = projects_df["project_id"].astype(int)
         projects_df = projects_df[projects_df["project_id"] != qid]
         store.update(projects_df)
+
+        migrated_dbs_df = store.get_table(MIGRATED_TABLE, True, True)
+        migrated_dbs_df = migrated_dbs_df[~migrated_dbs_df["project_files"].isin([tier1_path, tier2_path])]
+        store.update(migrated_dbs_df)
         store.close()
 
 
-# def get_tier1_fields() -> Tuple[Dict[str, str], Dict[str, Dict[str, str]]]:
-#     if not CARD_CLASS_BASED.is_file():
-#         st.error("Tier 1 metadata fields file does not exist")
-#         st.stop()
-
-#     all_classes = {}
-#     sv = SchemaView(CARD_CLASS_BASED)
-#     for class_name, cls in sv.all_classes().items():
-#         if cls.abstract or class_name.lower() == "anyvalue":
-#             continue
-
-#         columns = {}
-#         required_columns = []
-#         for slot in sv.class_induced_slots(class_name):
-#             if slot.name.lower() == "anyvalue":
-#                 continue
-#             columns[slot.name] = {'description': slot.description, 'required': True if slot.required else False}
-#             if slot.required:
-#                 required_columns.append(slot.name)
-#         class_dict = {"description": cls.description, "columns": columns, "required_columns": required_columns}
-#         all_classes[class_name] = class_dict
-
-#     slots_dict = {slot_name: slot.description for slot_name, slot in sv.all_slots().items()}
-
-#     return slots_dict, all_classes
-
-
 def get_tier1_fields():
-    tier1_cards = {}
-
-    datacard_dict = yaml.safe_load(GENESIS_MISSION_DATA_CARD_BREAKDOWN.read_text(encoding="utf-8"))
-
-    # creates a dict of all flattened fields whose value is if it is required or not (true/false)
-    flattened_fields = flattened_tier1_fields(datacard_dict)
-
-    # MD str
-    tier1_cards["markdown_template"] = GENESIS_MISSION_DATA_CARD_MD.read_text(encoding="utf-8")
+    datacard_dict = yaml.safe_load(GENESIS_DATACARD_BREAKDOWN_V2.read_text(encoding="utf-8"))
 
     # Reference guide str
-    tier1_cards["card_reference"] = GENESIS_MISSION_DATA_CARD_REFERENCE.read_text(encoding="utf-8")
+    reference_guide = GENESIS_DATACARD_REFERENCE_V2.read_text(encoding="utf-8")
 
-    return flattened_fields, tier1_cards, datacard_dict
+    # creates a dict of all flattened leaf nodes whose value is dict of required or not and visible or not
+    # ex: fieldA: {required: true, visible: false, value: 'some value' or '' or []}
+    flattened_fields = flattened_tier1_fields(datacard_dict)
 
-
-def get_conditional_info(field_path: str, yaml_dict: dict) -> dict | None:
-    """
-    Check if a field path is inside a conditional context block.
-    Returns dict with conditional info if found, None otherwise.
-    
-    The discriminator field is a SIBLING of the conditional alternative,
-    so we need to build the path correctly.
-    
-    Example:
-    field_path = "discoverability.authors.person.given_name"
-    
-    Structure:
-        authors:
-        type: <discriminator>
-        person: <conditional alternative>
-            given_name: <this field>
-            
-    Returns: {
-        "is_conditional": True,
-        "discriminator": "type",
-        "discriminator_path": "discoverability.authors.type",  # Sibling of person
-        "alternative": "person"
-    }
-    """
-    parts = field_path.split(".")
-
-    # Walk the YAML structure following the path
-    current = yaml_dict
-    path_to_here = []
-
-    for i, part in enumerate(parts):
-        path_to_here.append(part)
-
-        # Navigate into the structure
-        if isinstance(current, dict):
-            if part in current:
-                current = current[part]
-            elif "value" in current and isinstance(current["value"], dict):
-                # Step into value dict
-                current = current["value"]
-                if part in current:
-                    current = current[part]
-                else:
-                    return None
-            else:
-                return None
-        else:
-            return None
-
-        # Check if THIS level has conditional_context
-        if isinstance(current, dict) and current.get("conditional_context") == "one_of_alternatives":
-            discriminator = current.get("condition_discriminator")
-
-            # The discriminator is a SIBLING - go back to parent level
-            # parent_path is everything EXCEPT the current part
-            parent_path_parts = path_to_here[:-1]  # Remove the conditional alternative from path
-
-            # Build discriminator path: parent + discriminator name
-            discriminator_path_parts = parent_path_parts + [discriminator]
-
-            return {
-                "is_conditional": True,
-                "discriminator": discriminator,
-                "discriminator_path": ".".join(discriminator_path_parts),
-                "alternative": part,  # The current part IS the alternative name
-                "parent_path": ".".join(parent_path_parts)
-            }
-
-    return None
+    return datacard_dict, reference_guide, flattened_fields
 
 
-def flattened_tier1_fields(yaml_dict: dict):
-    def get_children(field):
+def flattened_tier1_fields(yaml_dict: dict, parent_lists = False):
+
+    def walk(field, path, result, parent_lists):
+        children = {}
         value = field.get("value")
-
         if isinstance(value, dict):
-            return value
-        if isinstance(value, list):
-            children = {}
-            for item in value:
-                if isinstance(item, dict):
-                    children.update(item)
-            return children
-
-        return {}
-
-    def walk(field, path, result, in_conditional_block=False):
-        children = get_children(field)
+            children = value
 
         # This is an actual field.
-        if not children:
-            # If inside a conditional block, mark as not required at UI level
-
-            result[path] = field.get("required", False)
+        if not children and not parent_lists:
+            result[path] = field
             return
-            # if in_conditional_block:
-            #     result[path] = False  # ← Don't validate conditionally required fields at UI level
-            # else:
-            #     result[path] = field.get("required", False)
-            # return
+        if children and parent_lists and "type" in field.keys():
+            result[path] = {"length": field["length"]}
+            return
 
-        # Check if this field is a conditional alternative
-        is_conditional = field.get("conditional_context") == "one_of_alternatives" 
-        
         for key, child in children.items():
             child_path = f"{path}.{key}"
-            if isinstance(child, dict):
-                walk(child, child_path, result, is_conditional or in_conditional_block)
-            else:
-                result[child_path] = False
+            walk(child, child_path, result, parent_lists)
 
     result = {}
     for key, field_data in yaml_dict.items():
-        walk(field_data, key, result)
+        walk(field_data, key, result, parent_lists)
     return result
+
+
+def complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict):
+    # first fill default values for any dataset
+    for field_name, flattened_dict in flattened_fields.items():
+        leaf_value = flattened_dict["value"]
+        # identify which leaf nodes are lists and make them the max length
+        if flattened_dict["type"] == "list":
+            max_length = flattened_dict["length"]
+            if tier1_dict[field_name] == "":
+                if flattened_dict["mapping"] is None:
+                    leaf_value.extend([None] * max(0, max_length - len(leaf_value)))
+                tier1_dict[field_name] = leaf_value
+            elif isinstance(tier1_dict[field_name], list):
+                if len(tier1_dict[field_name]) < max_length:
+                    padded_list = tier1_dict[field_name] + [None] * max(0, max_length - len(tier1_dict[field_name]))
+                    tier1_dict[field_name] = padded_list
+                elif len(tier1_dict[field_name]) > max_length:
+                    tier1_dict[field_name] = tier1_dict[field_name][:max_length]
+            else:
+                st.error(f"{field_name} value in AI model output must be empty string or list. Try again.")
+                st.stop()
+        elif flattened_dict["type"] == "dropdown" and tier1_dict[field_name] != "":
+            val = tier1_dict[field_name]
+            if isinstance(val, list):
+                val = val[0] if val else ""
+            tier1_dict[field_name] = val if val in flattened_dict["options"] else ""
+        elif leaf_value != "" and tier1_dict[field_name] == "":
+            tier1_dict[field_name] = leaf_value
+
+    # now fill values specific to this maven run with this dataset
+    store = get_db(get_master_db_name())
+    projects_df = store.get_table(PROJECTS_TABLE, True, True)
+    store.close()
+
+    matching_name = projects_df.loc[projects_df["project_id"] == str(qid), "project_name"]
+    if not matching_name.empty:
+        matching_name = matching_name.iloc[0]
+    else:
+        matching_name = projects_df.loc[projects_df["project_id"] == int(qid), "project_name"].iloc[0]
+    full_proj_name = to_snake_case(matching_name)
+    datacard_filename = full_proj_name + DATACARD_SUFFIX
+    today_date = date.today().isoformat()
+    ai_model_name = os.getenv("AI_MODEL").removeprefix("openai:")
+    match = re.search(r"\d.*", ai_model_name[5:])
+    model_version = match.group() if match else ""
+    ursa_version = version("ursa-ai")
+    dataset_specific_values = {
+        "discoverability.datacard.filename": datacard_filename,
+        "discoverability.datacard.id.value": datacard_filename,
+        "discoverability.datacard.created_date": today_date,
+        "discoverability.datacard.updated_date": today_date,
+        "discoverability.datacard.change_log.change_date": today_date,
+        "discoverability.datacard.created_by.contribution_date": today_date,
+        "discoverability.datacard.created_by.creator.ai_model.name": ai_model_name,
+        "discoverability.datacard.created_by.creator.ai_model.version": model_version,
+        "discoverability.datacard.created_by.creator.ai_model.accessed_date": today_date,
+        "discoverability.datacard.created_by.creator.software.version": ursa_version,        
+    }
+    for field_name, new_value in dataset_specific_values.items():
+        if field_name not in tier1_dict.keys():
+            st.error(f"{field_name} not in AI model generated output. Try again")
+            st.stop()
+        tier1_dict[field_name] = new_value
+
+    # now identify which parent fields are lists and make all their children lists too
+    list_parents = flattened_tier1_fields(datacard_dict, True)
+    for key, value in tier1_dict.items():
+        for parent_name, parent_dict in list_parents.items():
+            if parent_name in key:
+                tier1_dict[key] = [value] + [None] * (parent_dict["length"] - 1)
+                break
+    return tier1_dict
+
+
+def complete_optional_fields(flattened_yaml_dict: dict[str, str], 
+                             hpc_move = False,
+                             hpc_campaign_path = None,
+                             hpc_name = None):
+    dataset_specific_values = {
+        "governed_use.compliance.doe_data_management_plan": "",
+        "governed_use.compliance.osti_elink2_metadata_compliant": "",
+        "governed_use.compliance.irb_approved": "",
+    }
+
+    if hpc_move:
+        today_date = date.today().isoformat()
+        dsi_py_version = version("dsi-workflow")
+        dataset_specific_values = {
+            **dataset_specific_values,
+            "accessibility.access.current_location": hpc_campaign_path,
+            "accessibility.access.intended_repositories.name": f"DIANA {hpc_name} Campaign",
+            "accessibility.access.intended_repositories.access_level": "Controlled",
+            "accessibility.access.intended_repositories.is_primary": "Yes",
+            "accessibility.access.intended_repositories.date_deposited": today_date,
+            "accessibility.access.intended_repositories.data_services.name": "DSI",
+            "accessibility.access.intended_repositories.data_services.endpoint": "pip install dsi-workflow",
+            "accessibility.access.intended_repositories.data_services.authentication": "Certificate",
+            "accessibility.access.intended_repositories.data_services.version": dsi_py_version,
+        }
+
+        # update datacard file name in the datacard itself
+        store = get_db(get_master_db_name())
+        projects_df = store.get_table(PROJECTS_TABLE, True, True)
+        store.close()
+        matching_name = projects_df.loc[projects_df["project_id"] == str(qid), "project_name"]
+        if not matching_name.empty:
+            matching_name = matching_name.iloc[0]
+        else:
+            matching_name = projects_df.loc[projects_df["project_id"] == int(qid), "project_name"].iloc[0]
+        full_proj_name = to_snake_case(matching_name)
+        datacard_filename = full_proj_name + DATACARD_SUFFIX
+        flattened_yaml_dict["discoverability.datacard.filename"] = datacard_filename
+        flattened_yaml_dict["discoverability.datacard.id.value"] = datacard_filename
+
+    for key, value in dataset_specific_values.items():
+        if key not in flattened_yaml_dict.keys():
+            st.error(f"{key} not in AI model generated output. Try again")
+            st.stop()
+        # only overwrite if user left empty
+        if flattened_yaml_dict[key] is None or flattened_yaml_dict[key] in ("", []):
+            flattened_yaml_dict[key] = value
+
+    return flattened_yaml_dict
 
 
 def extract_text_from_pdf(file) -> str:
@@ -730,10 +752,61 @@ def generate_datasheet_pdf(df: pd.DataFrame, output_pdf: str):
     doc.build(elements)
 
 
-def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
-    tier1_tbls = get_tier1_table(qid)
-    flattened_fields_dict = tier1_tbls[TIER1_YAML_TABLE].iloc[0].to_dict()
-    
+def move_into_group(data, original_key, group_key):
+    value = data[original_key]
+    just_field_name = original_key.rsplit(".", 1)[-1]
+
+    if group_key in data:
+        # Group already exists.
+        for index, val in enumerate(value):
+            data[group_key][index][just_field_name] = val
+        data.pop(original_key)
+        return
+
+    # Create the group at the original key's current position.
+    rebuilt = {}
+
+    for key, current_value in data.items():
+        if key == original_key:
+            rebuilt[group_key] = [{} for _ in range(len(current_value))]
+            for index, val in enumerate(current_value):
+                rebuilt[group_key][index][just_field_name] = val
+        else:
+            rebuilt[key] = current_value
+
+    data.clear()
+    data.update(rebuilt)
+
+
+class LeafListDumper(yaml.SafeDumper):
+    pass
+LeafListDumper.add_representer(
+    list,
+    lambda dumper, value: dumper.represent_sequence(
+        "tag:yaml.org,2002:seq",
+        value,
+        flow_style=all(
+            not isinstance(item, (dict, list, tuple))
+            for item in value
+        ),
+    ),
+)
+
+def generate_tier1_datacard(qid: int, output_file: str, hpc_name = None, hpc_campaign_path = None):
+    flattened_fields_dict = get_tier1_table(qid)
+
+    if hpc_name is not None:
+        flattened_fields_dict = complete_optional_fields(flattened_fields_dict, True, hpc_name, hpc_campaign_path)
+
+    # reformat leaf nodes that are in parent list
+    datacard_dict, _, _ = get_tier1_fields()
+    list_parents = flattened_tier1_fields(datacard_dict, True).keys()
+    for original_key in list(flattened_fields_dict.keys()):
+        for parent_name in list_parents:
+            if parent_name in original_key:
+                move_into_group(flattened_fields_dict, original_key, parent_name)
+                break
+
     yaml_portion = {}
     for flattened_key, value in flattened_fields_dict.items():
         keys = flattened_key.split(".")
@@ -744,27 +817,13 @@ def generate_tier1_datacard(qid: int, output_file: str, data_pointer = None):
 
         current[keys[-1]] = value
 
-    output_path = Path(output_file).with_suffix(".md")
-
     front_matter = {
-        **({"ResourceURI": data_pointer} if data_pointer is not None else {}),
+        **({"ResourceURI": f"{hpc_name}:{hpc_campaign_path}"} if hpc_name is not None else {}),
         **yaml_portion,
     }
 
-    yaml_content = "\n\n".join(
-            yaml.safe_dump({key: value}, sort_keys=False, allow_unicode=True, default_flow_style=False,).rstrip()
-            for key, value in front_matter.items()
-        )
-
-    markdown_string = str(tier1_tbls[TIER1_MARKDOWN_TABLE].iloc[0, 0]).strip()
-    file_content = (
-        "---\n"
-        f"{yaml_content}\n"
-        "---\n\n"
-        f"{markdown_string}\n"
-    )
-
-    output_path.write_text(file_content, encoding="utf-8")
+    with open(output_file, "w", encoding="utf-8") as f:
+        yaml.dump(front_matter, f, Dumper=LeafListDumper, default_flow_style=False, sort_keys=False)
 
 
 def has_text(val: Any) -> bool:
@@ -859,7 +918,7 @@ def accessed_section_idx(row: Dict[str, Any], return_type) -> int:
     if not ok0:
         return 0
 
-    for idx in ALL_SECTION_IDXS:
+    for idx in SECTION_BY_IDX:
         if idx == 0:
             continue
         ok, _ = section_complete(idx, row)
@@ -869,7 +928,7 @@ def accessed_section_idx(row: Dict[str, Any], return_type) -> int:
     if return_type == "first":
         return 0
     elif return_type == "max":
-        return max(ALL_SECTION_IDXS)
+        return max(SECTION_BY_IDX)
 
 
 def parse_table_json(val: Any) -> List[Dict[str, Any]]:
@@ -1434,6 +1493,57 @@ def validate_rosy(rosy_id:str, rosy_z_num:int, verify_ssl=False):
         st.stop()
 
 
+def kerberos_check():
+    if sys.platform in {"darwin", "linux"}:
+        klist_path = shutil.which("klist")
+        if klist_path is None:
+            st.error("Kerberos is required to access HPC")
+            st.stop()
+
+        result = subprocess.run([klist_path], capture_output=True, text=True, check=False)
+
+        output = f"{result.stdout}\n{result.stderr}"
+
+        principal_line = next((line for line in output.splitlines() if re.match(r"^\s*(default\s+)?principal\s*:", line, re.IGNORECASE)), None)
+
+        if principal_line is None:
+            if sys.platform == "linux":
+                st.error("No Kerberos ticket found. In a new terminal run 'kinit' to create one and then try again here.")
+            else:
+                st.error("No Kerberos ticket found. Create one and try again.")
+            st.stop()
+
+        match = re.search(r"principal:\s*(.+)$", principal_line, re.IGNORECASE)
+        if match is None:
+            if sys.platform == "linux":
+                st.error("Kerberos check was invalid. In a new terminal, run 'kdestroy' and 'kinit'. After, try again here.")
+            else:
+                st.error("Kerberos ticket was invalid. Close existing ticket, recreate one, and try again here.")
+            st.stop()
+
+        principal = match.group(1).strip()
+
+        username, separator, realm = principal.partition("@")
+
+        if not separator or not username or not realm:
+            if sys.platform == "linux":
+                st.error("Kerberos ticket must resemble 'user@lanl.gov'. In a new terminal, run 'kdestroy' and 'kinit'. After, try again here.")
+            else:
+                st.error("Kerberos ticket must resemble 'user@lanl.gov'. Change existing ticket and try again.")
+            st.stop()
+
+        if username.isnumeric():
+            st.error(f"Select the Kerberos ticket with an alphabetical username not '{username}'")
+            st.stop()
+
+        if any(char.isdigit() for char in realm) or not realm.lower().endswith("lanl.gov"):
+            if sys.platform == "linux":
+                st.error("Kerberos ticket must end with 'lanl.gov'. In a new terminal, run 'kdestroy' and 'kinit'. After, try again here.")
+            else:
+                st.error("Kerberos ticket must end with 'lanl.gov'. Change existing ticket and try again.")
+            st.stop()
+
+
 @st.dialog("Confirm Data Changes", width="medium", dismissible=False)
 def confirm_unchanged_data_dialog(qid: int, local_data: str):
     st.subheader(f"The data at '{local_data}' was recently moved")
@@ -1511,12 +1621,31 @@ def update_short_project_title_dialog(qid: int, short_proj_name: str, hpc_campai
 @st.dialog("Update MAVEN Directory", width="medium")
 def update_maven_dir_dialog():
     st.write("Enter a directory where MAVEN should store all metadata databases.")
+    st.caption("NOTE: MAVEN will create its own folder here called 'maven_files'")
 
-    curr_dir = get_maven_dir()
-    dir_input = st.text_input("MAVEN Directory", value=curr_dir, key="update_maven_dir")
+    curr_dir = str(get_maven_dir())
+    dir_input = st.text_input("MAVEN Directory", value=curr_dir.removesuffix("maven_files"), key="update_maven_dir")
 
     if st.button("Save", type="primary", width="stretch"):
+        if dir_input.endswith(("maven_files/", "maven_files")):
+            st.error("Do not specify the 'maven_files' folder. MAVEN will create it separately")
+            st.stop()
+
         if save_maven_dir(dir_input):
+            # update migrated project table with new maven dir
+            new_dir = str(get_maven_dir())
+            store = get_db(get_master_db_name())
+            if MIGRATED_TABLE in store.list(True):
+                curr_migrated_tbl = store.get_table(MIGRATED_TABLE, True, True)
+                mask = curr_migrated_tbl["project_files"].str.startswith(curr_dir, na=False)
+
+                curr_migrated_tbl.loc[mask, "project_files"] = (
+                    curr_migrated_tbl.loc[mask, "project_files"]
+                    .str.replace(rf"^{re.escape(curr_dir)}", new_dir, regex=True)
+                )
+                store.update(curr_migrated_tbl)
+            store.close()
+
             st.success("MAVEN Directory saved.")
             st.rerun()
 
@@ -1613,43 +1742,6 @@ def confirm_context_files_dialog(context_files): # add :str or :list
         st.rerun()
 
 
-@st.dialog("Valid markdown confirmation", width="medium", dismissible=False)
-def confirm_markdown_valid_dialog():
-    st.warning("Have you confirmed that the Markdown section follows the provided template?")
-    
-    confirm_col, cancel_col = st.columns(2)
-
-    with confirm_col:
-        if st.button("Confirm", key="confirm_submit_markdown_btn", type="primary", width="stretch"):
-            store = get_db(get_master_db_name())
-            long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
-                                    True).iloc[0,0].strip()
-            store.close()
-
-            datacard_name = to_snake_case(long_proj_name) + DATACARD_SUFFIX
-            generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
-
-            st.session_state.screen = "tier2"
-            st.session_state.render_t1_markdown = False
-            st.session_state.section_idx = 0
-            st.session_state._scroll_to_top = True
-            st.session_state.render_hpc_move_btn = False
-            st.session_state.local_to_staging_moved = False
-            st.session_state.staging_to_campaign_moved = False
-            st.rerun()
-
-    with cancel_col:
-        if st.button("Cancel", key="cancel_confirm_markdown_btn", width="stretch"):
-            st.session_state.screen = "tier1"
-            st.session_state.render_t1_markdown = True
-            st.session_state.section_idx = 0
-            st.session_state._scroll_to_top = False
-            st.session_state.render_hpc_move_btn = False
-            st.session_state.local_to_staging_moved = False
-            st.session_state.staging_to_campaign_moved = False
-            st.rerun()
-
-
 @st.dialog("Duplicate Project", width="medium", dismissible=False)
 def confirm_duplicate_project(qid: int):
     store = get_db(get_master_db_name())
@@ -1730,8 +1822,107 @@ def confirm_duplicate_project(qid: int):
         st.rerun()
 
 
+def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_fields, old_tier1_dict=None, incomplete_message=""):
+    args = (CHAT_AGENT, datasheet_df, ALL_QUESTIONS, datacard_dict, reference_guide, flattened_fields)
+    if old_tier1_dict is not None:
+        args = (*args, old_tier1_dict)
+
+    agent_action = "Populating" if old_tier1_dict is None else "Updating"
+    with st.spinner(f"{agent_action} Findability Metadata. May take a few minutes..."):
+        ai_model_error_msg = None
+        try:
+            tier1_dict = run_tier1_yaml(*args)
+        except Exception as e:
+            ai_model_error_msg = str(e)
+    
+    if ai_model_error_msg is not None:
+        if "connection error" in ai_model_error_msg.lower():
+            st.error("Cannot access AI Model. Ensure you are on the correct network.")
+        else:
+            st.error("Error connecting to AI Model:")
+            st.exception(ai_model_error_msg)
+        st.stop()
+    if tier1_dict is None or tier1_dict == {}:
+        st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
+        st.stop()
+    if not isinstance(tier1_dict, dict):
+        st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
+        st.stop()
+    # check if agent returned incorrect output fields
+    if flattened_fields.keys() != tier1_dict.keys():
+        st.error(f"AI model returned incomplete output for datacard {incomplete_message}. Refresh page or select a different model and try again.")
+        st.stop()
+
+    return complete_preset_datacard_values(datacard_dict, flattened_fields, tier1_dict)
+
+
+def highlight_invalid_field(field_type, label):
+    if label not in st.session_state.invalid_fields:
+        return
+
+    input_test_ids = {
+        "string": "stTextInput",
+        "dropdown": "stSelectbox",
+        "int": "stNumberInput",
+    }
+
+    test_id = input_test_ids[field_type]
+    st.markdown(
+        f"""
+        <style>
+        div[data-testid="{test_id}"]:has(
+            input[aria-label="{label}"]
+        ) input {{
+            border: 5px solid red !important;
+            border-radius: 8px !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def render_leaf_input(field_dict, widget_key, value, parent_num=None):
+    field_type = field_dict["type"]
+
+    # A leaf list renders one text input for each item.
+    if field_type == "list":
+        result = []
+        for index, item in enumerate(value):
+            label = f"{widget_key}_{index}"
+            highlight_invalid_field("string", label)
+            result.append(st.text_input(label=label, value="" if pd.isna(item) else str(item),
+                                        key=f"field{index}_{widget_key}", label_visibility="collapsed")
+            )
+
+        return result
+
+    if parent_num is not None:
+        value = value[parent_num]
+        label = f"{widget_key}_{parent_num}"
+        state_key = f"field{parent_num}_{widget_key}"
+    else:
+        label = widget_key
+        state_key = f"field_{widget_key}"
+
+    highlight_invalid_field(field_type, label)
+
+    if field_type == "string":
+        return st.text_input(label=label, value="" if pd.isna(value) else str(value), key=state_key, label_visibility="collapsed")
+
+    if field_type == "dropdown":
+        options = list(field_dict["options"])
+        index = options.index(value) if value is not None and value in options else None
+        return st.selectbox(label=label, options=options, index=index, key=state_key, label_visibility="collapsed")
+
+    if field_type == "int":
+        return st.number_input(label=label, value=None if pd.isna(value) or value == "" else int(value), key=state_key, 
+                               label_visibility="collapsed")
+
+    raise ValueError(f"Unsupported type: {field_type}")
+
+
 @st.fragment
-def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
+def render_tier1_yaml_form(qid, tier1_dict, datacard_dict, flattened_fields):
     st.markdown(
     """
     <input autofocus style= "position: absolute; top: 0; left: 0; width: 0px;
@@ -1742,19 +1933,33 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
         updated_values = {}
         actual_field_reqs = {}
 
-        tbl_data = curr_tables[TIER1_YAML_TABLE].iloc[0].to_dict()
+        actual_yaml_struct = rebuild_yaml_structure(tier1_dict)
 
-        # dont show the dsi metadata column on the form
-        dsi_key = next(iter(tbl_data))
-        updated_values[dsi_key] = tbl_data.pop(dsi_key)
-
-        actual_yaml_struct = rebuild_yaml_structure(tbl_data)
-
-        def render_yaml_portion(data, path=(), depth=0):
+        def render_yaml_portion(data, path=(), depth=0, parent_list = False, parent_num=0):
 
             for key, value in data.items():
                 current_path = (*path, key)
                 widget_key = ".".join(current_path)
+
+                # don't show hidden fields -- if stops at parent, will skip all fields under it
+                nested_value = datacard_dict
+                for index, key in enumerate(current_path):
+                    if index == 0:
+                        nested_value = nested_value[key]
+                    else:
+                        nested_value = nested_value["value"][key]
+                # add hidden fields to updated_values with default value. make them all optional for checker
+                if not nested_value["visible"]:
+                    if isinstance(value, dict):
+                        render_yaml_portion(
+                            value,
+                            path=current_path,
+                            depth=depth+1,
+                        )
+                    else:
+                        updated_values[widget_key] = value
+                        actual_field_reqs[widget_key] = False
+                    continue
 
                 # Create a blank column to indent the entire row.
                 if depth == 0:
@@ -1763,140 +1968,60 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
                     _, content = st.columns([depth, 12])
 
                 if isinstance(value, dict):
-                    with content:
-                        if depth == 0:
-                            st.write(f"### {key}")
-                            st.caption(datacard_dict[key]["description"])
-                        st.write(f"**{key}**")
-
-                    render_yaml_portion(
-                        value,
-                        path=current_path,
-                        depth=depth + 1,
-                    )
+                    # if parent field is a list itself duplicate generation of children fields
+                    # only do so if length of parent field is more than 1. if not, then generate that normally
+                    # allows us to edit if parent fields if should/should not be lists despite definition
+                    if nested_value.get("type", "") == "list" and nested_value.get("length", "") != "" and nested_value["length"] > 1:
+                        for num_parent_val in range(nested_value["length"]):
+                            with content:
+                                if depth == 0:
+                                    st.write(f"### {key.replace("_", " ")} {num_parent_val+1}")
+                                    st.caption(datacard_dict[key]["description"])
+                                st.write(f"**{key.replace("_", " ")} {num_parent_val+1}**")
+                                render_yaml_portion(
+                                    value,
+                                    path=current_path,
+                                    depth=max(0.75, depth-1.25),
+                                    parent_list=True,
+                                    parent_num=num_parent_val
+                                )
+                    else:
+                        with content:
+                            if depth == 0:
+                                st.write(f"### {key.replace("_", " ")}")
+                                st.caption(datacard_dict[key]["description"])
+                            st.write(f"**{key.replace("_", " ")}**")
+                        render_yaml_portion(
+                            value,
+                            path=current_path,
+                            depth=depth + 1,
+                            parent_list=parent_list,
+                            parent_num=parent_num if parent_list else 0
+                        )
                 else:
                     with content:
                         if depth > 0: # actual child fields
-                            supports_key = "supports_" + current_path[0]
-                            field_req = ""
+                            field_dict = flattened_fields[widget_key]
+                            is_required = field_dict["required"]
+                            actual_field_reqs.setdefault(widget_key, is_required)
 
-                            # Check if field is part of a conditional block
-                            conditional_info = get_conditional_info(widget_key, datacard_dict)  
-
-                            if conditional_info and conditional_info["is_conditional"]:
-                                # Get discriminator value to see if this alternative is selected
-                                discriminator_path = conditional_info["discriminator_path"]
-                                discriminator_value = tbl_data.get(discriminator_path, "")
-                                
-                                if discriminator_value == conditional_info["alternative"]:
-                                    # This alternative IS selected - show as required if needed
-                                    if tbl_data[supports_key].lower() == "yes":
-                                        # Check the raw schema for the actual required value
-                                        # (since flattened_fields marks it as False)
-                                        if flattened_fields[widget_key]:
-                                            field_req = " * (selected)"
-                                            actual_field_reqs[widget_key] = True
-                                        else:
-                                            field_req = " (selected)"
-                                            actual_field_reqs[widget_key] = False
-                                else:
-                                    # This alternative is NOT selected
-                                    field_req = " (not selected)"
-                                    actual_field_reqs[widget_key] = False
-
-                            elif tbl_data[supports_key].lower() == "yes" and flattened_fields[widget_key]:
-                                field_req = " *"
-                                actual_field_reqs[widget_key] = True
-                            else:
-                                actual_field_reqs[widget_key] = False
-
-                            st.write(key + field_req)
-
-                            field_dict = datacard_dict
-                            for part in current_path[:-1]:
-                                field_dict = field_dict[part]["value"]
-                            field_dict = field_dict[key]
+                            st.write(key.replace("_", " ") + (" *" if is_required else ""))
                             st.caption(field_dict["description"])
-                            if "type" not in field_dict:
-                                if widget_key in st.session_state.invalid_fields:
-                                    st.markdown(
-                                        f"""
-                                        <style>
-                                        div[data-testid="stTextInput"]:has(
-                                            input[aria-label="{widget_key}"]
-                                        ) input {{
-                                            border: 5px solid red !important;
-                                            border-radius: 8px !important;
-                                        }}
-                                        </style>
-                                        """,
-                                        unsafe_allow_html=True
-                                    )
-                                updated_values[widget_key] = st.text_input(
-                                    label=widget_key,
-                                    value="" if pd.isna(value) else str(value),
-                                    key="field_" + widget_key,
-                                    label_visibility="collapsed"
-                                )
-                            elif field_dict["type"] == "radio":
-                                options = field_dict["options"]
-                                default_index = options.index(str(value).capitalize()) if str(value) in options else None
-                                updated_values[widget_key] = st.radio(
-                                    "radio_label",
-                                    options,
-                                    index=default_index,
-                                    key="field_" + widget_key,
-                                    label_visibility="collapsed"
-                                )
-                            elif field_dict["type"] == "dropdown":
-                                if widget_key in st.session_state.invalid_fields:
-                                    st.markdown(
-                                        f"""
-                                        <style>
-                                        div[data-testid="stSelectbox"]:has(
-                                            input[aria-label="{widget_key}"]
-                                        ) input {{
-                                            border: 5px solid red !important;
-                                            border-radius: 8px !important;
-                                        }}
-                                        </style>
-                                        """,
-                                        unsafe_allow_html=True
-                                    )
-                                options = list(field_dict["options"])
-                                updated_values[widget_key] = st.selectbox(
-                                    label=widget_key,
-                                    options=options,
-                                    index=options.index(value) if value is not None and value in options else None,
-                                    key="field_" + widget_key,
-                                    label_visibility="collapsed"
-                                )
+
+                            new_value = render_leaf_input(field_dict, widget_key, value, parent_num if parent_list else None)
+
+                            if parent_list and field_dict["type"] != "list":
+                                updated_values.setdefault(widget_key, []).append(new_value)
                             else:
-                                st.error(f"Unsupported type: {field_dict['type']}")
-                                st.stop()
+                                updated_values[widget_key] = new_value
 
-                        else: # display "support_" keys differently
-                            actual_field_reqs[widget_key] = True
-                            st.write(f"### {key} *")
-                            st.caption(datacard_dict[key]["description"])
-
-                            options = ["Yes", "No"]
-                            default_index = options.index(str(value).capitalize()) if str(value) in options else None
-                            updated_values[widget_key] = st.radio(
-                                "radio label",
-                                options,
-                                index=default_index,
-                                key="field_" + widget_key,
-                                label_visibility="collapsed", 
-                                )
         render_yaml_portion(actual_yaml_struct)
-
 
         save_col, next_col = st.columns(2)
         with save_col:
             submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
         with next_col:
-            next_clicked = st.form_submit_button("Continue to Findability Metadata (Markdown) ➡", key=f"next_tier1_{qid}", 
+            next_clicked = st.form_submit_button("Continue to Usability/AI-Ready Metadata ➡", key=f"next_tier2_{qid}", 
                                                     width="stretch", type="primary")
 
     if st.session_state.invalid_fields:
@@ -1905,15 +2030,13 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
     if submitted or next_clicked:
         invalid_fields = []
         for col, val in updated_values.items():
-            top_key = col.split(".", 1)[0]
-            if f"supports_{top_key}" in actual_field_reqs.keys():
-                req_field_missing = (updated_values[f"supports_{top_key}"].lower() == "yes" and actual_field_reqs[col] and 
-                                    (val is None or not str(val).strip() or str(val) == "NULL")
-                                )
-                if req_field_missing:
+            field_required_bool = actual_field_reqs[col]
+            if isinstance(val, list) and field_required_bool:
+                if all(v is None or (isinstance(v, str) and not v.strip()) for v in val):
+                    invalid_fields.append(f"{col}_0")
+            elif field_required_bool:
+                if val is None or (isinstance(val, str) and not str(val).strip()):
                     invalid_fields.append(col)
-            elif not str(val).strip(): # check if missing support fields
-                invalid_fields.append(col)
 
         st.session_state.invalid_fields = invalid_fields
 
@@ -1921,48 +2044,37 @@ def render_tier1_yaml_form(qid, curr_tables, tier1_cards):
             st.rerun(scope="fragment")
         else:
             st.session_state.invalid_fields = []
-            try:
-                tier1_df = pd.DataFrame([updated_values])
-                update_tier1_table(qid, tier1_df)
-            except Exception:
-                tier1_db = get_tier1_db_path(qid)
-                store = get_db(tier1_db)
-                store.read(updated_values, "Collection", TIER1_YAML_TABLE)
-                store.close()
+            for field_name, field_val_dict in flattened_fields.items():
+                if field_val_dict["mapping"] is not None:
+                    mapped_field_name = field_val_dict["mapping"]
+                    updated_values[field_name] = updated_values[mapped_field_name]
+            
+            updated_values = complete_optional_fields(updated_values)
+
+            tier1_db = get_tier1_db_path(qid)
+            store = get_db(tier1_db)
+            query = (f'UPDATE {TIER1_YAML_TABLE} SET ' + ", ".join(f'"{k}" = ?' for k in updated_values))
+            store.query(query, params=list(updated_values.values()))
+            store.close()
+
+            store = get_db(get_master_db_name())
+            long_proj_name = store.query(f"SELECT project_name FROM {PROJECTS_TABLE} WHERE project_id = {qid}",
+                                    True).iloc[0,0].strip()
+            store.close()
+
+            datacard_name = to_snake_case(long_proj_name) + DATACARD_SUFFIX
+            generate_tier1_datacard(qid, str(get_maven_dir() / datacard_name))
 
             if next_clicked:
-                if TIER1_MARKDOWN_TABLE not in curr_tables:
-                    with next_col:
-                        with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                            ai_model_error_msg = None
-                            tier1_yaml_df = pd.DataFrame([updated_values])
-                            try:
-                                all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, tier1_yaml_df, tier1_cards)
-                                tier1_db_path = get_tier1_db_path(qid)
-                                store = get_db(tier1_db_path)
-                                for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                                    store.read(tier1_dict, "Collection", tier1_table_name)
-                                store.close()
-                            except Exception as e:
-                                ai_model_error_msg = str(e)
-                        if ai_model_error_msg is not None:
-                            if "connection error" in ai_model_error_msg.lower():
-                                st.error("Cannot access AI Model. Ensure you are on the correct network.")
-                            else:
-                                st.error("Error connecting to AI Model:")
-                                st.exception(ai_model_error_msg)
-                            st.stop()
-
-                st.session_state.screen = "tier1"
-                st.session_state.render_t1_markdown = True
+                st.session_state.screen = "tier2"
                 st.session_state.section_idx = 0
                 st.session_state._scroll_to_top = True
                 st.session_state.render_hpc_move_btn = False
                 st.session_state.local_to_staging_moved = False
                 st.session_state.staging_to_campaign_moved = False
-                st.rerun(scope="app")
+                st.rerun()
             else:
-                st.success("Findability Metadata (YAML Portion) Updated.")
+                st.success("Findability Metadata Saved.")
 
 # -----------------------------
 # App start
@@ -2006,8 +2118,6 @@ if "screen" not in st.session_state:
     st.session_state.screen = "datasheet"
 if "confirm_delete_qid" not in st.session_state:
     st.session_state.confirm_delete_qid = None
-if "render_t1_markdown" not in st.session_state:
-    st.session_state.render_t1_markdown = False
 if "render_hpc_move_btn" not in st.session_state:
     st.session_state.render_hpc_move_btn = False
 if "tier2_loc_dict" not in st.session_state:
@@ -2036,6 +2146,7 @@ if "t2_uploader_version" not in st.session_state:
     st.session_state.t2_uploader_version = 0
 if "bashrc_path" not in st.session_state:
     st.session_state.bashrc_path = None
+
 
 if get_maven_dir() is None:
     st.title("Welcome to the MAVEN App")
@@ -2181,7 +2292,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
                 qid = int(st.session_state.active_qid)
                 token = _qid_token(qid)
                 sec = int(st.session_state.section_idx)
-                if sec in ALL_SECTION_IDXS:
+                if sec in SECTION_BY_IDX:
                     updates = apply_section_updates(sec, token)
                     update_datasheet(qid, updates)
     
@@ -2191,7 +2302,6 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
             st.session_state.draft_mode = False
             st.session_state.screen = "datasheet"
             st.session_state.ran_change_dialog = False
-            st.session_state.render_t1_markdown = False
             st.session_state.invalid_fields = []
             st.session_state.local_to_staging_moved = False
             st.session_state.staging_to_campaign_moved = False
@@ -2205,7 +2315,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
             qid = int(st.session_state.active_qid)
             token = _qid_token(qid)
             sec = int(st.session_state.section_idx)
-            if sec in ALL_SECTION_IDXS:
+            if sec in SECTION_BY_IDX:
                 updates = apply_section_updates(sec, token)
                 update_datasheet(qid, updates)
             clear_context_file_state(token)
@@ -2217,7 +2327,6 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.session_state.draft_mode = True
         st.session_state.screen = "datasheet"
         st.session_state.ran_change_dialog = False
-        st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.local_to_staging_moved = False
         st.session_state.staging_to_campaign_moved = False
@@ -2235,7 +2344,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.sidebar.space()
         st.sidebar.write("### Datasheet Sections")
 
-        for idx in ALL_SECTION_IDXS:
+        for idx in SECTION_BY_IDX:
             if idx == 0:
                 continue
             label = f"{idx}: {SECTION_BY_IDX[idx]['title']}"
@@ -2255,13 +2364,12 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
 
         if st.sidebar.button(label, key=f"nav_{qid}_0", width="stretch"):
             st.session_state.screen = "datasheet"
-            if st.session_state.section_idx in ALL_SECTION_IDXS:
+            if st.session_state.section_idx in SECTION_BY_IDX:
                 updates = apply_section_updates(
                     st.session_state.section_idx, token)
                 update_datasheet(qid, updates)
             st.session_state.section_idx = 0
             st.session_state._scroll_to_top = True
-            st.session_state.render_t1_markdown = False
             st.session_state.invalid_fields = []
             st.session_state.ran_change_dialog = False
             st.session_state.local_to_staging_moved = False
@@ -2274,7 +2382,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
 
         with st.sidebar:
             with st.container(key="section_btns"):
-                for idx in ALL_SECTION_IDXS:
+                for idx in SECTION_BY_IDX:
                     if idx == 0:
                         continue
 
@@ -2284,13 +2392,12 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
                     disabled = idx > max_unlocked
                     if st.button(label, key=f"nav_{qid}_{idx}", disabled=disabled, width="stretch"):
                         st.session_state.screen = "datasheet"
-                        if st.session_state.section_idx in ALL_SECTION_IDXS:
+                        if st.session_state.section_idx in SECTION_BY_IDX:
                             updates = apply_section_updates(
                                 st.session_state.section_idx, token)
                             update_datasheet(qid, updates)
                         st.session_state.section_idx = idx
                         st.session_state._scroll_to_top = True
-                        st.session_state.render_t1_markdown = False
                         st.session_state.invalid_fields = []
                         st.session_state.ran_change_dialog = False
                         st.session_state.local_to_staging_moved = False
@@ -2307,25 +2414,37 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         is_metadata_btn_disabled = True
     else:
         all_data = get_datasheet(qid)
-        if any(not section_complete(idx, all_data)[0] for idx in ALL_SECTION_IDXS):
+        if any(not section_complete(idx, all_data)[0] for idx in SECTION_BY_IDX):
             is_metadata_btn_disabled = True
         else:
             qid = int(st.session_state.active_qid)
             if not get_tier1_table(qid, check_exists=True):
                 is_metadata_btn_disabled = True
 
-    if st.session_state.active_qid is None:
-        t2_exists = False
+    other_metadata_disabled = False
+    if st.session_state.active_qid is None or is_metadata_btn_disabled:
+        other_metadata_disabled = True
     else:
-        t2_exists = Path(get_tier2_db_path(qid)).is_file()
+        tier1_dict_test = get_tier1_table(qid)
+        _, _, flattened_fields = get_tier1_fields()
 
-    t1_btn_prefix = "" if is_metadata_btn_disabled or not t2_exists or len(get_tier1_table(qid)) != 2 else "✅ "
+        # a v1.2 table (not converted yet) has fields that are not in the v2.0 template
+        if any("westBoundLongitude" in field_name for field_name in tier1_dict_test):
+            other_metadata_disabled = True
+        else:
+            for field, val in tier1_dict_test.items():
+                # only do check on visible and required fields
+                if flattened_fields[field]["required"] and flattened_fields[field]["visible"]:
+                    if val is None or val == "" or (isinstance(val, list) and (val[0] is None or val[0] == "")):
+                        other_metadata_disabled = True
+                        break
+
+    t1_btn_prefix = "" if is_metadata_btn_disabled or other_metadata_disabled else "✅ "
     if st.sidebar.button(f"{t1_btn_prefix}Findability Metadata", disabled=is_metadata_btn_disabled, width="stretch",
                         help="First fill out datasheet sections" if is_metadata_btn_disabled else ""):
         st.session_state.screen = "tier1"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.ran_change_dialog = False
         st.session_state.local_to_staging_moved = False
@@ -2333,13 +2452,11 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.session_state.confirm_submit_context_files = False
         st.rerun()
 
-
-    if st.sidebar.button("Usability/AI-Ready Metadata", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
-                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+    if st.sidebar.button("Usability/AI-Ready Metadata", disabled=other_metadata_disabled, width="stretch",
+                        help="First fill out datasheet and findability metadata" if other_metadata_disabled else ""):
         st.session_state.screen = "tier2"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.render_hpc_move_btn = False
         st.session_state.local_to_staging_moved = False
@@ -2349,12 +2466,11 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
 
     st.sidebar.space()
 
-    if st.sidebar.button("Data Movement", disabled=is_metadata_btn_disabled or not t2_exists, width="stretch",
-                        help="First fill out datasheet sections and tier 1 metadata" if is_metadata_btn_disabled else ""):
+    if st.sidebar.button("Data Movement", disabled=other_metadata_disabled, width="stretch",
+                        help="First fill out datasheet and findability metadata" if other_metadata_disabled else ""):
         st.session_state.screen = "hpc_move"
         st.session_state.section_idx = 0
         st.session_state._scroll_to_top = True
-        st.session_state.render_t1_markdown = False
         st.session_state.invalid_fields = []
         st.session_state.render_hpc_move_btn = False
         st.session_state.local_to_staging_moved = False
@@ -2427,7 +2543,7 @@ if st.session_state.screen == "datasheet":
 
                             if os.path.exists(get_tier2_db_path(qid)): # if t2 db exists, go to that screen
                                 st.session_state.screen = "tier2"
-                            elif get_tier1_table(qid, check_exists=True): # if t1 tables (not datacard) exist, go to that screen
+                            elif get_tier1_table(qid, check_exists=True): # if t1 table exists, go to that screen
                                 st.session_state.screen = "tier1"
                             else: # else default to datasheet screens
                                 st.session_state.screen = "datasheet"
@@ -2517,14 +2633,13 @@ if st.session_state.screen == "datasheet":
     completed = 0
     if st.session_state.active_qid is not None:
         latest_row = get_datasheet(int(st.session_state.active_qid))
-        for idx in ALL_SECTION_IDXS[1:]:
+        for idx in list(SECTION_BY_IDX)[1:]:
             ok, _ = section_complete(idx, latest_row)
             if ok:
                 completed += 1
 
-        st.progress(completed / (len(ALL_SECTION_IDXS) - 1))
-        st.write(
-            f"Progress: **{completed}/{(len(ALL_SECTION_IDXS) - 1)}** sections complete")
+        st.progress(completed / (len(SECTION_BY_IDX) - 1))
+        st.write(f"Progress: **{completed}/{(len(SECTION_BY_IDX) - 1)}** sections complete")
         st.divider()
     else:
         ok0, _ = section_complete(0, row)
@@ -2543,7 +2658,7 @@ if st.session_state.screen == "datasheet":
     only_next = (
         section_idx == 0
         or st.session_state.active_qid is None
-        or section_idx not in ALL_SECTION_IDXS
+        or section_idx not in SECTION_BY_IDX
     )
     if only_next:
         col1, next_col, col3 = st.columns(3, width="stretch")
@@ -2554,7 +2669,7 @@ if st.session_state.screen == "datasheet":
         with back_col:
             if st.button("⬅ Back", width="stretch"):
                 qid = int(st.session_state.active_qid)
-                if section_idx in ALL_SECTION_IDXS:
+                if section_idx in SECTION_BY_IDX:
                     updates = apply_section_updates(section_idx, token)
                     update_datasheet(qid, updates)
                     target = max(0, section_idx - 1)
@@ -2575,7 +2690,7 @@ if st.session_state.screen == "datasheet":
                 st.success("Saved changes")
 
     with next_col:
-        is_last = (section_idx == max(ALL_SECTION_IDXS))
+        is_last = (section_idx == max(SECTION_BY_IDX))
         if section_idx == REVIEW_SECTION_IDX:
             next_label = "Clarify ➡"
         elif section_idx == FOLLOWUP_SECTION_IDX:
@@ -2712,32 +2827,12 @@ if st.session_state.screen == "datasheet":
                     generate_datasheet_pdf(datasheet_df, str(get_maven_dir() / full_name))
 
                     if not get_tier1_table(qid, check_exists=True): # run ai agent
-                        flattened_fields, tier1_cards, datacard_dict = get_tier1_fields()
-                        with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
-                            ai_model_error_msg = None
-                            try:
-                                all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
-                            except Exception as e:
-                                ai_model_error_msg = str(e)
-                        if ai_model_error_msg is not None:
-                            if "connection error" in ai_model_error_msg.lower():
-                                st.error("Cannot access AI Model. Ensure you are on the correct network.")
-                            else:
-                                st.error("Error connecting to AI Model:")
-                                st.exception(ai_model_error_msg)
-                            st.stop()
-
-                        if not isinstance(all_tier1_dicts, dict):
-                            if isinstance(all_tier1_dicts, None):
-                                st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
-                            else:
-                                st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
-                            st.stop()
-                        tier1_db_path = get_tier1_db_path(qid)
-                        store = get_db(tier1_db_path)
-
-                        for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                            store.read(tier1_dict, "Collection", tier1_table_name)
+                        datacard_dict, reference_guide, flattened_fields = get_tier1_fields()
+                        tier1_dict = generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_fields,
+                                                             incomplete_message=" generation")
+                        
+                        store = get_db(get_tier1_db_path(qid))
+                        store.read(tier1_dict, "Collection", table_name=TIER1_YAML_TABLE)
                         store.close()
 
                     st.session_state.screen = "tier1"
@@ -2757,228 +2852,46 @@ elif st.session_state.screen == "tier1":
         st.stop()
 
     qid = int(st.session_state.active_qid)
-    flattened_fields, tier1_cards, datacard_dict = get_tier1_fields()
-    curr_tables = get_tier1_table(qid, update=True)
+    datacard_dict, reference_guide, flattened_fields = get_tier1_fields()
+    tier1_dict = get_tier1_table(qid)
     datasheet_df = get_datasheet(qid, df_return=True)
 
-    if not st.session_state.render_t1_markdown: # Render YAML
-        
-        st.title("Findability Metadata (YAML Portion)")
-        st.subheader("Click the Save button at the bottom of the screen to apply any changes")
-        st.write("NOTE: If a section's Support field is set to *No*, all fields in that section are optional.")
+    st.title("Findability Metadata")
+    st.subheader("Click the Save button at the bottom of the screen to apply any changes")
 
-        if not curr_tables: # no tier 1 yaml or markdown table
-            if datasheet_df.empty: # no datasheet data so go home
-                delete_project(qid)
-                st.session_state.active_qid = None
-                st.session_state.section_idx = 0
-                st.session_state.screen = "datasheet"
-                st.session_state.local_to_staging_moved = False
-                st.session_state.staging_to_campaign_moved = False
-                st.rerun()
-            else: # run t1 agent
-                with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
-                    ai_model_error_msg = None
-                    try:
-                        all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
-                    except Exception as e:
-                        ai_model_error_msg = str(e)
-                if ai_model_error_msg is not None:
-                    if "connection error" in ai_model_error_msg.lower():
-                        st.error("Cannot access AI Model. Ensure you are on the correct network.")
-                    else:
-                        st.error("Error connecting to AI Model:")
-                        st.exception(ai_model_error_msg)
-                    st.stop()
+    needs_tier1 = not tier1_dict
+    # this is field in v1.2 card. if present must migrate to v2.0 (current) card
+    needs_tier1_migration = tier1_dict and any("westBoundLongitude" in field_name for field_name in tier1_dict)
 
-                if not isinstance(all_tier1_dicts, dict):
-                    if isinstance(all_tier1_dicts, None):
-                        st.error("The AI model returned an empty response. Try a different model or verify your API key and connection.")
-                    else:
-                        st.error("Unexpected response from AI model. Try a different model or verify your API key and connection.")
-                    st.stop()
-                tier1_db_path = get_tier1_db_path(qid)
-                store = get_db(tier1_db_path)
-                for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                    store.read(tier1_dict, "Collection", tier1_table_name)
-                store.close()
-                st.rerun()
+    if needs_tier1 and datasheet_df.empty:
+        delete_project(qid)
+        st.session_state.active_qid = None
+        st.session_state.section_idx = 0
+        st.session_state.screen = "datasheet"
+        st.session_state.local_to_staging_moved = False
+        st.session_state.staging_to_campaign_moved = False
+        st.rerun()
 
-        # TODO - uncomment portion that updates datacard db with new template once datacard template is stable
-        # template_dict = get_breakdown_fields(datacard_dict)
-        # diff_tables_dict = {}
-        # new_cols = []
-        # for dc_tbl, tbl_cols in template_dict.items():
-        #     if dc_tbl not in curr_tables.keys():
-        #         diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
-        #         new_cols.extend(tbl_cols)
-        #     else:
-        #         curr_tbl_cols = curr_tables[dc_tbl].columns.to_list()
-        #         diff = list(set(tbl_cols) - set(curr_tbl_cols))
-        #         if diff:
-        #             diff_tables_dict[dc_tbl] = datacard_dict[dc_tbl]
-        #             new_cols.extend(diff)
+    if needs_tier1 or needs_tier1_migration:
+        tier1_dict_new = generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_fields,
+                                             old_tier1_dict=tier1_dict if needs_tier1_migration else None,
+                                             incomplete_message=" update" if needs_tier1_migration else " generation")
 
-        # # if there are tier 1 md columns not in db, add them to the db and run agent to fill them
-        # if diff_tables_dict:
-        #     # new_tier1_fields_dict = {k:v for k,v in tier1_fields_dict.items() if k in new_cols}
-        #     datasheet_df = get_datasheet(qid, True)
-        #     # yaml_card_out = str(get_diana_dbs_dir()) + "/" + to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
-        #     # yaml_card_out = get_tier1_YAML_MD_path(qid)
-        #     with st.spinner("Updating tier 1 metadata catalog with new fields..."):
-        #         new_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, diff_tables_dict, tier1_cards)
+        store = get_db(get_tier1_db_path(qid))
+        if needs_tier1_migration:
+            for table_name in (TIER1_YAML_TABLE, OLD_TIER1_MARKDOWN_TABLE):
+                old_table_name = f"{table_name}_old"
+                store.query(f"ALTER TABLE {table_name} RENAME TO {old_table_name}")
+                
+                old_df = store.get_table(old_table_name, True, True)
+                old_df.iloc[0, 1:] = None
+                store.update(old_df)
 
-        #     for tbl_name, new_tbl_data in new_tier1_dicts.items():
-        #         if tbl_name in curr_tables.keys():
-        #             for new_col, new_val in new_tbl_data.items():
-        #                 curr_tables[tbl_name][new_col] = new_val
-        #             update_tier1_table(qid, curr_tables[tbl_name])
-        #         else:
-        #             tier1_db = get_tier1_db_path(qid)
-        #             store2 = get_db(tier1_db)
-        #             store2.read(new_tbl_data, "Collection", tbl_name)
-        #             curr_tables[tbl_name] = store2.get_table(tbl_name, True, True)
-        #             store2.close()
+        store.read(tier1_dict_new, "Collection", table_name=TIER1_YAML_TABLE)
+        store.close()
+        st.rerun()
 
-        #         # yaml_card_out = get_diana_dbs_dir() / to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + ".yaml"
-        #         # with open(yaml_card_out, 'w') as f:
-        #         #     yaml.safe_dump(all_tier1_card, stream=f, sort_keys=False)
-
-        render_tier1_yaml_form(qid, curr_tables, tier1_cards)
-
-
-    else: # Render markdown
-        st.title("Findability Metadata (Markdown Portion)")
-        st.markdown(
-        """
-        <input autofocus style= "position: absolute; top: 0; left: 0; width: 0px;
-        height: 0px; opacity: 0; border: 0; padding: 0; margin: 0; pointer-events: none;"/>
-        """, unsafe_allow_html=True)
-
-        back_col, other = st.columns([1, 4], width="stretch")
-        with back_col:
-            if st.button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_top_btn"):
-                st.session_state.screen = "tier1"
-                st.session_state.section_idx = 0
-                st.session_state._scroll_to_top = True
-                st.session_state.render_t1_markdown = False
-                st.session_state.invalid_fields = []
-                st.session_state.ran_change_dialog = False
-                st.session_state.local_to_staging_moved = False
-                st.session_state.staging_to_campaign_moved = False
-                st.session_state.confirm_submit_context_files = False
-                st.session_state.render_hpc_move_btn = False
-                st.session_state.tier2_loc_dict = None
-                st.rerun()
-
-        st.subheader("Click the Save button at the bottom of the screen to apply any changes")
-
-        if not curr_tables:
-            with st.spinner("Populating Findability Metadata (YAML Portion). May take a few minutes..."):
-                ai_model_error_msg = None
-                try:
-                    all_tier1_dicts = run_tier1_yaml(CHAT_AGENT, datasheet_df, datacard_dict, tier1_cards, flattened_fields)
-                except Exception as e:
-                    ai_model_error_msg = str(e)
-            if ai_model_error_msg is not None:
-                if "connection error" in ai_model_error_msg.lower():
-                    st.error("Cannot access AI Model. Ensure you are on the correct network.")
-                else:
-                    st.error("Error connecting to AI Model:")
-                    st.exception(ai_model_error_msg)
-                st.stop()
-
-            tier1_db_path = get_tier1_db_path(qid)
-            store = get_db(tier1_db_path)
-            for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                store.read(tier1_dict, "Collection", tier1_table_name)
-            store.close()
-            st.rerun()
-        if TIER1_MARKDOWN_TABLE not in curr_tables:
-            with st.spinner("Populating Findability Metadata (Markdown Portion). May take a few minutes..."):
-                ai_model_error_msg = None
-                try:
-                    all_tier1_dicts = run_tier1_markdown(CHAT_AGENT, curr_tables[TIER1_YAML_TABLE], tier1_cards)
-                except Exception as e:
-                    ai_model_error_msg = str(e)
-            if ai_model_error_msg is not None:
-                if "connection error" in ai_model_error_msg.lower():
-                    st.error("Cannot access AI Model. Ensure you are on the correct network.")
-                else:
-                    st.error("Error connecting to AI Model:")
-                    st.exception(ai_model_error_msg)
-                st.stop()
-
-            tier1_db_path = get_tier1_db_path(qid)
-            store = get_db(tier1_db_path)
-            for tier1_table_name, tier1_dict in all_tier1_dicts.items():
-                store.read(tier1_dict, "Collection", tier1_table_name)
-            store.close()
-            st.rerun()
-
-        with st.form(f"tier1_metadata_form_{qid}"):
-            st.write("#### Ensure the model-generated text in the second block follows the template shown in the first block.")
-            _, tier1_cards, _ = get_tier1_fields()
-            st.code(tier1_cards["markdown_template"], wrap_lines=True, height = 700)
-            updated_values = {}
-            
-            tbl_data = curr_tables[TIER1_MARKDOWN_TABLE].iloc[0].to_dict()
-
-            # dont show the dsi metadata column on the form
-            dsi_key = next(iter(tbl_data))
-            updated_values[dsi_key] = tbl_data.pop(dsi_key)
-
-            markdown_col_key = next(iter(tbl_data))
-
-            updated_values[markdown_col_key] = st.text_area(
-                "enter",
-                height = 1750,
-                value=tbl_data[markdown_col_key],
-                key="datacard_markdown_portion",
-                label_visibility="collapsed"
-            )
-
-            back_col, save_col, next_col = st.columns(3)
-            with back_col:
-                if st.form_submit_button("⬅ Edit YAML Findability Metadata", width="stretch", key="back_to_yaml_bottom_btn"):
-                    st.session_state.screen = "tier1"
-                    st.session_state.section_idx = 0
-                    st.session_state._scroll_to_top = True
-                    st.session_state.render_t1_markdown = False
-                    st.session_state.invalid_fields = []
-                    st.session_state.ran_change_dialog = False
-                    st.session_state.local_to_staging_moved = False
-                    st.session_state.staging_to_campaign_moved = False
-                    st.session_state.confirm_submit_context_files = False
-                    st.session_state.render_hpc_move_btn = False
-                    st.session_state.tier2_loc_dict = None
-                    st.rerun()
-            with save_col:
-                submitted = st.form_submit_button("Save Metadata", key=f"save_tier1_{qid}", width="stretch")
-            with next_col:
-                next_clicked = st.form_submit_button(
-                    "Continue to Usability/AI-Ready Metadata ➡", key=f"next_tier1_{qid}", width="stretch", type="primary")
-
-            if submitted or next_clicked:
-                markdown_field_value = updated_values[markdown_col_key]
-                if markdown_field_value is None or not str(markdown_field_value).strip():
-                    st.error("Markdown section is incomplete. Please complete before continuing")
-                    st.stop()
-
-                try:
-                    tier1_df = pd.DataFrame([updated_values])
-                    update_tier1_table(qid, tier1_df)
-                except Exception:
-                    tier1_db = get_tier1_db_path(qid)
-                    store = get_db(tier1_db)
-                    store.read(updated_values, "Collection", TIER1_MARKDOWN_TABLE)
-                    store.close()
-
-                if next_clicked:
-                    confirm_markdown_valid_dialog()
-                else:
-                    st.success("Findability Metadata (Markdown Portion) Updated.")
-                    st.session_state._scroll_to_top = False
+    render_tier1_yaml_form(qid, tier1_dict, datacard_dict, flattened_fields)
 
 
 # -----------------------------
@@ -3037,7 +2950,6 @@ elif st.session_state.screen == "tier2":
 
         if next_clicked:
             st.session_state.screen = "hpc_move"
-            st.session_state.render_t1_markdown = False
             st.session_state.section_idx = 0
             st.session_state._scroll_to_top = True
             st.session_state.render_hpc_move_btn = False
@@ -3295,6 +3207,7 @@ elif st.session_state.screen == "hpc_move":
                 diana_endpoint_path = PurePosixPath(diana_endpoint_input)
 
             username_input = updated_tier2_dict["username"].strip()
+            updated_tier2_dict["hpc_system"] = updated_tier2_dict["hpc_system"].lower()
             hpc_system_input = updated_tier2_dict["hpc_system"].strip()
 
             user_group_input = str(updated_tier2_dict["user_group"]).strip()
@@ -3322,6 +3235,8 @@ elif st.session_state.screen == "hpc_move":
                     st.session_state.render_hpc_move_btn = True
                     st.session_state.tier2_loc_dict = existing_loc_dict
                     st.rerun()
+
+            kerberos_check()
 
             if local_data_input.lower() == "n/a":
                 if not (hpc_staging_path.is_absolute() and hpc_staging_path.is_dir()):
@@ -3379,7 +3294,13 @@ elif st.session_state.screen == "hpc_move":
 
                 num_prompts = 5 if user_group_input else 4
                 print(f" \nPassword prompt 1/{num_prompts}: validating HPC access")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 1/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 1/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     putty_error = None
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-v", "-no-antispoof", "-load", hpc_system_input, "echo", "test"]
@@ -3430,74 +3351,100 @@ elif st.session_state.screen == "hpc_move":
                         st.error("On first connection to this HPC, you must enter 'y' to trust the host. Try again.")
                         st.stop()
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("Invalid HPC username or system name")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 2/{num_prompts}: validating HPC staging directory")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 2/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 2/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_staging_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_staging_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("HPC Staging Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 3/{num_prompts}: validating HPC campaign directory")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 3/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{hpc_campaign_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{hpc_campaign_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("HPC Campaign Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 print(f" \nPassword prompt 4/{num_prompts}: validating DIANA endpoint")
-                with st.spinner(f"Validating HPC field inputs — check the terminal for 3/{num_prompts} password prompts..."):
+                spinner_msg = ""
+                if os.name == "nt":
+                    if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = f"— check the terminal for 4/{num_prompts} password prompts..."
+                with st.spinner(f"Validating HPC field inputs {spinner_msg}"):
                     if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_system_input, f'cd "{diana_endpoint_input}" && pwd && ls']
                     else:
                         cmd = ["ssh", f"{username_input}@{hpc_system_input}", f'cd "{diana_endpoint_input}" && pwd && ls']
                     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                 if result.returncode != 0:
-                    print("View error on app")
+                    if os.name == "nt":
+                        print("View error on app")
                     st.error("DIANA Catalog Endpoint Directory does not exist or is not accessible for this user")
                     st.code(result.stderr)
                     st.stop()
 
                 if user_group_input:
                     print(f" \nPassword prompt 5/{num_prompts}: validating user group is valid")
-                    with st.spinner("Validating user group input — check the terminal for 4/{num_prompts} password prompts..."):
+                    spinner_msg = ""
+                    if os.name == "nt":
+                        if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
+                            spinner_msg = "- enter password in pop-up window"
+                        else:
+                            spinner_msg = f"— check the terminal for 5/{num_prompts} password prompts..."
+                    with st.spinner(f"Validating user group input {spinner_msg}"):
                         if locations_tbl["using_ssh"].iloc[0].lower() == "putty":
                             cmd = [plink, "-no-antispoof", "-load", hpc_system_input, shlex.join(["getent", "group", user_group_input])]
                         else:
                             cmd = ["ssh", f"{username_input}@{hpc_system_input}", shlex.join(["getent", "group", user_group_input])]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
-                        print("View error on app")
+                        if os.name == "nt":
+                            ("View error on app")
                         st.error("User Group does not exist on this HPC")
                         st.code(result.stderr)
                         st.stop()
-                print(" \nGo back to app")
+                if os.name == "nt":
+                    print(" \nGo back to app")
 
             col_names = locations_tbl.columns.tolist()
             if "using_ssh" in col_names:
                 col_names.remove("using_ssh")
             new_values = list(updated_tier2_dict.values())
             store = get_db(tier2_db_path)
-            # if locations_tbl.empty:
-            #     new_tier2_dict = row_dict = dict(zip(col_names, new_values))
-            #     store.read(new_tier2_dict, "Collection", table_name=TIER_2_TABLE)
-            # else:
             query = (f'UPDATE {TIER_2_TABLE} SET ' + ", ".join(f'"{k}" = ?' for k in col_names))
             store.query(query, params=new_values)
             store.close()
@@ -3552,6 +3499,7 @@ elif st.session_state.screen == "hpc_move":
                 confirm_unchanged_data_dialog(qid, has_moved)
                 st.stop()
 
+            kerberos_check()
 
             # if local data has been moved in this session and user hasn't changed screens, then check for existing folders already happened earlier
             if not st.session_state.local_to_staging_moved:
@@ -3572,8 +3520,14 @@ elif st.session_state.screen == "hpc_move":
                             st.stop()
 
                     else:
-                        print(" \nPassword prompt 1/1: checking existing folders on campaign")
-                        with st.spinner("Checking HPC Campaign for projects — check the terminal for 1 password prompt..."):
+                        print(" \nChecking existing folders on Campaign")
+                        spinner_msg = ""
+                        if os.name == "nt":
+                            if using_ssh.lower() == "putty":
+                                spinner_msg = "- enter password in pop-up window"
+                            else:
+                                spinner_msg = "— check the terminal for 1 password prompt..."
+                        with st.spinner(f"Checking HPC Campaign for projects {spinner_msg}"):
                             remote_script = (
                                 'id -un && '
                                 'if [ -f /etc/bashrc ]; then '
@@ -3593,7 +3547,8 @@ elif st.session_state.screen == "hpc_move":
                             else:
                                 cmd = ["ssh", f"{username}@{hpc_name}", remote_command]
                             result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         if result.returncode != 0:
                             st.error("Error checking existing folders in HPC Campaign Directory")
                             st.code(result.stderr)
@@ -3637,10 +3592,10 @@ elif st.session_state.screen == "hpc_move":
             temp_t2_db_name = proj_name + ".db"
             shutil.copy2(t2_db_name, temp_t2_db_name)
 
-            # add col in tier 1 md table that is absolute path to tier 2 db on campaign. Use the temp name (actually being moved to campaign)
             t2_db_campaign_path = os.path.join(hpc_campaign, proj_name, temp_t2_db_name)
             t1_store = get_db(t1_db_name)
             datasheet_df = t1_store.get_table(DATASHEET_TABLE, True)
+            t1_store.close()
 
             # create datasheet pdf in local data loc (or hpc staging if already starting from there)
             full_name = to_snake_case(datasheet_df["project_name"].iloc[0].strip()) + DATASHEET_SUFFIX
@@ -3655,10 +3610,11 @@ elif st.session_state.screen == "hpc_move":
                 new_tier1_dc_loc = os.path.join(local_data, full_genesis_dc_name)
                 data_folder_name = Path(local_data).name
             generate_datasheet_pdf(datasheet_df, new_datasheet_loc)
-            generate_tier1_datacard(qid, new_tier1_dc_loc, hpc_name + ":" + os.path.join(hpc_campaign, proj_name, data_folder_name))
+            generate_tier1_datacard(qid, new_tier1_dc_loc, hpc_name, os.path.join(hpc_campaign, proj_name, data_folder_name))
 
             datasheet_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_name)
             datacard_campaign_path = os.path.join(hpc_campaign, proj_name, data_folder_name, full_genesis_dc_name)
+            t1_store = get_db(t1_db_name)
             if FILE_POINTERS_TABLE in t1_store.list(True):
                 t1_store.query(f"UPDATE {FILE_POINTERS_TABLE} SET datsheet_file = ?, datacard_file = ?, tier2_db_path = ?;", 
                                params=(datasheet_campaign_path, datacard_campaign_path, t2_db_campaign_path))
@@ -3744,8 +3700,14 @@ elif st.session_state.screen == "hpc_move":
             else:
                 if not st.session_state.local_to_staging_moved:
                     local_move_error = None
-                    with st.spinner("Moving local data to HPC staging space - check the terminal for 3-4 password prompts..."):
-                        print(" \n \nMoving local data to HPC staging space - 3-4 password prompts expected:\n ")
+                    spinner_msg = ""
+                    if os.name == "nt":
+                        if using_ssh.lower() == "putty":
+                            spinner_msg = "- enter password in pop-up window"
+                        else:
+                            spinner_msg = "— check the terminal for 3-4 password prompts..."
+                    with st.spinner(f"Moving local data to HPC Staging space (might take some time) {spinner_msg}"):
+                        print(" \n \nMoving local data to HPC Staging space\n ")
                         try:
                             # TODO: Turn verbose off after done testing
                             s = Sync(temp_t2_db_name, isVerbose=True, skip_index=skip_index, add_dbs=[t1_db_name])
@@ -3753,7 +3715,21 @@ elif st.session_state.screen == "hpc_move":
                                 s.index(local_data, hpc_staging)
                             else:
                                 s.index(local_data, f"{username}@{hpc_name}:{hpc_staging}")
+
+                            # if on windows, close temp tier 2 db before copying it due to windows locking issue
+                            if os.name == "nt":
+                                fnull = open(os.devnull, 'w')
+                                with redirect_stdout(fnull):
+                                    s.t.unload_module('backend', s.backend_name, 'back-write')
+
                             shutil.copy2(temp_t2_db_name, t2_db_name) # copying over federated/filesystem tables to local tier2 db
+
+                            # if on windows, need to reopen temp tier 2 db because closed it above
+                            if os.name == "nt":
+                                fnull = open(os.devnull, 'w')
+                                with redirect_stdout(fnull):
+                                    s.t.load_module('backend', s.backend_name, 'back-write', filename=s.full_db_name)
+
                             if using_ssh.lower() == "putty":
                                 s.copy("putty", putty_session=hpc_name) # use putty command for windows-putty users
                             else:
@@ -3763,7 +3739,8 @@ elif st.session_state.screen == "hpc_move":
                                     s.copy("rsync") # linux/mac supports rsync
                         except Exception as e:
                             local_move_error = e
-                            print(" \nGo back to app")
+                            if os.name == "nt":
+                                print(" \nGo back to app")
 
                     if local_move_error is not None:
                         st.error("Local Data to HPC Staging Move Error:")
@@ -3783,8 +3760,14 @@ elif st.session_state.screen == "hpc_move":
                     script = script.replace('44444', repr(hpc_campaign)) # campaign folder
                     script = script.replace('55555', repr(TIER_2_TABLE)) # t2 locations table name
 
-                    with st.spinner("Moving data from HPC staging to HPC campaign — check the terminal for 1 password prompt..."):
-                        print(" \n \nMoving data from HPC staging to HPC campaign - 1 password prompt expected:")
+                    spinner_msg = ""
+                    if os.name == "nt":
+                        if using_ssh.lower() == "putty":
+                            spinner_msg = "- enter password in pop-up window"
+                        else:
+                            spinner_msg = "— check the terminal for 1 password prompt..."
+                    with st.spinner(f"Moving data from HPC Staging to HPC campaign (might take some time) {spinner_msg}"):
+                        print(" \n \nMoving data from HPC Staging to HPC campaign")
                         remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
                         if using_ssh.lower() == "putty":
                             cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
@@ -3810,7 +3793,8 @@ elif st.session_state.screen == "hpc_move":
                                     st.code(f"Please ensure '{hpc_name}' is an HPC transfer node")
                             else:
                                 st.code(remote_run.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
 
                     if "Only testing on this HPC for now" in remote_run.stdout:
@@ -3842,8 +3826,14 @@ elif st.session_state.screen == "hpc_move":
                 endpoint_script = endpoint_script.replace('22222', repr(proj_name))
                 endpoint_script = endpoint_script.replace('33333', repr(diana_endpoint))
 
-                with st.spinner("Registering project in DIANA Catalog — check the terminal for 1 password prompt..."):
-                    print(" \n \nRegistering project in DIANA Catalog - 1 password prompt expected:")
+                spinner_msg = ""
+                if os.name == "nt":
+                    if using_ssh.lower() == "putty":
+                        spinner_msg = "- enter password in pop-up window"
+                    else:
+                        spinner_msg = "— check the terminal for 1 password prompt..."
+                with st.spinner(f"Registering project in DIANA Catalog {spinner_msg}"):
+                    print(" \n \nRegistering project in DIANA Catalog")
                     remote_command = "bash -c " + shlex.quote(f"source {st.session_state.bashrc_path} && module load dsi && python3 -")
                     if using_ssh.lower() == "putty":
                         cmd = [plink, "-no-antispoof", "-load", hpc_name, remote_command]
@@ -3870,7 +3860,8 @@ elif st.session_state.screen == "hpc_move":
                         else:
                             st.code(remote_endpoint_run.stderr)
                             st.code(output)
-                    print(" \nGo back to app")
+                    if os.name == "nt":
+                        print(" \nGo back to app")
                     st.stop()                
 
             # set user group and access permissions after move
@@ -3883,36 +3874,54 @@ elif st.session_state.screen == "hpc_move":
                     if result.returncode != 0:
                         st.error("Error setting user group for data on Campaign")
                         st.code(result.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
 
-                if access_permissions_code:
+                if access_permissions_code is not None:
                     with st.spinner("Updating data access permissions on Campaign"):
                         cmd = ["chmod", "-R", access_permissions_code, full_campaign_path]
                         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
                         st.error("Error setting access permissions for data on Campaign")
                         st.code(result.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
             else:
                 if user_group and access_permissions_code:
-                    print(" \nPassword prompt 1/1: updating user group and data access permissions on HPC campaign")
-                    with st.spinner("Updating data group and access permissions on HPC Campaign — check the terminal for 1 password prompt..."):
+                    print(" \nUpdating user group and data access permissions on HPC campaign")
+                    spinner_msg = ""
+                    if os.name == "nt":
                         if using_ssh.lower() == "putty":
-                            cmd = [plink, "-load", hpc_name,
-                                f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
+                            spinner_msg = "- enter password in pop-up window"
                         else:
-                            cmd = ["ssh", f"{username}@{hpc_name}",
-                                f"chgrp -R {user_group} {full_campaign_path} && chmod -R {access_permissions_code} {full_campaign_path}"]
-                        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                            spinner_msg = "— check the terminal for 1 password prompt..."
+                    with st.spinner(f"Updating data group and access permissions on HPC Campaign {spinner_msg}"):
+                        change_cmd_string = ""
+                        if user_group:
+                            change_cmd_string = f"chgrp -R {user_group} {full_campaign_path}"
+                        if access_permissions_code is not None:
+                            if change_cmd_string == "":
+                                change_cmd_string = f"chmod -R {access_permissions_code} {full_campaign_path}"
+                            else:
+                                change_cmd_string += f" && chmod -R {access_permissions_code} {full_campaign_path}"
+
+                        if change_cmd_string != "":
+                            if using_ssh.lower() == "putty":
+                                cmd = [plink, "-load", hpc_name, change_cmd_string]
+                            else:
+                                cmd = ["ssh", f"{username}@{hpc_name}", change_cmd_string]
+                            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
                     if result.returncode != 0:
                         st.error("Error updating user group and data access permissions on HPC campaign")
                         st.code(result.stderr)
-                        print(" \nGo back to app")
+                        if os.name == "nt":
+                            print(" \nGo back to app")
                         st.stop()
 
-            print(" \nGo back to app")
+            if os.name == "nt":
+                print(" \nGo back to app")
 
             # after move, delete the temp t1 & t2 dbs that were actually moved
             os.remove(temp_t2_db_name)

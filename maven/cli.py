@@ -4,6 +4,8 @@ import socket
 import getpass
 import sys
 import random
+import secrets
+import threading
 
 PORT_MIN = 7000
 PORT_MAX = 9000
@@ -65,7 +67,6 @@ def main():
             subprocess.run(f'for /f "tokens=5" %a in (\'netstat -ano ^| findstr :{PORT} ^| findstr LISTENING\') do taskkill /F /PID %a >nul 2>&1',
                             shell=True, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    import secrets
     secret_url_component = secrets.token_urlsafe(12)
 
     if os.name != "nt":
@@ -82,6 +83,17 @@ def main():
             'STREAMLIT_BROWSER_GATHER_USAGE_STATS':'false'}
     cmd = [sys.executable, "-m", "streamlit", "run", APP]
     proc = subprocess.Popen(cmd, env=env, stdin=None, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
+
+    # Send an empty line through the original terminal every 5 mins.
+    heartbeat_stop = threading.Event()
+
+    def heartbeat():
+        while not heartbeat_stop.wait(300):
+            print(flush=True)
+
+    if is_remote:
+        threading.Thread(target=heartbeat, daemon=True).start()
+
     try:
         for line in proc.stdout:
             line = line.rstrip("\n")
@@ -111,3 +123,5 @@ def main():
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
+    finally:
+        heartbeat_stop.set()

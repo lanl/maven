@@ -59,6 +59,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+.ruff_cache/
 
 # Testing artifacts
 *query.csv
