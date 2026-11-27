@@ -2459,6 +2459,46 @@ reusability:
               length: null
               required: false
               value: ''
+    integrity:
+      description: ''
+      visible: false
+      value:
+        checksum_available:
+          description: ''
+          visible: false
+          mapping: null
+          type: dropdown
+          options: null
+          length: null
+          required: false
+          value: 'No'
+        checksum_type:
+          description: ''
+          visible: false
+          mapping: null
+          type: string
+          options: null
+          length: null
+          required: false
+          value: ''
+        checksum_value:
+          description: ''
+          visible: false
+          mapping: null
+          type: string
+          options: null
+          length: null
+          required: false
+          value: ''
+        fixity_policy:
+          description: ''
+          visible: false
+          mapping: null
+          type: string
+          options: null
+          length: null
+          required: false
+          value: ''
 
 governed_use:
   description: 'Rules for using and sharing this dataset: export control, privacy, agreements and allowed uses.'
