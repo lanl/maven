@@ -1536,11 +1536,11 @@ def kerberos_check():
             st.error(f"Select the Kerberos ticket with an alphabetical username not '{username}'")
             st.stop()
 
-        if realm.lower() != "lanl.gov":
+        if any(char.isdigit() for char in realm) or not realm.lower().endswith("lanl.gov"):
             if sys.platform == "linux":
-                st.error("Kerberos ticket must resemble 'user@lanl.gov'. In a new terminal, run 'kdestroy' and 'kinit'. After, try again here.")
+                st.error("Kerberos ticket must end with 'lanl.gov'. In a new terminal, run 'kdestroy' and 'kinit'. After, try again here.")
             else:
-                st.error("Kerberos ticket must resemble 'user@lanl.gov'. Change existing ticket and try again.")
+                st.error("Kerberos ticket must end with 'lanl.gov'. Change existing ticket and try again.")
             st.stop()
 
 
