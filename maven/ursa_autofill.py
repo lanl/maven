@@ -140,7 +140,7 @@ def build_question_catalog(
     for section in sections:
         for question in section["questions"]:
             catalog[question["id"]] = {
-                "label": question.get("label", question["id"]),
+                "label": question.get("full_text", question.get("label", question["id"])),
                 "required": question.get("required", True),
                 "section_idx": section["section_idx"],
                 "type": question.get("type", "text"),
@@ -1511,7 +1511,7 @@ def _run_ursa_autofill(
 def merge_autofill_result(
     row: dict[str, Any],
     payload: dict[str, Any],
-    section_questions: list[dict[str, str]],
+    section_questions: dict[str, str],
     *,
     previous_meta: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -1539,7 +1539,7 @@ def merge_autofill_result(
         if should_write:
             updates[qid] = answer
 
-        question = next((s["label"] for s in section_questions if s["id"] == qid), None)
+        question = section_questions.get(qid)
         merged_meta["fields"][qid] = {
             "question": question,
             "answer": answer,
