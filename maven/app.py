@@ -132,8 +132,8 @@ REVIEW_SECTION_IDX = -1
 FOLLOWUP_SECTION_IDX = -2
 
 SECTION_BY_IDX = {s["section_idx"]: s for s in SECTIONS}
-ALL_SECTION_IDXS = [s["section_idx"] for s in SECTIONS]
-ALL_QUESTIONS = [q for s in SECTIONS for q in s["questions"]]
+# exclude section 0 from all questions
+ALL_QUESTIONS = {q["id"]:q.get("full_text", q["label"]) for s in SECTIONS for q in s["questions"] if s["section_idx"] != 0}
 
 
 MASTER_DB_PATH = "maven.db"
@@ -918,7 +918,7 @@ def accessed_section_idx(row: Dict[str, Any], return_type) -> int:
     if not ok0:
         return 0
 
-    for idx in ALL_SECTION_IDXS:
+    for idx in SECTION_BY_IDX:
         if idx == 0:
             continue
         ok, _ = section_complete(idx, row)
@@ -928,7 +928,7 @@ def accessed_section_idx(row: Dict[str, Any], return_type) -> int:
     if return_type == "first":
         return 0
     elif return_type == "max":
-        return max(ALL_SECTION_IDXS)
+        return max(SECTION_BY_IDX)
 
 
 def parse_table_json(val: Any) -> List[Dict[str, Any]]:
@@ -1823,7 +1823,7 @@ def confirm_duplicate_project(qid: int):
 
 
 def generate_tier1_yaml(datasheet_df, datacard_dict, reference_guide, flattened_fields, old_tier1_dict=None, incomplete_message=""):
-    args = (CHAT_AGENT, datasheet_df, datacard_dict, reference_guide, flattened_fields)
+    args = (CHAT_AGENT, datasheet_df, ALL_QUESTIONS, datacard_dict, reference_guide, flattened_fields)
     if old_tier1_dict is not None:
         args = (*args, old_tier1_dict)
 
@@ -2292,7 +2292,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
                 qid = int(st.session_state.active_qid)
                 token = _qid_token(qid)
                 sec = int(st.session_state.section_idx)
-                if sec in ALL_SECTION_IDXS:
+                if sec in SECTION_BY_IDX:
                     updates = apply_section_updates(sec, token)
                     update_datasheet(qid, updates)
     
@@ -2315,7 +2315,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
             qid = int(st.session_state.active_qid)
             token = _qid_token(qid)
             sec = int(st.session_state.section_idx)
-            if sec in ALL_SECTION_IDXS:
+            if sec in SECTION_BY_IDX:
                 updates = apply_section_updates(sec, token)
                 update_datasheet(qid, updates)
             clear_context_file_state(token)
@@ -2344,7 +2344,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         st.sidebar.space()
         st.sidebar.write("### Datasheet Sections")
 
-        for idx in ALL_SECTION_IDXS:
+        for idx in SECTION_BY_IDX:
             if idx == 0:
                 continue
             label = f"{idx}: {SECTION_BY_IDX[idx]['title']}"
@@ -2364,7 +2364,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
 
         if st.sidebar.button(label, key=f"nav_{qid}_0", width="stretch"):
             st.session_state.screen = "datasheet"
-            if st.session_state.section_idx in ALL_SECTION_IDXS:
+            if st.session_state.section_idx in SECTION_BY_IDX:
                 updates = apply_section_updates(
                     st.session_state.section_idx, token)
                 update_datasheet(qid, updates)
@@ -2382,7 +2382,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
 
         with st.sidebar:
             with st.container(key="section_btns"):
-                for idx in ALL_SECTION_IDXS:
+                for idx in SECTION_BY_IDX:
                     if idx == 0:
                         continue
 
@@ -2392,7 +2392,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
                     disabled = idx > max_unlocked
                     if st.button(label, key=f"nav_{qid}_{idx}", disabled=disabled, width="stretch"):
                         st.session_state.screen = "datasheet"
-                        if st.session_state.section_idx in ALL_SECTION_IDXS:
+                        if st.session_state.section_idx in SECTION_BY_IDX:
                             updates = apply_section_updates(
                                 st.session_state.section_idx, token)
                             update_datasheet(qid, updates)
@@ -2414,7 +2414,7 @@ if st.session_state.active_qid is not None or st.session_state.draft_mode:
         is_metadata_btn_disabled = True
     else:
         all_data = get_datasheet(qid)
-        if any(not section_complete(idx, all_data)[0] for idx in ALL_SECTION_IDXS):
+        if any(not section_complete(idx, all_data)[0] for idx in SECTION_BY_IDX):
             is_metadata_btn_disabled = True
         else:
             qid = int(st.session_state.active_qid)
@@ -2633,13 +2633,13 @@ if st.session_state.screen == "datasheet":
     completed = 0
     if st.session_state.active_qid is not None:
         latest_row = get_datasheet(int(st.session_state.active_qid))
-        for idx in ALL_SECTION_IDXS[1:]:
+        for idx in list(SECTION_BY_IDX)[1:]:
             ok, _ = section_complete(idx, latest_row)
             if ok:
                 completed += 1
 
-        st.progress(completed / (len(ALL_SECTION_IDXS) - 1))
-        st.write(f"Progress: **{completed}/{(len(ALL_SECTION_IDXS) - 1)}** sections complete")
+        st.progress(completed / (len(SECTION_BY_IDX) - 1))
+        st.write(f"Progress: **{completed}/{(len(SECTION_BY_IDX) - 1)}** sections complete")
         st.divider()
     else:
         ok0, _ = section_complete(0, row)
@@ -2658,7 +2658,7 @@ if st.session_state.screen == "datasheet":
     only_next = (
         section_idx == 0
         or st.session_state.active_qid is None
-        or section_idx not in ALL_SECTION_IDXS
+        or section_idx not in SECTION_BY_IDX
     )
     if only_next:
         col1, next_col, col3 = st.columns(3, width="stretch")
@@ -2669,7 +2669,7 @@ if st.session_state.screen == "datasheet":
         with back_col:
             if st.button("⬅ Back", width="stretch"):
                 qid = int(st.session_state.active_qid)
-                if section_idx in ALL_SECTION_IDXS:
+                if section_idx in SECTION_BY_IDX:
                     updates = apply_section_updates(section_idx, token)
                     update_datasheet(qid, updates)
                     target = max(0, section_idx - 1)
@@ -2690,7 +2690,7 @@ if st.session_state.screen == "datasheet":
                 st.success("Saved changes")
 
     with next_col:
-        is_last = (section_idx == max(ALL_SECTION_IDXS))
+        is_last = (section_idx == max(SECTION_BY_IDX))
         if section_idx == REVIEW_SECTION_IDX:
             next_label = "Clarify ➡"
         elif section_idx == FOLLOWUP_SECTION_IDX:
