@@ -84,11 +84,11 @@ def main():
     cmd = [sys.executable, "-m", "streamlit", "run", APP]
     proc = subprocess.Popen(cmd, env=env, stdin=None, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1)
 
-    # Send an empty line through the original terminal every 60 seconds.
+    # Send an empty line through the original terminal every 5 mins.
     heartbeat_stop = threading.Event()
 
     def heartbeat():
-        while not heartbeat_stop.wait(60):
+        while not heartbeat_stop.wait(300):
             print(flush=True)
 
     if is_remote:
