@@ -3,7 +3,8 @@ import pandas as pd
 from ursa.agents.chat_agent import ChatAgent
 
 
-def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields: dict, reference_guide: str, old_datacard_dict: dict | None = None) -> str:
+def yaml_card_prompt(datasheet_text: str, datasheet_questions: dict, datacard_dict: dict, flattened_fields: dict, 
+                     reference_guide: str, old_datacard_dict: dict | None = None) -> str:
 
     example_input = '''
         {
@@ -104,6 +105,9 @@ def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields:
         ### **CONTEXT_INFORMATION** (from previous URSA output)
         {datasheet_text}
 
+        ### **CONTEXT_INFORMATION_QUESTIONS**
+        {datasheet_questions}
+
         {input_datacard_string if old_datacard_dict else ""}
 
         ## **YAML_INPUT_WITH_CONTEXT**
@@ -117,6 +121,8 @@ def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields:
 
         # INPUT INFORMATION:
         **CONTEXT_INFORMATION** is a string of dataset info in a tabular format.
+
+        **CONTEXT_INFORMATION_QUESTIONS** is a dict mapping certain columns from **CONTEXT_INFORMATION** to their actual questions for better context.
 
         **YAML_INPUT_WITH_CONTEXT** is a nested dict of all YAML fields in a machine readable format. All fields have a description, visible, and value sub-fields. 
         Only leaf nodes (the most nested fields who actually have a scalar or list value) have additional sub-fields such as mapping, type, options, length, and required.
@@ -196,7 +202,8 @@ def yaml_card_prompt(datasheet_text: str, datacard_dict: dict, flattened_fields:
 
 
 def run_tier1_yaml(chat_agent: ChatAgent,
-                   datasheet: pd.DataFrame, 
+                   datasheet: pd.DataFrame,
+                   datasheet_questions: dict[str, str],
                    datacard_dict: dict[str, dict[str, str]],
                    reference_guide: str,
                    flattened_fields: dict,
@@ -214,7 +221,7 @@ def run_tier1_yaml(chat_agent: ChatAgent,
         for field_name, field_config in flattened_fields.items()
     }
 
-    yaml_prompt = yaml_card_prompt(datasheet_string, datacard_dict, flattened_fields_no_value, reference_guide, old_datacard_dict)
+    yaml_prompt = yaml_card_prompt(datasheet_string, datasheet_questions, datacard_dict, flattened_fields_no_value, reference_guide, old_datacard_dict)
     yaml_payload = run_ursa_agent(chat_agent, yaml_prompt)
 
     return yaml_payload
